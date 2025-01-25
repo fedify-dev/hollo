@@ -74,19 +74,25 @@ const getFormattedEndpoint = (envEndpoint?: string, envRegion?: string) => {
   if (
     !envEndpoint ||
     !envEndpoint.startsWith("https://") ||
-    envEndpoint.includes("s3-website-") ||
-    !envEndpoint.includes("amazonaws.com")
+    envEndpoint.includes("s3-website-")
   ) {
-    console.warn(`Endpoint: '${envEndpoint}' is not AWS S3 Object URL.`);
+    logger.warn(`Endpoint: '${envEndpoint}' is not S3 Object URL.`);
     return undefined;
   }
 
-  //https://hollo-backets.s3.ap-northeast-1.amazonaws.com/
-  const envEndpointArr = envEndpoint.split(".");
-  console.log(envEndpointArr);
-
-  const formattedRegion = envEndpointArr.slice(-3, -2)[0];
-  return formattedRegion;
+  try {
+    const url = new URL(envEndpoint);
+    // Extract region from hostname for AWS endpoints
+    if (url.hostname.includes("amazonaws.com")) {
+      const match = url.hostname.match(/s3[.-](?:website-)?([^.]+)/);
+      return match?.[1];
+    }
+    // For S3-compatible storage, return undefined to use default region
+    return undefined;
+  } catch (e) {
+    logger.warn(`Failed to parse S3 endpoint URL: ${envEndpoint}`);
+    return undefined;
+  }
 };
 
 let driver: DriverContract;
