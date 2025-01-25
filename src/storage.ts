@@ -74,9 +74,11 @@ const getFormattedEndpoint = (envEndpoint?: string, envRegion?: string) => {
   if (
     !envEndpoint ||
     !envEndpoint.startsWith("https://") ||
-    envEndpoint.includes("s3-website-")
+    envEndpoint.includes("s3-website-") ||
+    !envEndpoint.includes("amazonaws.com")
   ) {
-    throw Error(`Endpoint: '${envEndpoint}' is not S3 Object URL.`);
+    console.warn(`Endpoint: '${envEndpoint}' is not AWS S3 Object URL.`);
+    return undefined;
   }
 
   //https://hollo-backets.s3.ap-northeast-1.amazonaws.com/
