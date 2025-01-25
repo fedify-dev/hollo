@@ -64,7 +64,9 @@ export function getAssetUrl(path: string, base: URL | string): string {
 
 /**
  * GetRegion from S3 Endpoint URL
- * @param endPoint
+ * @param envEndpoint
+ * @param envRegion
+ * @returns
  */
 const getFormattedEndpoint = (envEndpoint?: string, envRegion?: string) => {
   if (!(!envRegion || envRegion === "")) return envRegion;
