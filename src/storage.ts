@@ -62,6 +62,29 @@ export function getAssetUrl(path: string, base: URL | string): string {
   return `${assetUrlBase.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
+/**
+ * GetRegion from S3 Endpoint URL
+ * @param endPoint
+ */
+const getFormattedEndpoint = (envEndpoint?: string, envRegion?: string) => {
+  if (!(!envRegion || envRegion === "")) return envRegion;
+
+  if (
+    !envEndpoint ||
+    !envEndpoint.startsWith("https://") ||
+    envEndpoint.includes("s3-website-")
+  ) {
+    throw Error(`Endpoint: '${envEndpoint}' is not S3 Object URL.`);
+  }
+
+  //https://hollo-backets.s3.ap-northeast-1.amazonaws.com/
+  const envEndpointArr = envEndpoint.split(".");
+  console.log(envEndpointArr);
+
+  const formattedRegion = envEndpointArr.slice(-3, -2)[0];
+  return formattedRegion;
+};
+
 let driver: DriverContract;
 switch (DRIVE_DISK) {
   case "fs":
@@ -89,15 +112,17 @@ switch (DRIVE_DISK) {
       visibility: "public",
     });
     break;
-  case "s3":
+  case "s3": {
     if (bucket == null) throw new Error("S3_BUCKET is required");
     if (accessKeyId == null) throw new Error("AWS_ACCESS_KEY_ID is required");
     if (secretAccessKey == null)
       throw new Error("AWS_SECRET_ACCESS_KEY is required");
 
+    const formattedRegion = getFormattedEndpoint(endpointUrl, region);
+
     driver = new S3Driver({
       credentials: fromEnv(),
-      region: region == null || region === "" ? "auto" : region,
+      region: formattedRegion,
       endpoint: endpointUrl,
       bucket: bucket,
       // biome-ignore lint/complexity/useLiteralKeys: tsc complains about this (TS4111)
@@ -105,6 +130,7 @@ switch (DRIVE_DISK) {
       visibility: "public",
     });
     break;
+  }
   default:
     throw new Error(`Unknown DRIVE_DISK value: '${DRIVE_DISK}'`);
 }
