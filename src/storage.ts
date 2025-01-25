@@ -73,10 +73,10 @@ const getFormattedEndpoint = (envEndpoint?: string, envRegion?: string) => {
 
   if (
     !envEndpoint ||
-    !envEndpoint.startsWith("https://") ||
-    envEndpoint.includes("s3-website-")
+    !/^https?:\/\//.test(envEndpoint) ||
+    envEndpoint.includes("s3-website-") // Block website endpoints
   ) {
-    logger.warn(`Endpoint: '${envEndpoint}' is not S3 Object URL.`);
+    logger.warn(`Invalid S3 endpoint URL: ${envEndpoint}`);
     return undefined;
   }
 
