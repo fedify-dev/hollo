@@ -64,9 +64,17 @@ export function getAssetUrl(path: string, base: URL | string): string {
 
 /**
  * GetRegion from S3 Endpoint URL
+ *
+ * @example
+ * // AWS S3
+ * getFormattedEndpoint('https://bucket.s3.us-east-1.amazonaws.com', undefined) // returns 'us-east-1'
+ *
+ * // S3-compatible storage (e.g., MinIO)
+ * getFormattedEndpoint('http://minio:9000', undefined) // returns undefined
+ *
  * @param envEndpoint
  * @param envRegion
- * @returns
+ * @returns {string|undefined} The region string if detected or provided, undefined otherwise
  */
 const getFormattedEndpoint = (envEndpoint?: string, envRegion?: string) => {
   if (!(!envRegion || envRegion === "")) return envRegion;
