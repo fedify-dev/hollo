@@ -38,6 +38,7 @@ import {
   pollOptions,
   posts,
   reactions,
+  relays,
 } from "../schema";
 import { isUuid } from "../uuid";
 import {
@@ -173,6 +174,18 @@ export async function onFollowAccepted(
     inboxLogger.debug("Invalid actor: {actor}", { actor });
     return;
   }
+
+  const isRelayAccept = accept.objectId?.hash.includes("#relay-follows/");
+
+  if (isRelayAccept) {
+    // Update relay state to accepted if the follow is a relay
+    await db
+      .update(relays)
+      .set({ state: "accepted" })
+      .where(eq(relays.followRequestId, accept.objectId!.href));
+    return;
+  }
+
   const account = await persistAccount(db, actor, ctx.origin, ctx);
   if (account == null) return;
   if (accept.objectId != null) {
@@ -222,6 +235,18 @@ export async function onFollowRejected(
     inboxLogger.debug("Invalid actor: {actor}", { actor });
     return;
   }
+
+  const isRelayAccept = reject.objectId?.hash.includes("#relay-follows/");
+
+  if (isRelayAccept) {
+    // Update relay state to accepted if the follow is a relay
+    await db
+      .update(relays)
+      .set({ state: "accepted" })
+      .where(eq(relays.followRequestId, reject.objectId!.href));
+    return;
+  }
+
   const account = await persistAccount(db, actor, ctx.origin, ctx);
   if (account == null) return;
   if (reject.objectId != null) {

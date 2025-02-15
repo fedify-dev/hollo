@@ -14,7 +14,7 @@ import {
 import { getLogger } from "@logtape/logtape";
 import { PromisePool } from "@supercharge/promise-pool";
 import { createObjectCsvStringifier } from "csv-writer-portable";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { uniq } from "es-toolkit";
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
@@ -27,6 +27,7 @@ import {
   type NewAccountPageProps,
 } from "../components/NewAccountPage.tsx";
 import db from "../db.ts";
+import { HOLLO_RELAY_ACTOR_USERNAME } from "../entities/relay.ts";
 import federation from "../federation";
 import {
   REMOTE_ACTOR_FETCH_POSTS,
@@ -67,6 +68,7 @@ accounts.use(loginRequired);
 
 accounts.get("/", async (c) => {
   const owners = await db.query.accountOwners.findMany({
+    where: ne(accountOwners.handle, HOLLO_RELAY_ACTOR_USERNAME),
     with: { account: true },
   });
   return c.html(<AccountListPage accountOwners={owners} />);
