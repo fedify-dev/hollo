@@ -63,6 +63,7 @@ import {
   polls,
   posts,
   reactions,
+  relays,
 } from "../../schema";
 import { formatPostContent } from "../../text";
 import { type Uuid, isUuid, uuid, uuidv7 } from "../../uuid";
@@ -276,6 +277,26 @@ app.post(
         preferSharedInbox: true,
         excludeBaseUris: [new URL(c.req.url)],
       });
+      if (!owner.account.protected) {
+        const acceptedRelays = await db.query.relays.findMany({
+          where: eq(relays.state, "accepted"),
+          with: {
+            relayServerActor: true,
+          },
+        });
+        await fedCtx.sendActivity(
+          { handle },
+          acceptedRelays.map((relay) => ({
+            id: new URL(relay.relayServerActor.iri),
+            inboxId: new URL(relay.relayServerActor.inboxUrl),
+          })),
+          activity,
+          {
+            preferSharedInbox: true,
+            excludeBaseUris: [new URL(c.req.url)],
+          },
+        );
+      }
     }
     return c.json(serializePost(post, owner, c.req.url));
   },
@@ -367,6 +388,26 @@ app.put(
       preferSharedInbox: true,
       excludeBaseUris: [new URL(c.req.url)],
     });
+    if (post?.visibility !== "direct" && !owner.account.protected) {
+      const acceptedRelays = await db.query.relays.findMany({
+        where: eq(relays.state, "accepted"),
+        with: {
+          relayServerActor: true,
+        },
+      });
+      await fedCtx.sendActivity(
+        owner,
+        acceptedRelays.map((relay) => ({
+          id: new URL(relay.relayServerActor.iri),
+          inboxId: new URL(relay.relayServerActor.inboxUrl),
+        })),
+        activity,
+        {
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
     return c.json(serializePost(post!, owner, c.req.url));
   },
 );
@@ -423,6 +464,24 @@ app.delete(
       await fedCtx.sendActivity(
         { username: owner.handle },
         "followers",
+        activity,
+        {
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+      const acceptedRelays = await db.query.relays.findMany({
+        where: eq(relays.state, "accepted"),
+        with: {
+          relayServerActor: true,
+        },
+      });
+      await fedCtx.sendActivity(
+        owner,
+        acceptedRelays.map((relay) => ({
+          id: new URL(relay.relayServerActor.iri),
+          inboxId: new URL(relay.relayServerActor.inboxUrl),
+        })),
         activity,
         {
           preferSharedInbox: true,
@@ -793,15 +852,36 @@ app.post(
       where: eq(posts.id, id),
       with: getPostRelations(owner.id),
     });
+    const activity = toAnnounce(post!, fedCtx);
     await fedCtx.sendActivity(
       { username: owner.handle },
       "followers",
-      toAnnounce(post!, fedCtx),
+      activity,
       {
         preferSharedInbox: true,
         excludeBaseUris: [new URL(c.req.url)],
       },
     );
+    if (!owner.account.protected) {
+      const acceptedRelays = await db.query.relays.findMany({
+        where: eq(relays.state, "accepted"),
+        with: {
+          relayServerActor: true,
+        },
+      });
+      await fedCtx.sendActivity(
+        owner,
+        acceptedRelays.map((relay) => ({
+          id: new URL(relay.relayServerActor.iri),
+          inboxId: new URL(relay.relayServerActor.inboxUrl),
+        })),
+        activity,
+        {
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
     return c.json(serializePost(post!, owner, c.req.url));
   },
 );
@@ -848,18 +928,39 @@ app.post(
       .where(eq(posts.id, originalPostId));
     const fedCtx = federation.createContext(c.req.raw, undefined);
     for (const post of postList) {
+      const activity = new Undo({
+        actor: new URL(owner.account.iri),
+        object: toAnnounce(post, fedCtx),
+      });
       await fedCtx.sendActivity(
         { username: owner.handle },
         "followers",
-        new Undo({
-          actor: new URL(owner.account.iri),
-          object: toAnnounce(post, fedCtx),
-        }),
+        activity,
         {
           preferSharedInbox: true,
           excludeBaseUris: [new URL(c.req.url)],
         },
       );
+      if (!owner.account.protected) {
+        const acceptedRelays = await db.query.relays.findMany({
+          where: eq(relays.state, "accepted"),
+          with: {
+            relayServerActor: true,
+          },
+        });
+        await fedCtx.sendActivity(
+          owner,
+          acceptedRelays.map((relay) => ({
+            id: new URL(relay.relayServerActor.iri),
+            inboxId: new URL(relay.relayServerActor.inboxUrl),
+          })),
+          activity,
+          {
+            preferSharedInbox: true,
+            excludeBaseUris: [new URL(c.req.url)],
+          },
+        );
+      }
     }
     const originalPost = await db.query.posts.findFirst({
       where: eq(posts.id, originalPostId),
@@ -1010,23 +1111,39 @@ app.post(
       } satisfies NewPinnedPost)
       .returning();
     const fedCtx = federation.createContext(c.req.raw, undefined);
-    await fedCtx.sendActivity(
-      owner,
-      "followers",
-      new Add({
-        id: new URL(
-          `#add/${result[0].index}`,
-          fedCtx.getFeaturedUri(owner.handle),
-        ),
-        actor: new URL(owner.account.iri),
-        object: new URL(post.iri),
-        target: fedCtx.getFeaturedUri(owner.handle),
-      }),
-      {
-        preferSharedInbox: true,
-        excludeBaseUris: [new URL(c.req.url)],
-      },
-    );
+    const activity = new Add({
+      id: new URL(
+        `#add/${result[0].index}`,
+        fedCtx.getFeaturedUri(owner.handle),
+      ),
+      actor: new URL(owner.account.iri),
+      object: new URL(post.iri),
+      target: fedCtx.getFeaturedUri(owner.handle),
+    });
+    await fedCtx.sendActivity(owner, "followers", activity, {
+      preferSharedInbox: true,
+      excludeBaseUris: [new URL(c.req.url)],
+    });
+    if (!owner.account.protected) {
+      const acceptedRelays = await db.query.relays.findMany({
+        where: eq(relays.state, "accepted"),
+        with: {
+          relayServerActor: true,
+        },
+      });
+      await fedCtx.sendActivity(
+        owner,
+        acceptedRelays.map((relay) => ({
+          id: new URL(relay.relayServerActor.iri),
+          inboxId: new URL(relay.relayServerActor.inboxUrl),
+        })),
+        activity,
+        {
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
     const resultPost = await db.query.posts.findFirst({
       where: eq(posts.id, postId),
       with: getPostRelations(owner.id),
@@ -1066,23 +1183,39 @@ app.post(
       with: getPostRelations(owner.id),
     });
     const fedCtx = federation.createContext(c.req.raw, undefined);
-    await fedCtx.sendActivity(
-      owner,
-      "followers",
-      new Remove({
-        id: new URL(
-          `#remove/${result[0].index}`,
-          fedCtx.getFeaturedUri(owner.handle),
-        ),
-        actor: new URL(owner.account.iri),
-        object: new URL(post!.iri),
-        target: fedCtx.getFeaturedUri(owner.handle),
-      }),
-      {
-        preferSharedInbox: true,
-        excludeBaseUris: [new URL(c.req.url)],
-      },
-    );
+    const activity = new Remove({
+      id: new URL(
+        `#remove/${result[0].index}`,
+        fedCtx.getFeaturedUri(owner.handle),
+      ),
+      actor: new URL(owner.account.iri),
+      object: new URL(post!.iri),
+      target: fedCtx.getFeaturedUri(owner.handle),
+    });
+    await fedCtx.sendActivity(owner, "followers", activity, {
+      preferSharedInbox: true,
+      excludeBaseUris: [new URL(c.req.url)],
+    });
+    if (!owner.account.protected) {
+      const acceptedRelays = await db.query.relays.findMany({
+        where: eq(relays.state, "accepted"),
+        with: {
+          relayServerActor: true,
+        },
+      });
+      await fedCtx.sendActivity(
+        owner,
+        acceptedRelays.map((relay) => ({
+          id: new URL(relay.relayServerActor.iri),
+          inboxId: new URL(relay.relayServerActor.inboxUrl),
+        })),
+        activity,
+        {
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
     return c.json(serializePost(post!, owner, c.req.url));
   },
 );
@@ -1204,6 +1337,26 @@ async function addEmojiReaction(
     activity,
     { preferSharedInbox: true, excludeBaseUris: [new URL(c.req.url)] },
   );
+  if (!owner.account.protected) {
+    const acceptedRelays = await db.query.relays.findMany({
+      where: eq(relays.state, "accepted"),
+      with: {
+        relayServerActor: true,
+      },
+    });
+    await fedCtx.sendActivity(
+      owner,
+      acceptedRelays.map((relay) => ({
+        id: new URL(relay.relayServerActor.iri),
+        inboxId: new URL(relay.relayServerActor.inboxUrl),
+      })),
+      activity,
+      {
+        preferSharedInbox: true,
+        excludeBaseUris: [new URL(c.req.url)],
+      },
+    );
+  }
   return c.json(serializePost(post, owner, c.req.url));
 }
 
@@ -1297,6 +1450,26 @@ async function removeEmojiReaction(
     activity,
     { preferSharedInbox: true, excludeBaseUris: [new URL(c.req.url)] },
   );
+  if (!owner.account.protected) {
+    const acceptedRelays = await db.query.relays.findMany({
+      where: eq(relays.state, "accepted"),
+      with: {
+        relayServerActor: true,
+      },
+    });
+    await fedCtx.sendActivity(
+      owner,
+      acceptedRelays.map((relay) => ({
+        id: new URL(relay.relayServerActor.iri),
+        inboxId: new URL(relay.relayServerActor.inboxUrl),
+      })),
+      activity,
+      {
+        preferSharedInbox: true,
+        excludeBaseUris: [new URL(c.req.url)],
+      },
+    );
+  }
   return c.json(serializePost(post, owner, c.req.url));
 }
 
