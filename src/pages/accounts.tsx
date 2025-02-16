@@ -121,6 +121,28 @@ accounts.post("/", async (c) => {
   const bioResult = await formatText(db, bio ?? "", fedCtx);
   const nameEmojis = await extractCustomEmojis(db, name);
   const emojis = { ...nameEmojis, ...bioResult.emojis };
+  const handle = `@${username}@${fedCtx.host}`;
+  if (handle === `@${HOLLO_OFFICIAL_ACCOUNT}@${fedCtx.host}`) {
+    return c.html(
+      <NewAccountPage
+        values={{
+          username,
+          name,
+          bio,
+          protected: protected_,
+          discoverable,
+          language,
+          visibility,
+          news,
+        }}
+        errors={{
+          username: "This handle is reserved",
+        }}
+        officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+      />,
+      400,
+    );
+  }
   const [account, owner] = await db.transaction(async (tx) => {
     await tx
       .insert(instances)
@@ -139,7 +161,7 @@ accounts.post("/", async (c) => {
         type: "Person",
         name,
         emojis,
-        handle: `@${username}@${fedCtx.host}`,
+        handle: handle,
         bioHtml: bioResult.html,
         url: fedCtx.getActorUri(username).href,
         protected: protected_,

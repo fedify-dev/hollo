@@ -12,6 +12,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  not,
   notInArray,
   or,
   sql,
@@ -26,6 +27,7 @@ import {
   serializeRelationship,
 } from "../../entities/account";
 import { serializeList } from "../../entities/list";
+import { HOLLO_RELAY_ACTOR_ID } from "../../entities/relay";
 import { getPostRelations, serializePost } from "../../entities/status";
 import { federation } from "../../federation";
 import {
@@ -416,9 +418,12 @@ app.get(
       }
     }
     const accountList = await db.query.accounts.findMany({
-      where: or(
-        ilike(accounts.handle, `%${query.q}%`),
-        ilike(accounts.name, `%${query.q}%`),
+      where: and(
+        or(
+          ilike(accounts.handle, `%${query.q}%`),
+          ilike(accounts.name, `%${query.q}%`),
+        ),
+        not(eq(accounts.id, HOLLO_RELAY_ACTOR_ID)),
       ),
       with: { owner: true, successor: true },
       orderBy: [
