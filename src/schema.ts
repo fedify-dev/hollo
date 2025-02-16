@@ -1100,12 +1100,11 @@ export const relayStateEnum = pgEnum("relay_state", [
 
 export const relays = pgTable("relays", {
   relayServerActorId: uuid("relay_server_actor_id")
-    .primaryKey()
     .$type<Uuid>()
-    .notNull()
     .references(() => accounts.id, { onDelete: "cascade" }),
   state: relayStateEnum("state").notNull().default("idle"),
   followRequestId: text("follow_request_id").notNull().unique(),
+  inboxUrl: text("inbox_url").notNull().primaryKey(),
   relayClientActorId: uuid("relay_client_actor_id")
     .$type<Uuid>()
     .notNull()
