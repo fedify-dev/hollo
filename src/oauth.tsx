@@ -1,11 +1,12 @@
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "drizzle-orm";
+import { eq, not } from "drizzle-orm";
 import { escape } from "es-toolkit";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
 import { Layout } from "./components/Layout";
 import { db } from "./db";
+import { HOLLO_RELAY_ACTOR_ID } from "./entities/relay";
 import { loginRequired } from "./login";
 import {
   createAccessToken,
@@ -20,6 +21,7 @@ import {
   type Application,
   type Scope,
   accessTokens,
+  accountOwners as accountOwnersTable,
   applications,
   scopeEnum,
 } from "./schema";
@@ -55,6 +57,7 @@ app.get(
       return c.json({ error: "invalid_redirect_uri" }, 400);
     }
     const accountOwners = await db.query.accountOwners.findMany({
+      where: not(eq(accountOwnersTable.id, HOLLO_RELAY_ACTOR_ID)),
       with: { account: true },
     });
     return c.html(
