@@ -40,6 +40,8 @@ import {
   onPostUnpinned,
   onPostUnshared,
   onPostUpdated,
+  onRelayFollowAccepted,
+  onRelayFollowRejected,
   onUnblocked,
   onUnfollowed,
   onUnliked,
@@ -58,8 +60,24 @@ federation
     return anyOwner ?? null;
   })
   .on(Follow, onFollowed)
-  .on(Accept, onFollowAccepted)
-  .on(Reject, onFollowRejected)
+  .on(Accept, async (ctx, accept) => {
+    const isRelayAccept = accept.objectId?.hash.startsWith("#relay-follows/");
+
+    if (isRelayAccept) {
+      return await onRelayFollowAccepted(ctx, accept);
+    }
+
+    await onFollowAccepted(ctx, accept);
+  })
+  .on(Reject, async (ctx, reject) => {
+    const isRelayReject = reject.objectId?.hash.startsWith("#relay-follows/");
+
+    if (isRelayReject) {
+      return await onRelayFollowRejected(ctx, reject);
+    }
+
+    await onFollowRejected(ctx, reject);
+  })
   .on(Create, async (ctx, create) => {
     const object = await create.getObject();
     if (
