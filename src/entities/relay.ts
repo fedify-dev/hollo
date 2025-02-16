@@ -12,7 +12,6 @@ import {
   and,
   eq,
   isNotNull,
-  not,
 } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
@@ -26,7 +25,7 @@ import * as schema from "../schema";
 // and the realy keeps our server in the database.
 // And because we won't receive an activity to check whether the Undo was successful, we can't delete the relay client actor safely.
 export const HOLLO_RELAY_ACTOR_ID = "8a683714-6fa2-4e53-9f05-b4acbcda4db7";
-export const HOLLO_RELAY_ACTOR_USERNAME = "$hollo~relay~follower$";
+export const HOLLO_RELAY_ACTOR_USERNAME = "~hollo~relay~follower~";
 
 /**
  * Workaround fedify jsonld serialization for relay follow.
