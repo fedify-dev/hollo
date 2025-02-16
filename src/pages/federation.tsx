@@ -33,7 +33,8 @@ data.get("/", async (c) => {
     })
     .from(sql`fedify_message_v2`)
     .groupBy(sql`fedify_message_v2.message ->> 'type'`)
-    .execute();
+    .execute()
+    .catch(() => Promise.resolve([]));
 
   const relays = await db.query.relays.findMany({
     with: {
@@ -147,12 +148,12 @@ data.get("/", async (c) => {
           <tbody>
             {relays.map((relay) => (
               <tr>
-                <td>{relay.relayServerActor.inboxUrl}</td>
+                <td>{relay.relayServerActor?.inboxUrl ?? relay.inboxUrl}</td>
                 <td>{relay.state}</td>
                 <td>
                   <form
                     method="post"
-                    action={`/federation/relay/${relay.relayServerActorId}/delete`}
+                    action={`/federation/relay/${encodeURIComponent(relay.followRequestId)}/delete`}
                   >
                     <button name="delete" type="submit">
                       Delete
@@ -248,15 +249,6 @@ data.post("/relay", async (c) => {
     return c.redirect("/federation?error=invalid_relay");
   }
 
-  const domain = new URL(inboxUrl).hostname;
-
-  // The spec doesn't specify the name of the relay server actor, but I looked at multiple implementations and they all use `@relay@domain`.
-  const relayActor = await fedCtx.lookupObject(`@relay@${domain}`);
-
-  if (!isActor(relayActor)) {
-    return c.redirect("/federation?error=invalid_relay");
-  }
-
   const [loadedRelay] = await db.transaction(async (tx) => {
     await tx
       .insert(instances)
@@ -267,19 +259,8 @@ data.post("/relay", async (c) => {
       })
       .onConflictDoNothing();
 
-    const persistedServerRelayActor = await persistAccount(
-      tx,
-      relayActor,
-      c.req.url,
-      {},
-    );
-
-    if (!persistedServerRelayActor) {
-      throw tx.rollback();
-    }
-
     const existingRelay = await tx.query.relays.findFirst({
-      where: eq(relays.relayServerActorId, persistedServerRelayActor.id),
+      where: eq(relays.inboxUrl, inboxUrl),
     });
 
     if (existingRelay) {
@@ -346,13 +327,13 @@ data.post("/relay", async (c) => {
       .values({
         state: "idle",
         relayClientActorId: HOLLO_RELAY_ACTOR_ID,
-        relayServerActorId: persistedServerRelayActor.id,
         followRequestId: followRequestId.href,
+        inboxUrl,
       })
       .returning();
 
     const loadedRelay = await tx.query.relays.findFirst({
-      where: eq(relays.relayServerActorId, relay.relayServerActorId),
+      where: eq(relays.inboxUrl, relay.inboxUrl),
       with: {
         relayClientActor: {
           with: {
@@ -378,8 +359,8 @@ data.post("/relay", async (c) => {
     { username: loadedRelay.relayClientActor.owner.handle },
     [
       {
-        id: new URL(loadedRelay.relayServerActor.iri),
-        inboxId: new URL(loadedRelay.relayServerActor.inboxUrl),
+        id: new URL(loadedRelay.inboxUrl),
+        inboxId: new URL(loadedRelay.inboxUrl),
       },
     ],
     new RelayFollow({
@@ -387,9 +368,6 @@ data.post("/relay", async (c) => {
       actor: new URL(loadedRelay.relayClientActor.iri),
       object: new URL("https://www.w3.org/ns/activitystreams#Public"),
     }),
-    {
-      preferSharedInbox: true,
-    },
   );
 
   await db
@@ -397,20 +375,19 @@ data.post("/relay", async (c) => {
     .set({
       state: "pending",
     })
-    .where(eq(relays.relayServerActorId, loadedRelay.relayServerActorId));
+    .where(eq(relays.inboxUrl, loadedRelay.inboxUrl));
 
   return c.redirect("/federation?done=relay:add");
 });
 
-data.post("/relay/:serverActorId/delete", async (c) => {
+data.post("/relay/:followRequestId/delete", async (c) => {
   const fedCtx = federation.createContext(c.req.raw, undefined);
 
-  const serverActorId = c.req.param("serverActorId");
-  if (!isUuid(serverActorId)) return c.notFound();
+  const followRequestId = decodeURIComponent(c.req.param("followRequestId"));
 
   await db.transaction(async (tx) => {
     const relay = await tx.query.relays.findFirst({
-      where: eq(relays.relayServerActorId, serverActorId),
+      where: eq(relays.followRequestId, followRequestId),
       with: {
         relayServerActor: {
           with: {
@@ -433,8 +410,8 @@ data.post("/relay/:serverActorId/delete", async (c) => {
       { username: relay.relayClientActor.owner.handle },
       [
         {
-          id: new URL(relay.relayServerActor.iri),
-          inboxId: new URL(relay.relayServerActor.inboxUrl),
+          id: new URL(relay.relayServerActor?.iri ?? relay.inboxUrl),
+          inboxId: new URL(relay.relayServerActor?.inboxUrl ?? relay.inboxUrl),
         },
       ],
       new RelayUndo({
@@ -448,7 +425,7 @@ data.post("/relay/:serverActorId/delete", async (c) => {
       }),
     );
 
-    await tx.delete(relays).where(eq(relays.relayServerActorId, serverActorId));
+    await tx.delete(relays).where(eq(relays.followRequestId, followRequestId));
   });
 
   return c.redirect("/federation?done=relay:removed");
