@@ -1,6 +1,7 @@
 import { exportJwk, generateCryptoKeyPair, isActor } from "@fedify/fedify";
 import { Temporal } from "@js-temporal/polyfill";
 import { count, eq, sql } from "drizzle-orm";
+import { interval, jsonb, pgTable, timestamp, uuid } from "drizzle-orm/pg-core";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { DashboardLayout } from "../components/DashboardLayout";
@@ -16,6 +17,7 @@ import { persistAccount } from "../federation/account";
 import { isPost, persistPost } from "../federation/post";
 import { loginRequired } from "../login";
 import { accountOwners, accounts, instances, relays } from "../schema";
+import type { Uuid } from "../uuid";
 
 const data = new Hono();
 
@@ -409,6 +411,11 @@ data.post("/relay/:followRequestId/delete", async (c) => {
     if (!relay) {
       throw new HTTPException(404, { res: await c.notFound() });
     }
+
+    // Delete all outgoing activities for this relay
+    await tx
+      .delete(pgTable("fedify_message_v2", {}))
+      .where(sql`"message"->>'inbox' = ${relay.inboxUrl}`);
 
     await fedCtx.sendActivity(
       { username: relay.relayClientActor.owner.handle },
