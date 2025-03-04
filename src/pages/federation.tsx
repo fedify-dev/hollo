@@ -16,7 +16,6 @@ import { persistAccount } from "../federation/account";
 import { isPost, persistPost } from "../federation/post";
 import { loginRequired } from "../login";
 import { accountOwners, accounts, instances, relays } from "../schema";
-import { isUuid } from "../uuid";
 
 const data = new Hono();
 
@@ -310,11 +309,12 @@ data.post("/relay", async (c) => {
         rsaPublicKeyJwk: await exportJwk(rsaKeyPair.publicKey),
         ed25519PrivateKeyJwk: await exportJwk(ed25519KeyPair.privateKey),
         ed25519PublicKeyJwk: await exportJwk(ed25519KeyPair.publicKey),
-        bio: "",
+        bio: "This account is an internal account used by Hollo. It is used to follow remote relays.",
         language: "en",
         // TODO: Which visibility should be set?
         visibility: "public",
         discoverable: false,
+        themeColor: "pink",
       })
       .onConflictDoNothing()
       .returning();
