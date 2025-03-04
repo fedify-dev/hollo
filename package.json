@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.716.0",
-    "@fedify/fedify": "^1.4.4",
+    "@fedify/fedify": "1.5.0-dev.696",
     "@fedify/markdown-it-hashtag": "0.2.0",
     "@fedify/markdown-it-mention": "^0.1.1",
     "@fedify/postgres": "^0.2.2",
