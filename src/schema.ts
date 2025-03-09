@@ -314,6 +314,44 @@ export const applicationRelations = relations(applications, ({ many }) => ({
   accessTokens: many(accessTokens),
 }));
 
+export const accessGrants = pgTable(
+  "access_grants",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    token: text("token").notNull().unique(),
+    expiresIn: integer("expires_in").notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    scopes: scopeEnum("scopes").array().notNull(),
+    applicationId: uuid("application_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    resourceOwnerId: uuid("resource_owner_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => accountOwners.id, { onDelete: "cascade" }),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    revoked: timestamp("revoked", { withTimezone: true }),
+  },
+  (table) => [index().on(table.resourceOwnerId)],
+);
+
+export type AccessGrant = typeof accessGrants.$inferSelect;
+export type NewAccessGrant = typeof accessGrants.$inferInsert;
+
+export const accessGrantRelations = relations(accessGrants, ({ one }) => ({
+  application: one(applications, {
+    fields: [accessGrants.applicationId],
+    references: [applications.id],
+  }),
+  accountOwner: one(accountOwners, {
+    fields: [accessGrants.resourceOwnerId],
+    references: [accountOwners.id],
+  }),
+}));
+
 export const grantTypeEnum = pgEnum("grant_type", [
   "authorization_code",
   "client_credentials",
