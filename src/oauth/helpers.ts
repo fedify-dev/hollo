@@ -7,17 +7,20 @@ import type { Uuid } from "../uuid";
 
 const logger = getLogger(["hollo", "oauth"]);
 
-const AUTHORIZATION_CODE_SIZE = 32;
 const ACCESS_GRANT_SIZE = 64;
 const ACCESS_TOKEN_SIZE = 64;
 const TEN_MINUTES = 10 * 60 * 1000;
+
+export type AccessGrant = {
+  token: string;
+};
 
 export async function createAccessGrant(
   application_id: Uuid,
   account_id: Uuid,
   scopes: schema.Scope[],
   redirect_uri: string,
-): Promise<{ token: string }> {
+): Promise<AccessGrant> {
   const token = base64.fromArrayBuffer(
     crypto.getRandomValues(new Uint8Array(ACCESS_GRANT_SIZE))
       .buffer as ArrayBuffer,
@@ -37,35 +40,12 @@ export async function createAccessGrant(
   return { token };
 }
 
-export async function createAuthorizationCode(
-  application_id: Uuid,
-  account_id: Uuid,
-  scopes: schema.Scope[],
-): Promise<string> {
-  const code = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(AUTHORIZATION_CODE_SIZE))
-      .buffer as ArrayBuffer,
-    true,
-  );
-
-  await db.insert(schema.accessTokens).values({
-    accountOwnerId: account_id,
-    code,
-    applicationId: application_id,
-    scopes: scopes,
-  });
-
-  return code;
-}
-
 export type AccessToken = {
   token: string;
   type: "Bearer";
   scope: string;
   createdAt: number;
 };
-
-export type AuthorizationGrant = schema.AccessToken;
 
 export async function createAccessToken(
   accessGrant: schema.AccessGrant,
