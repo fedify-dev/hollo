@@ -134,7 +134,6 @@ describe("OAuth / Middleware", () => {
 
       const json = await response.json();
 
-      console.log(json);
       t.assert.equal(json.error, "invalid_token");
     },
   );

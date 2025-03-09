@@ -1,14 +1,12 @@
 import { exportJwk, generateCryptoKeyPair } from "@fedify/fedify";
 import { base64 } from "@hexagon/base64";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import db from "../../src/db";
 import * as Schema from "../../src/schema";
 
-import {
-  createAccessToken,
-  createAuthorizationCode,
-} from "../../src/oauth/helpers";
+import { OOB_REDIRECT_URI } from "../../src/oauth/constants";
+import { createAccessGrant, createAccessToken } from "../../src/oauth/helpers";
 
 export async function createAccount(
   options = { generateKeyPair: false },
@@ -94,7 +92,7 @@ export type OAuthApplicationOptions = {
 };
 
 export async function createOAuthApplication(
-  options: OAuthApplicationOptions = {},
+  options: OAuthApplicationOptions = { redirectUris: [OOB_REDIRECT_URI] },
 ): Promise<Pick<Schema.Application, "id">> {
   const clientId = base64.fromArrayBuffer(
     crypto.getRandomValues(new Uint8Array(16)).buffer as ArrayBuffer,
@@ -142,17 +140,75 @@ export async function getAccessToken(
   client: Pick<Schema.Application, "id">,
   account: Pick<Schema.Account, "id">,
   scopes: Schema.Scope[] = [],
+  redirect_uri: string = OOB_REDIRECT_URI,
 ) {
-  const code = await createAuthorizationCode(client.id, account.id, scopes);
+  const application = await getApplication(client);
+  const { token } = await createAccessGrant(
+    application.id,
+    account.id,
+    scopes,
+    redirect_uri,
+  );
 
-  const authorizationGrant = await db.query.accessTokens.findFirst({
-    where: eq(Schema.accessTokens.code, code),
+  const accessToken = await db.transaction(async (tx) => {
+    const accessGrant = await tx.query.accessGrants.findFirst({
+      where: eq(Schema.accessGrants.token, token),
+    });
+
+    const accessToken = await createAccessToken(accessGrant!, tx);
+
+    return accessToken;
   });
 
-  const accessToken = await createAccessToken(authorizationGrant!);
+  if (!accessToken) {
+    throw new Error("Failed to issue access token for test");
+  }
 
   return {
     authorizationHeader: `${accessToken.type} ${accessToken.token}`,
     scopes: accessToken.scope.split(" "),
   };
+}
+
+export async function getLastAccessToken(): Promise<Schema.AccessToken> {
+  const result = await db
+    .select()
+    .from(Schema.accessTokens)
+    .orderBy(desc(Schema.accessTokens.created))
+    .limit(1);
+
+  if (result.length !== 1) {
+    throw new Error("Could not retrieve last created access token");
+  }
+
+  return result[0];
+}
+
+export async function getLastAccessGrant(): Promise<Schema.AccessGrant> {
+  const result = await db
+    .select()
+    .from(Schema.accessGrants)
+    .orderBy(desc(Schema.accessGrants.createdAt))
+    .limit(1);
+
+  if (result.length !== 1) {
+    throw new Error("Could not retrieve last created access grant");
+  }
+
+  return result[0];
+}
+
+export async function getAccessGrant(
+  token: string,
+): Promise<Schema.AccessGrant> {
+  const accessGrant = await db.query.accessGrants.findFirst({
+    where: eq(Schema.accessGrants.token, token),
+  });
+
+  // This should never happen, but can if the application lookup is wrong:
+  if (accessGrant == null) {
+    throw new Error(`Error fetching OAuth Access Grant: ${token}`);
+  }
+
+  return accessGrant;
 }

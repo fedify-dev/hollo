@@ -1,7 +1,21 @@
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 import type { TestContext } from "node:test";
 
 import app from "./index";
+import type * as Schema from "./schema";
+
+import { cleanDatabase } from "../tests/helpers";
+import {
+  createAccount,
+  createOAuthApplication,
+  getAccessGrant,
+  getApplication,
+  getLastAccessGrant,
+  getLastAccessToken,
+} from "../tests/helpers/oauth";
+import { getLoginCookie } from "../tests/helpers/web";
+import { OOB_REDIRECT_URI } from "./oauth/constants";
+import { createAccessGrant } from "./oauth/helpers";
 
 describe("OAuth", () => {
   it(
@@ -50,6 +64,239 @@ describe("OAuth", () => {
         Array.isArray(metadata.scopes_supported),
         "Should return an array of scopes supported",
       );
+    },
+  );
+});
+
+describe("OAuth / POST /oauth/authorize", () => {
+  let application: Schema.Application;
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let account: Awaited<ReturnType<typeof createAccount>>;
+  const APP_REDIRECT_URI = "custom://oauth_callback";
+
+  beforeEach(async () => {
+    account = await createAccount();
+    client = await createOAuthApplication({
+      scopes: ["read:accounts"],
+      redirectUris: [OOB_REDIRECT_URI, APP_REDIRECT_URI],
+    });
+    application = await getApplication(client);
+  });
+
+  afterEach(async () => {
+    await cleanDatabase();
+  });
+
+  it(
+    "Does not create an access grant if denied",
+    { plan: 2 },
+    async (t: TestContext) => {
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", APP_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("decision", "deny");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      t.assert.equal(response.status, 302);
+      t.assert.equal(
+        response.headers.get("Location"),
+        "custom://oauth_callback?error=access_denied&error_description=The+resource+owner+or+authorization+server+denied+the+request.",
+      );
+    },
+  );
+
+  it(
+    "Can return authorization code out-of-bounds",
+    { plan: 8 },
+    async (t: TestContext) => {
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", OOB_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      t.assert.equal(response.status, 200);
+      t.assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+
+      const responseBody = await response.text();
+      const lastAccessGrant = await getLastAccessGrant();
+
+      t.assert.equal(lastAccessGrant.applicationId, application.id);
+      t.assert.equal(lastAccessGrant.resourceOwnerId, account.id);
+      t.assert.equal(lastAccessGrant.redirectUri, OOB_REDIRECT_URI);
+      t.assert.deepStrictEqual(lastAccessGrant.scopes, ["read:accounts"]);
+      t.assert.strictEqual(lastAccessGrant.revokedAt, null);
+
+      t.assert.match(
+        responseBody,
+        new RegExp(`${lastAccessGrant.token}`),
+        "Response should contain the access grant token",
+      );
+    },
+  );
+
+  it(
+    "Can return authorization code via redirect",
+    { plan: 7 },
+    async (t: TestContext) => {
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", APP_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("state", "test_state_value");
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      t.assert.equal(response.status, 302);
+
+      const lastAccessGrant = await getLastAccessGrant();
+      t.assert.equal(lastAccessGrant.applicationId, application.id);
+      t.assert.equal(lastAccessGrant.resourceOwnerId, account.id);
+      t.assert.equal(lastAccessGrant.redirectUri, APP_REDIRECT_URI);
+      t.assert.deepStrictEqual(lastAccessGrant.scopes, ["read:accounts"]);
+      t.assert.strictEqual(lastAccessGrant.revokedAt, null);
+
+      t.assert.equal(
+        response.headers.get("Location"),
+        `${APP_REDIRECT_URI}?code=${lastAccessGrant.token}&state=test_state_value`,
+      );
+    },
+  );
+});
+
+describe("OAuth / POST /oauth/token", () => {
+  let application: Schema.Application;
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let account: Awaited<ReturnType<typeof createAccount>>;
+
+  beforeEach(async () => {
+    account = await createAccount();
+    client = await createOAuthApplication({
+      scopes: ["read:accounts"],
+      redirectUris: [OOB_REDIRECT_URI],
+    });
+    application = await getApplication(client);
+  });
+
+  afterEach(async () => {
+    await cleanDatabase();
+  });
+
+  it(
+    "Can request a client credentials access token",
+    { plan: 7 },
+    async (t: TestContext) => {
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("client_id", application.clientId);
+      body.set("client_secret", application.clientSecret);
+      body.set("scope", "read:accounts");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      t.assert.equal(response.status, 200);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const responseBody = await response.json();
+      const lastAccessToken = await getLastAccessToken();
+
+      t.assert.equal(lastAccessToken.grant_type, "client_credentials");
+      t.assert.deepStrictEqual(lastAccessToken.scopes, ["read:accounts"]);
+      t.assert.equal(
+        responseBody.access_token,
+        lastAccessToken.code,
+        "Generates an Access Token",
+      );
+      t.assert.equal(responseBody.token_type, "Bearer");
+      t.assert.equal(responseBody.scope, lastAccessToken.scopes.join(" "));
+    },
+  );
+
+  it(
+    "Can exchange an access grant for an access token",
+    { plan: 8 },
+    async (t: TestContext) => {
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.token);
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      t.assert.equal(response.status, 200);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const responseBody = await response.json();
+
+      const lastAccessToken = await getLastAccessToken();
+      const changedAccessGrant = await getAccessGrant(accessGrant.token);
+
+      t.assert.notEqual(
+        changedAccessGrant.revokedAt,
+        null,
+        "Successfully revokes the access grant",
+      );
+      t.assert.equal(lastAccessToken.grant_type, "authorization_code");
+      t.assert.deepStrictEqual(
+        lastAccessToken.scopes,
+        changedAccessGrant.scopes,
+      );
+
+      t.assert.equal(
+        responseBody.access_token,
+        lastAccessToken.code,
+        "Generates an Access Token",
+      );
+      t.assert.equal(responseBody.token_type, "Bearer");
+      t.assert.equal(responseBody.scope, lastAccessToken.scopes.join(" "));
     },
   );
 });

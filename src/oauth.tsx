@@ -1,4 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
+import { getLogger } from "@logtape/logtape";
 import { eq } from "drizzle-orm";
 import { escape } from "es-toolkit";
 import { type Context, Hono } from "hono";
@@ -7,9 +8,10 @@ import { z } from "zod";
 import { Layout } from "./components/Layout";
 import { db } from "./db";
 import { loginRequired } from "./login";
+import { OOB_REDIRECT_URI } from "./oauth/constants";
 import {
+  createAccessGrant,
   createAccessToken,
-  createAuthorizationCode,
   createClientCredential,
 } from "./oauth/helpers";
 import type { Variables } from "./oauth/middleware";
@@ -19,12 +21,14 @@ import {
   type AccountOwner,
   type Application,
   type Scope,
-  accessTokens,
+  accessGrants,
   applications,
   scopeEnum,
 } from "./schema";
 import { renderCustomEmojis } from "./text";
 import { uuid } from "./uuid";
+
+const logger = getLogger(["hollo", "oauth"]);
 
 const app = new Hono<{ Variables: Variables }>();
 
@@ -168,6 +172,13 @@ app.post(
       return c.notFound();
     }
 
+    const accountOwner = await db.query.accountOwners.findFirst({
+      where: eq(applications.id, form.account_id),
+    });
+    if (accountOwner == null) {
+      return c.notFound();
+    }
+
     if (form.scopes.some((s) => !application.scopes.includes(s))) {
       return c.json({ error: "invalid_scope" }, 400);
     }
@@ -184,19 +195,23 @@ app.post(
         "The resource owner or authorization server denied the request.",
       );
     } else {
-      const code = await createAuthorizationCode(
+      const accessGrant = await createAccessGrant(
         application.id,
-        form.account_id,
+        accountOwner.id,
         form.scopes,
+        form.redirect_uri,
       );
 
-      if (form.redirect_uri === "urn:ietf:wg:oauth:2.0:oob") {
+      if (form.redirect_uri === OOB_REDIRECT_URI) {
         return c.html(
-          <AuthorizationCodePage application={application} code={code} />,
+          <AuthorizationCodePage
+            application={application}
+            code={accessGrant.token}
+          />,
         );
       }
 
-      url.searchParams.set("code", code);
+      url.searchParams.set("code", accessGrant.token);
 
       if (form.state != null) {
         url.searchParams.set("state", form.state);
@@ -225,6 +240,11 @@ function AuthorizationCodePage(props: AuthorizationCodePageProps) {
     </Layout>
   );
 }
+
+const INVALID_GRANT_ERROR_DESCRIPTION =
+  "The provided authorization code is invalid, expired, revoked, " +
+  "does not match the redirection URI used in the authorization " +
+  "request, or was issued to another client.";
 
 const tokenRequestSchema = z.object({
   grant_type: z.enum(["authorization_code", "client_credentials"]),
@@ -272,18 +292,9 @@ app.post("/token", cors(), async (c) => {
       401,
     );
   }
-  if (form.scope?.some((s) => !application.scopes.includes(s))) {
-    return c.json(
-      {
-        error: "invalid_scope",
-        error_description:
-          "The requested scope is invalid, unknown, or malformed.",
-      },
-      400,
-    );
-  }
+
   if (form.grant_type === "authorization_code") {
-    if (form.code == null) {
+    if (form.code === undefined) {
       return c.json(
         {
           error: "invalid_request",
@@ -292,6 +303,8 @@ app.post("/token", cors(), async (c) => {
         400,
       );
     }
+
+    const accessGrantToken = form.code;
 
     if (!form.redirect_uri) {
       return c.json(
@@ -304,48 +317,129 @@ app.post("/token", cors(), async (c) => {
       );
     }
 
-    const token = await db.query.accessTokens.findFirst({
-      where: eq(accessTokens.code, form.code),
-      with: { application: true },
-    });
+    return await db
+      .transaction(
+        async (tx) => {
+          const accessGrantResult = await tx
+            .select()
+            .from(accessGrants)
+            .for("update")
+            .where(eq(accessGrants.token, accessGrantToken))
+            .limit(1);
 
-    if (token == null || token.grant_type !== "authorization_code") {
-      return c.json(
-        {
-          error: "invalid_grant",
-          error_description:
-            "The provided authorization code is invalid, expired, revoked, " +
-            "does not match the redirection URI used in the authorization " +
-            "request, or was issued to another client.",
+          const accessGrant = accessGrantResult[0];
+
+          if (
+            accessGrant === undefined ||
+            accessGrant.applicationId !== application.id ||
+            accessGrant?.revokedAt !== null
+          ) {
+            return c.json(
+              {
+                error: "invalid_grant",
+                error_description: INVALID_GRANT_ERROR_DESCRIPTION,
+              },
+              400,
+            );
+          }
+
+          const notAfter =
+            accessGrant.createdAt.valueOf() + accessGrant.expiresIn;
+          if (Date.now() > notAfter) {
+            return c.json(
+              {
+                error: "invalid_grant",
+                error_description: INVALID_GRANT_ERROR_DESCRIPTION,
+              },
+              400,
+            );
+          }
+
+          if (accessGrant.redirectUri !== form.redirect_uri) {
+            return c.json(
+              {
+                error: "invalid_grant",
+                error_description: INVALID_GRANT_ERROR_DESCRIPTION,
+              },
+              400,
+            );
+          }
+
+          if (form.scope?.some((s) => !accessGrant.scopes.includes(s))) {
+            return c.json(
+              {
+                error: "invalid_scope",
+                error_description:
+                  "The requested scope is invalid, unknown, or malformed.",
+              },
+              400,
+            );
+          }
+
+          // Revoke the access grant:
+          await tx
+            .update(accessGrants)
+            .set({
+              revokedAt: new Date(),
+            })
+            .where(eq(accessGrants.token, accessGrantToken));
+
+          // create the access token
+          const accessToken = await createAccessToken(accessGrant, tx);
+
+          if (accessToken === undefined) {
+            return c.json(
+              {
+                error: "server_error",
+                error_description:
+                  "We could not issue an access token at this time",
+              },
+              500,
+            );
+          }
+
+          return c.json(
+            {
+              access_token: accessToken.token,
+              token_type: accessToken.type,
+              scope: accessToken.scope,
+              created_at: accessToken.createdAt,
+            },
+            200,
+          );
         },
-        400,
-      );
-    }
-
-    // Validate that the redirect URI given is registered with the Application
-    // (since we"re not tracking Access Grants which would bind the redirect URI
-    // to the code)
-    if (!token.application.redirectUris.includes(form.redirect_uri)) {
-      return c.json(
         {
-          error: "invalid_request",
-          error_description: "Invalid redirect URI.",
+          accessMode: "read write",
+          isolationLevel: "serializable",
+          deferrable: true,
         },
-        400,
-      );
-    }
+      )
+      .catch((err) => {
+        logger.error("An unknown error occurred", err);
 
-    const accessToken = await createAccessToken(token);
-
-    return c.json({
-      access_token: accessToken.token,
-      token_type: accessToken.type,
-      scope: accessToken.scope,
-      created_at: accessToken.createdAt,
-    });
+        return c.json(
+          {
+            error: "server_error",
+            error_description:
+              "We could not issue an access token at this time",
+          },
+          500,
+        );
+      });
   }
 
   if (form.grant_type === "client_credentials") {
+    if (form.scope?.some((s) => !application.scopes.includes(s))) {
+      return c.json(
+        {
+          error: "invalid_scope",
+          error_description:
+            "The requested scope is invalid, unknown, or malformed.",
+        },
+        400,
+      );
+    }
+
     const clientCredential = await createClientCredential(
       application,
       form.scope,
