@@ -12,6 +12,7 @@
     "test:ci": "tsx --test --test-reporter=@reporters/github --test-reporter-destination=stdout --test-reporter=spec --test-reporter-destination=stdout",
     "check": "tsc && biome check .",
     "check:ci": "tsc && biome ci --reporter=github .",
+    "check:coverage": "c8 --check-coverage --lines 100 pnpm test -- --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage/tmp/lcov.info",
     "migrate": "drizzle-kit migrate",
     "migrate:test": "dotenvx run -f .env.test -- drizzle-kit migrate",
     "migrate:generate": "drizzle-kit generate",
@@ -68,6 +69,7 @@
     "@types/node": "^22.13.4",
     "@types/qrcode": "^1.5.5",
     "@types/semver": "^7.5.8",
+    "c8": "^10.1.3",
     "typescript": "^5.7.2"
   },
   "packageManager": "pnpm@9.15.1+sha512.1acb565e6193efbebda772702950469150cf12bcc764262e7587e71d19dc98a423dff9536e57ea44c49bdf790ff694e83c27be5faa23d67e0c033b583be4bfcf"
