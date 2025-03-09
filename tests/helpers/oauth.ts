@@ -116,9 +116,26 @@ export async function createOAuthApplication(
       clientId,
       clientSecret,
     } satisfies Schema.NewApplication)
-    .returning({ id: Schema.applications.id });
+    .returning({
+      id: Schema.applications.id,
+    });
 
   return app[0];
+}
+
+export async function getApplication(
+  client: Pick<Schema.Application, "id">,
+): Promise<Schema.Application> {
+  const application = await db.query.applications.findFirst({
+    where: eq(Schema.applications.id, client.id),
+  });
+
+  // This should never happen, but can if the application lookup is wrong:
+  if (application == null) {
+    throw new Error(`Error fetching OAuth Application ${client.id}`);
+  }
+
+  return application;
 }
 
 export async function getAccessToken(

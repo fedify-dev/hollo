@@ -56,7 +56,7 @@ export const tokenRequired = createMiddleware(async (c, next) => {
     },
   });
 
-  if (accessToken == null) {
+  if (accessToken === undefined) {
     return c.json({ error: "invalid_token" }, 401);
   }
 
