@@ -317,17 +317,6 @@ app.post("/token", cors(), async (c) => {
       );
     }
 
-    if (form.scope) {
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description:
-            "The authorization code grant flow does not accept a scope parameter.",
-        },
-        400,
-      );
-    }
-
     return await db
       .transaction(
         async (tx) => {
