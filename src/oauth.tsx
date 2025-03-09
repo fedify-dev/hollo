@@ -248,10 +248,10 @@ const INVALID_GRANT_ERROR_DESCRIPTION =
 
 const tokenRequestSchema = z.object({
   grant_type: z.enum(["authorization_code", "client_credentials"]),
-  code: z.string().optional(),
   client_id: z.string(),
   client_secret: z.string(),
   redirect_uri: z.string().url().optional(),
+  code: z.string().optional(),
   scope: scopesSchema.optional(),
 });
 
@@ -317,6 +317,17 @@ app.post("/token", cors(), async (c) => {
       );
     }
 
+    if (form.scope) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "The authorization code grant flow does not accept a scope parameter.",
+        },
+        400,
+      );
+    }
+
     return await db
       .transaction(
         async (tx) => {
@@ -360,17 +371,6 @@ app.post("/token", cors(), async (c) => {
               {
                 error: "invalid_grant",
                 error_description: INVALID_GRANT_ERROR_DESCRIPTION,
-              },
-              400,
-            );
-          }
-
-          if (form.scope?.some((s) => !accessGrant.scopes.includes(s))) {
-            return c.json(
-              {
-                error: "invalid_scope",
-                error_description:
-                  "The requested scope is invalid, unknown, or malformed.",
               },
               400,
             );
@@ -429,6 +429,28 @@ app.post("/token", cors(), async (c) => {
   }
 
   if (form.grant_type === "client_credentials") {
+    if (form.code) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "The client credentials grant flow does not accept a code parameter.",
+        },
+        400,
+      );
+    }
+
+    if (form.redirect_uri) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "The client credentials grant flow does not accept a redirect_uri parameter.",
+        },
+        400,
+      );
+    }
+
     if (form.scope?.some((s) => !application.scopes.includes(s))) {
       return c.json(
         {
