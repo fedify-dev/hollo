@@ -151,8 +151,8 @@ describe("OAuth / POST /oauth/authorize", () => {
 
       t.assert.match(
         responseBody,
-        new RegExp(`${lastAccessGrant.token}`),
-        "Response should contain the access grant token",
+        new RegExp(`${lastAccessGrant.code}`),
+        "Response should contain the access grant code",
       );
     },
   );
@@ -190,7 +190,7 @@ describe("OAuth / POST /oauth/authorize", () => {
 
       t.assert.equal(
         response.headers.get("Location"),
-        `${APP_REDIRECT_URI}?code=${lastAccessGrant.token}&state=test_state_value`,
+        `${APP_REDIRECT_URI}?code=${lastAccessGrant.code}&state=test_state_value`,
       );
     },
   );
@@ -264,7 +264,7 @@ describe("OAuth / POST /oauth/token", () => {
       // client_secret is technically optional, but we don't support public clients yet:
       body.set("client_secret", application.clientSecret);
       body.set("redirect_uri", OOB_REDIRECT_URI);
-      body.set("code", accessGrant.token);
+      body.set("code", accessGrant.code);
 
       const response = await app.request("/oauth/token", {
         method: "POST",
@@ -277,7 +277,7 @@ describe("OAuth / POST /oauth/token", () => {
       const responseBody = await response.json();
 
       const lastAccessToken = await getLastAccessToken();
-      const changedAccessGrant = await getAccessGrant(accessGrant.token);
+      const changedAccessGrant = await getAccessGrant(accessGrant.code);
 
       t.assert.notEqual(
         changedAccessGrant.revoked,

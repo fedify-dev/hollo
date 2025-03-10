@@ -12,7 +12,7 @@ const ACCESS_TOKEN_SIZE = 64;
 const TEN_MINUTES = 10 * 60 * 1000;
 
 export type AccessGrant = {
-  token: string;
+  code: string;
 };
 
 export async function createAccessGrant(
@@ -21,7 +21,7 @@ export async function createAccessGrant(
   scopes: schema.Scope[],
   redirect_uri: string,
 ): Promise<AccessGrant> {
-  const token = base64.fromArrayBuffer(
+  const code = base64.fromArrayBuffer(
     crypto.getRandomValues(new Uint8Array(ACCESS_GRANT_SIZE))
       .buffer as ArrayBuffer,
     true,
@@ -29,7 +29,7 @@ export async function createAccessGrant(
 
   await db.insert(schema.accessGrants).values({
     id: crypto.randomUUID(),
-    token,
+    code,
     applicationId: application_id,
     resourceOwnerId: account_id,
     scopes: scopes,
@@ -37,7 +37,7 @@ export async function createAccessGrant(
     expiresIn: TEN_MINUTES,
   } satisfies schema.NewAccessGrant);
 
-  return { token };
+  return { code };
 }
 
 export type AccessToken = {
@@ -51,7 +51,7 @@ export async function createAccessToken(
   accessGrant: schema.AccessGrant,
   tx: Transaction,
 ): Promise<AccessToken | undefined> {
-  const token = base64.fromArrayBuffer(
+  const code = base64.fromArrayBuffer(
     crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_SIZE))
       .buffer as ArrayBuffer,
     true,
@@ -60,7 +60,7 @@ export async function createAccessToken(
   const result = await tx
     .insert(schema.accessTokens)
     .values({
-      code: token,
+      code,
       applicationId: accessGrant.applicationId,
       accountOwnerId: accessGrant.resourceOwnerId,
       scopes: accessGrant.scopes,
@@ -69,16 +69,19 @@ export async function createAccessToken(
     .returning();
 
   if (result.length !== 1) {
-    logger.info("Could not create access token, grant: {code}, code: {token}", {
-      code: accessGrant.token,
-      token,
-    });
+    logger.info(
+      "Could not create access token, grant: {grant}, code: {token}",
+      {
+        grant: accessGrant.code,
+        token: code,
+      },
+    );
 
     return undefined;
   }
 
   return {
-    token,
+    token: result[0].code,
     type: "Bearer",
     scope: result[0].scopes.join(" "),
     created: result[0].created.valueOf(),

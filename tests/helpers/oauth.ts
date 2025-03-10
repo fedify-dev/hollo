@@ -143,7 +143,7 @@ export async function getAccessToken(
   redirect_uri: string = OOB_REDIRECT_URI,
 ) {
   const application = await getApplication(client);
-  const { token } = await createAccessGrant(
+  const { code } = await createAccessGrant(
     application.id,
     account.id,
     scopes,
@@ -152,7 +152,7 @@ export async function getAccessToken(
 
   const accessToken = await db.transaction(async (tx) => {
     const accessGrant = await tx.query.accessGrants.findFirst({
-      where: eq(Schema.accessGrants.token, token),
+      where: eq(Schema.accessGrants.code, code),
     });
 
     const accessToken = await createAccessToken(accessGrant!, tx);
@@ -199,15 +199,15 @@ export async function getLastAccessGrant(): Promise<Schema.AccessGrant> {
 }
 
 export async function getAccessGrant(
-  token: string,
+  code: string,
 ): Promise<Schema.AccessGrant> {
   const accessGrant = await db.query.accessGrants.findFirst({
-    where: eq(Schema.accessGrants.token, token),
+    where: eq(Schema.accessGrants.code, code),
   });
 
   // This should never happen, but can if the application lookup is wrong:
   if (accessGrant == null) {
-    throw new Error(`Error fetching OAuth Access Grant: ${token}`);
+    throw new Error(`Error fetching OAuth Access Grant: ${code}`);
   }
 
   return accessGrant;

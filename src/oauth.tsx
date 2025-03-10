@@ -206,12 +206,12 @@ app.post(
         return c.html(
           <AuthorizationCodePage
             application={application}
-            code={accessGrant.token}
+            code={accessGrant.code}
           />,
         );
       }
 
-      url.searchParams.set("code", accessGrant.token);
+      url.searchParams.set("code", accessGrant.code);
 
       if (form.state != null) {
         url.searchParams.set("state", form.state);
@@ -304,7 +304,7 @@ app.post("/token", cors(), async (c) => {
       );
     }
 
-    const accessGrantToken = form.code;
+    const authorizationCode = form.code;
 
     if (!form.redirect_uri) {
       return c.json(
@@ -324,7 +324,7 @@ app.post("/token", cors(), async (c) => {
             .select()
             .from(accessGrants)
             .for("update")
-            .where(eq(accessGrants.token, accessGrantToken))
+            .where(eq(accessGrants.code, authorizationCode))
             .limit(1);
 
           const accessGrant = accessGrantResult[0];
@@ -371,7 +371,7 @@ app.post("/token", cors(), async (c) => {
             .set({
               revoked: new Date(),
             })
-            .where(eq(accessGrants.token, accessGrantToken));
+            .where(eq(accessGrants.id, accessGrant.id));
 
           // create the access token
           const accessToken = await createAccessToken(accessGrant, tx);

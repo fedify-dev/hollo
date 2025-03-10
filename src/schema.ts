@@ -318,7 +318,7 @@ export const accessGrants = pgTable(
   "access_grants",
   {
     id: uuid("id").$type<Uuid>().primaryKey(),
-    token: text("token").notNull().unique(),
+    code: text("code").notNull().unique(),
     expiresIn: integer("expires_in").notNull(),
     redirectUri: text("redirect_uri").notNull(),
     scopes: scopeEnum("scopes").array().notNull(),
