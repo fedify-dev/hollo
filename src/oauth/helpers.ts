@@ -44,7 +44,7 @@ export type AccessToken = {
   token: string;
   type: "Bearer";
   scope: string;
-  createdAt: number;
+  created: number;
 };
 
 export async function createAccessToken(
@@ -81,7 +81,7 @@ export async function createAccessToken(
     token,
     type: "Bearer",
     scope: result[0].scopes.join(" "),
-    createdAt: result[0].created.valueOf(),
+    created: result[0].created.valueOf(),
   };
 }
 
@@ -117,6 +117,6 @@ export async function createClientCredential(
     token: result[0].code,
     type: "Bearer",
     scope: result[0].scopes.join(" "),
-    createdAt: (+result[0].created / 1000) | 0,
+    created: (+result[0].created / 1000) | 0,
   };
 }

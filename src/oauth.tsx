@@ -332,7 +332,7 @@ app.post("/token", cors(), async (c) => {
           if (
             accessGrant === undefined ||
             accessGrant.applicationId !== application.id ||
-            accessGrant?.revokedAt !== null
+            accessGrant?.revoked !== null
           ) {
             return c.json(
               {
@@ -344,7 +344,7 @@ app.post("/token", cors(), async (c) => {
           }
 
           const notAfter =
-            accessGrant.createdAt.valueOf() + accessGrant.expiresIn;
+            accessGrant.created.valueOf() + accessGrant.expiresIn;
           if (Date.now() > notAfter) {
             return c.json(
               {
@@ -369,7 +369,7 @@ app.post("/token", cors(), async (c) => {
           await tx
             .update(accessGrants)
             .set({
-              revokedAt: new Date(),
+              revoked: new Date(),
             })
             .where(eq(accessGrants.token, accessGrantToken));
 
@@ -392,7 +392,7 @@ app.post("/token", cors(), async (c) => {
               access_token: accessToken.token,
               token_type: accessToken.type,
               scope: accessToken.scope,
-              created_at: accessToken.createdAt,
+              created_at: accessToken.created,
             },
             200,
           );
@@ -460,7 +460,7 @@ app.post("/token", cors(), async (c) => {
       access_token: clientCredential.token,
       token_type: clientCredential.type,
       scope: clientCredential.scope,
-      created_at: clientCredential.createdAt,
+      created_at: clientCredential.created,
     });
   }
 

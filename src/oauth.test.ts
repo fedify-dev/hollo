@@ -147,7 +147,7 @@ describe("OAuth / POST /oauth/authorize", () => {
       t.assert.equal(lastAccessGrant.resourceOwnerId, account.id);
       t.assert.equal(lastAccessGrant.redirectUri, OOB_REDIRECT_URI);
       t.assert.deepStrictEqual(lastAccessGrant.scopes, ["read:accounts"]);
-      t.assert.strictEqual(lastAccessGrant.revokedAt, null);
+      t.assert.strictEqual(lastAccessGrant.revoked, null);
 
       t.assert.match(
         responseBody,
@@ -186,7 +186,7 @@ describe("OAuth / POST /oauth/authorize", () => {
       t.assert.equal(lastAccessGrant.resourceOwnerId, account.id);
       t.assert.equal(lastAccessGrant.redirectUri, APP_REDIRECT_URI);
       t.assert.deepStrictEqual(lastAccessGrant.scopes, ["read:accounts"]);
-      t.assert.strictEqual(lastAccessGrant.revokedAt, null);
+      t.assert.strictEqual(lastAccessGrant.revoked, null);
 
       t.assert.equal(
         response.headers.get("Location"),
@@ -280,7 +280,7 @@ describe("OAuth / POST /oauth/token", () => {
       const changedAccessGrant = await getAccessGrant(accessGrant.token);
 
       t.assert.notEqual(
-        changedAccessGrant.revokedAt,
+        changedAccessGrant.revoked,
         null,
         "Successfully revokes the access grant",
       );

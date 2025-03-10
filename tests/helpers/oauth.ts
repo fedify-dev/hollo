@@ -188,7 +188,7 @@ export async function getLastAccessGrant(): Promise<Schema.AccessGrant> {
   const result = await db
     .select()
     .from(Schema.accessGrants)
-    .orderBy(desc(Schema.accessGrants.createdAt))
+    .orderBy(desc(Schema.accessGrants.created))
     .limit(1);
 
   if (result.length !== 1) {
