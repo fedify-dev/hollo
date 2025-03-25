@@ -38,6 +38,7 @@ import {
   pollOptions,
   posts,
   reactions,
+  relays,
 } from "../schema";
 import { isUuid } from "../uuid";
 import {
@@ -173,6 +174,7 @@ export async function onFollowAccepted(
     inboxLogger.debug("Invalid actor: {actor}", { actor });
     return;
   }
+
   const account = await persistAccount(db, actor, ctx.origin, ctx);
   if (account == null) return;
   if (accept.objectId != null) {
@@ -222,6 +224,7 @@ export async function onFollowRejected(
     inboxLogger.debug("Invalid actor: {actor}", { actor });
     return;
   }
+
   const account = await persistAccount(db, actor, ctx.origin, ctx);
   if (account == null) return;
   if (reject.objectId != null) {
@@ -840,4 +843,57 @@ export async function onAccountMoved(
       { excludeBaseUris: [new URL(ctx.origin)] },
     );
   }
+}
+
+export async function onRelayFollowAccepted(
+  ctx: InboxContext<void>,
+  accept: Accept,
+): Promise<void> {
+  const actor = await accept.getActor();
+  if (!isActor(actor) || actor.id == null) {
+    inboxLogger.debug("Invalid actor: {actor}", { actor });
+    return;
+  }
+
+  const relayServerActor = await persistAccount(db, actor, ctx.origin, ctx);
+
+  inboxLogger.debug("Relay follow accepted: {actor} {relayServerActor}", {
+    actor,
+    relayServerActor,
+  });
+
+  if (!relayServerActor) {
+    inboxLogger.debug("Actor not persited: {actor}", { actor });
+    return;
+  }
+
+  // Update relay state to accepted
+  await db
+    .update(relays)
+    .set({ state: "accepted", relayServerActorId: relayServerActor.id })
+    .where(eq(relays.followRequestId, accept.objectId!.href));
+}
+
+export async function onRelayFollowRejected(
+  ctx: InboxContext<void>,
+  reject: Reject,
+): Promise<void> {
+  const actor = await reject.getActor();
+  if (!isActor(actor) || actor.id == null) {
+    inboxLogger.debug("Invalid actor: {actor}", { actor });
+    return;
+  }
+
+  const relayServerActor = await persistAccount(db, actor, ctx.origin, ctx);
+
+  if (!relayServerActor) {
+    inboxLogger.debug("Actor not persited: {actor}", { actor });
+    return;
+  }
+
+  // Update relay state to rejected
+  await db
+    .update(relays)
+    .set({ state: "rejected", relayServerActorId: relayServerActor.id })
+    .where(eq(relays.followRequestId, reject.objectId!.href));
 }

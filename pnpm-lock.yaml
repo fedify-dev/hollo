@@ -12,8 +12,8 @@ importers:
         specifier: ^3.716.0
         version: 3.716.0(@aws-sdk/client-sso-oidc@3.716.0(@aws-sdk/client-sts@3.716.0))
       '@fedify/fedify':
-        specifier: ^1.4.4
-        version: 1.4.4(web-streams-polyfill@3.3.3)
+        specifier: 1.5.0-dev.696
+        version: 1.5.0-dev.696(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
         specifier: 0.2.0
         version: 0.2.0
@@ -966,6 +966,10 @@ packages:
     resolution: {integrity: sha512-9bEvpj4jK84oeiPCWqhEctS8D6BQozFFiWK8ZU4rnNohBO55dbGyxR/O8afNHr5rBYOLCRd6PiZxg0MGFjAqvA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=20.0.0'}
 
+  '@fedify/fedify@1.5.0-dev.696':
+    resolution: {integrity: sha512-V/NFnpPYYEfhCxP3nAEE22IiZfnRFeJUxkFjxBds1QwohCr5S8l4LkmJ0M649VU7JCy906VYCmC3/IlDUgd4qg==}
+    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=20.0.0'}
+
   '@fedify/markdown-it-hashtag@0.2.0':
     resolution: {integrity: sha512-kg8LKcSzemcG356ZBjfV2WyRAIqUbZ1t1XTRgYOlmjv1HNrMaKQiQc6I2zYtZIb+8LKAJbDld7ZScVLCE/RSWQ==}
 
@@ -1113,6 +1117,9 @@ packages:
 
   '@logtape/logtape@0.8.1':
     resolution: {integrity: sha512-I12BwnMgI/M/0AtkSRKRV2QeHZUWm2RWaC9CuhsXTLEr5In8ezc0DXhMI0anP+ux2NRtzitjum2TfHfQ8sFYzg==}
+
+  '@logtape/logtape@0.8.2':
+    resolution: {integrity: sha512-KikaMHi64p0BHYrYOE2Lom4dOE3R8PGT+21QJ5Ql/SWy0CNOp69dkAlG9RXzENQ6PAMWtiU+4kelJYNvfUvHOQ==}
 
   '@logtape/sentry@0.1.0':
     resolution: {integrity: sha512-LU4v62U+voM0qoIcfcLWhP2Hc4aPXW9mhr56KAoGDiCVso7KIxPyXrUN43zw1Tmw7PIldjvMcxXproRfRGwuNw==}
@@ -3868,6 +3875,28 @@ snapshots:
     transitivePeerDependencies:
       - web-streams-polyfill
 
+  '@fedify/fedify@1.5.0-dev.696(web-streams-polyfill@3.3.3)':
+    dependencies:
+      '@deno/shim-crypto': 0.3.1
+      '@deno/shim-deno': 0.18.2
+      '@hugoalh/http-header-link': 1.0.3
+      '@js-temporal/polyfill': 0.4.4
+      '@logtape/logtape': 0.8.2
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/semantic-conventions': 1.28.0
+      '@phensley/language-tag': 1.9.2
+      asn1js: 3.0.5
+      json-canon: 1.0.1
+      jsonld: 8.3.3(web-streams-polyfill@3.3.3)
+      multibase: 4.0.6
+      multicodec: 3.2.1
+      pkijs: 3.2.4
+      uri-template-router: 0.0.16
+      url-template: 3.1.1
+      urlpattern-polyfill: 10.0.0
+    transitivePeerDependencies:
+      - web-streams-polyfill
+
   '@fedify/markdown-it-hashtag@0.2.0':
     dependencies:
       markdown-it: 14.1.0
@@ -3985,6 +4014,8 @@ snapshots:
       tslib: 2.8.1
 
   '@logtape/logtape@0.8.1': {}
+
+  '@logtape/logtape@0.8.2': {}
 
   '@logtape/sentry@0.1.0':
     dependencies:

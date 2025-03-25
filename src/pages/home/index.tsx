@@ -1,7 +1,10 @@
+import { eq, not } from "drizzle-orm";
 import { escape } from "es-toolkit";
 import { Hono } from "hono";
 import { Layout } from "../../components/Layout.tsx";
 import db from "../../db.ts";
+import { HOLLO_RELAY_ACTOR_ID } from "../../entities/relay.ts";
+import { accountOwners } from "../../schema.ts";
 import { renderCustomEmojis } from "../../text.ts";
 
 const homePage = new Hono().basePath("/");
@@ -10,6 +13,7 @@ homePage.get("/", async (c) => {
   const credential = await db.query.credentials.findFirst();
   if (credential == null) return c.redirect("/setup");
   const owners = await db.query.accountOwners.findMany({
+    where: not(eq(accountOwners.id, HOLLO_RELAY_ACTOR_ID)),
     with: { account: true },
   });
   if (owners.length < 1) return c.redirect("/accounts");
