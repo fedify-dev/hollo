@@ -1090,3 +1090,37 @@ export const listPostRelations = relations(listPosts, ({ one }) => ({
     references: [posts.id],
   }),
 }));
+
+export const relayStateEnum = pgEnum("relay_state", [
+  "idle",
+  "pending",
+  "accepted",
+  "rejected",
+]);
+
+export const relays = pgTable("relays", {
+  relayServerActorId: uuid("relay_server_actor_id")
+    .$type<Uuid>()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  state: relayStateEnum("state").notNull().default("idle"),
+  followRequestId: text("follow_request_id").notNull().unique(),
+  inboxUrl: text("inbox_url").notNull().primaryKey(),
+  relayClientActorId: uuid("relay_client_actor_id")
+    .$type<Uuid>()
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+});
+
+export type ListRelays = typeof relays.$inferSelect;
+export type NewRelays = typeof relays.$inferInsert;
+
+export const relayRelations = relations(relays, ({ one }) => ({
+  relayServerActor: one(accounts, {
+    fields: [relays.relayServerActorId],
+    references: [accounts.id],
+  }),
+  relayClientActor: one(accounts, {
+    fields: [relays.relayClientActorId],
+    references: [accounts.id],
+  }),
+}));

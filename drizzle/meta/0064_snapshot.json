@@ -1,6 +1,6 @@
 {
-  "id": "7503d689-0dcd-4b99-a4fb-c92c83874040",
-  "prevId": "d9f02045-9f44-409f-b2d2-7b6ccc58dae9",
+  "id": "7e4cdb06-f007-416d-958b-34723c4626dd",
+  "prevId": "d9963900-ab3c-4252-ad78-4a03a0f28e02",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -164,6 +164,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "theme_color": {
+          "name": "theme_color",
+          "type": "theme_color",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {},
@@ -2501,6 +2508,86 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.relays": {
+      "name": "relays",
+      "schema": "",
+      "columns": {
+        "relay_server_actor_id": {
+          "name": "relay_server_actor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "relay_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'idle'"
+        },
+        "follow_request_id": {
+          "name": "follow_request_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inbox_url": {
+          "name": "inbox_url",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "relay_client_actor_id": {
+          "name": "relay_client_actor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "relays_relay_server_actor_id_accounts_id_fk": {
+          "name": "relays_relay_server_actor_id_accounts_id_fk",
+          "tableFrom": "relays",
+          "tableTo": "accounts",
+          "columnsFrom": [
+            "relay_server_actor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "relays_relay_client_actor_id_accounts_id_fk": {
+          "name": "relays_relay_client_actor_id_accounts_id_fk",
+          "tableFrom": "relays",
+          "tableTo": "accounts",
+          "columnsFrom": [
+            "relay_client_actor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "relays_follow_request_id_unique": {
+          "name": "relays_follow_request_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "follow_request_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.reports": {
       "name": "reports",
       "schema": "",
@@ -2788,6 +2875,16 @@
         "direct"
       ]
     },
+    "public.relay_state": {
+      "name": "relay_state",
+      "schema": "public",
+      "values": [
+        "idle",
+        "pending",
+        "accepted",
+        "rejected"
+      ]
+    },
     "public.scope": {
       "name": "scope",
       "schema": "public",
@@ -2820,6 +2917,32 @@
         "write:statuses",
         "follow",
         "push"
+      ]
+    },
+    "public.theme_color": {
+      "name": "theme_color",
+      "schema": "public",
+      "values": [
+        "amber",
+        "azure",
+        "blue",
+        "cyan",
+        "fuchsia",
+        "green",
+        "grey",
+        "indigo",
+        "jade",
+        "lime",
+        "orange",
+        "pink",
+        "pumpkin",
+        "purple",
+        "red",
+        "sand",
+        "slate",
+        "violet",
+        "yellow",
+        "zinc"
       ]
     }
   },

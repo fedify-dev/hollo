@@ -14,7 +14,7 @@ import {
 import { getLogger } from "@logtape/logtape";
 import { PromisePool } from "@supercharge/promise-pool";
 import { createObjectCsvStringifier } from "csv-writer-portable";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { uniq } from "es-toolkit";
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
@@ -27,6 +27,7 @@ import {
   type NewAccountPageProps,
 } from "../components/NewAccountPage.tsx";
 import db from "../db.ts";
+import { HOLLO_RELAY_ACTOR_USERNAME } from "../entities/relay.ts";
 import federation from "../federation";
 import {
   REMOTE_ACTOR_FETCH_POSTS,
@@ -67,6 +68,7 @@ accounts.use(loginRequired);
 
 accounts.get("/", async (c) => {
   const owners = await db.query.accountOwners.findMany({
+    where: ne(accountOwners.handle, HOLLO_RELAY_ACTOR_USERNAME),
     with: { account: true },
   });
   return c.html(<AccountListPage accountOwners={owners} />);
@@ -115,10 +117,32 @@ accounts.post("/", async (c) => {
       400,
     );
   }
+  if (username === HOLLO_RELAY_ACTOR_USERNAME) {
+    return c.html(
+      <NewAccountPage
+        values={{
+          username,
+          name,
+          bio,
+          protected: protected_,
+          discoverable,
+          language,
+          visibility,
+          news,
+        }}
+        errors={{
+          username: "This handle is reserved",
+        }}
+        officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+      />,
+      400,
+    );
+  }
   const fedCtx = federation.createContext(c.req.raw, undefined);
   const bioResult = await formatText(db, bio ?? "", fedCtx);
   const nameEmojis = await extractCustomEmojis(db, name);
   const emojis = { ...nameEmojis, ...bioResult.emojis };
+  const handle = `@${username}@${fedCtx.host}`;
   const [account, owner] = await db.transaction(async (tx) => {
     await tx
       .insert(instances)
@@ -137,7 +161,7 @@ accounts.post("/", async (c) => {
         type: "Person",
         name,
         emojis,
-        handle: `@${username}@${fedCtx.host}`,
+        handle: handle,
         bioHtml: bioResult.html,
         url: fedCtx.getActorUri(username).href,
         protected: protected_,

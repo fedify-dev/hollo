@@ -28,6 +28,7 @@ import {
   serializeAccount,
   serializeAccountOwner,
 } from "../../entities/account";
+import { forwardActivityToRelays } from "../../entities/relay";
 import { getPostRelations, serializePost } from "../../entities/status";
 import federation from "../../federation";
 import { updateAccountStats } from "../../federation/account";
@@ -67,6 +68,7 @@ import {
   polls,
   posts,
   reactions,
+  relays,
 } from "../../schema";
 import { formatPostContent } from "../../text";
 import { type Uuid, isUuid, uuid, uuidv7 } from "../../uuid";
@@ -281,6 +283,9 @@ app.post(
         excludeBaseUris: [new URL(c.req.url)],
       });
     }
+    if (owner.discoverable && post.visibility === "public") {
+      await forwardActivityToRelays(db, fedCtx, { handle }, activity);
+    }
     return c.json(serializePost(post, owner, c.req.url));
   },
 );
@@ -371,6 +376,9 @@ app.put(
       preferSharedInbox: true,
       excludeBaseUris: [new URL(c.req.url)],
     });
+    if (owner.discoverable && post!.visibility === "public") {
+      await forwardActivityToRelays(db, fedCtx, owner, activity);
+    }
     return c.json(serializePost(post!, owner, c.req.url));
   },
 );
@@ -433,6 +441,9 @@ app.delete(
           excludeBaseUris: [new URL(c.req.url)],
         },
       );
+    }
+    if (owner.discoverable && post.visibility === "public") {
+      await forwardActivityToRelays(db, fedCtx, owner, activity);
     }
     return c.json({
       ...serializePost(post, owner, c.req.url),
@@ -797,15 +808,19 @@ app.post(
       where: eq(posts.id, id),
       with: getPostRelations(owner.id),
     });
+    const activity = toAnnounce(post!, fedCtx);
     await fedCtx.sendActivity(
       { username: owner.handle },
       "followers",
-      toAnnounce(post!, fedCtx),
+      activity,
       {
         preferSharedInbox: true,
         excludeBaseUris: [new URL(c.req.url)],
       },
     );
+    if (owner.discoverable && post!.visibility === "public") {
+      await forwardActivityToRelays(db, fedCtx, owner, activity);
+    }
     return c.json(serializePost(post!, owner, c.req.url));
   },
 );
@@ -852,18 +867,22 @@ app.post(
       .where(eq(posts.id, originalPostId));
     const fedCtx = federation.createContext(c.req.raw, undefined);
     for (const post of postList) {
+      const activity = new Undo({
+        actor: new URL(owner.account.iri),
+        object: toAnnounce(post, fedCtx),
+      });
       await fedCtx.sendActivity(
         { username: owner.handle },
         "followers",
-        new Undo({
-          actor: new URL(owner.account.iri),
-          object: toAnnounce(post, fedCtx),
-        }),
+        activity,
         {
           preferSharedInbox: true,
           excludeBaseUris: [new URL(c.req.url)],
         },
       );
+      if (owner.discoverable && post.visibility === "public") {
+        await forwardActivityToRelays(db, fedCtx, owner, activity);
+      }
     }
     const originalPost = await db.query.posts.findFirst({
       where: eq(posts.id, originalPostId),
@@ -1014,23 +1033,22 @@ app.post(
       } satisfies NewPinnedPost)
       .returning();
     const fedCtx = federation.createContext(c.req.raw, undefined);
-    await fedCtx.sendActivity(
-      owner,
-      "followers",
-      new Add({
-        id: new URL(
-          `#add/${result[0].index}`,
-          fedCtx.getFeaturedUri(owner.handle),
-        ),
-        actor: new URL(owner.account.iri),
-        object: new URL(post.iri),
-        target: fedCtx.getFeaturedUri(owner.handle),
-      }),
-      {
-        preferSharedInbox: true,
-        excludeBaseUris: [new URL(c.req.url)],
-      },
-    );
+    const activity = new Add({
+      id: new URL(
+        `#add/${result[0].index}`,
+        fedCtx.getFeaturedUri(owner.handle),
+      ),
+      actor: new URL(owner.account.iri),
+      object: new URL(post.iri),
+      target: fedCtx.getFeaturedUri(owner.handle),
+    });
+    await fedCtx.sendActivity(owner, "followers", activity, {
+      preferSharedInbox: true,
+      excludeBaseUris: [new URL(c.req.url)],
+    });
+    if (owner.discoverable && post.visibility === "public") {
+      await forwardActivityToRelays(db, fedCtx, owner, activity);
+    }
     const resultPost = await db.query.posts.findFirst({
       where: eq(posts.id, postId),
       with: getPostRelations(owner.id),
@@ -1070,23 +1088,22 @@ app.post(
       with: getPostRelations(owner.id),
     });
     const fedCtx = federation.createContext(c.req.raw, undefined);
-    await fedCtx.sendActivity(
-      owner,
-      "followers",
-      new Remove({
-        id: new URL(
-          `#remove/${result[0].index}`,
-          fedCtx.getFeaturedUri(owner.handle),
-        ),
-        actor: new URL(owner.account.iri),
-        object: new URL(post!.iri),
-        target: fedCtx.getFeaturedUri(owner.handle),
-      }),
-      {
-        preferSharedInbox: true,
-        excludeBaseUris: [new URL(c.req.url)],
-      },
-    );
+    const activity = new Remove({
+      id: new URL(
+        `#remove/${result[0].index}`,
+        fedCtx.getFeaturedUri(owner.handle),
+      ),
+      actor: new URL(owner.account.iri),
+      object: new URL(post!.iri),
+      target: fedCtx.getFeaturedUri(owner.handle),
+    });
+    await fedCtx.sendActivity(owner, "followers", activity, {
+      preferSharedInbox: true,
+      excludeBaseUris: [new URL(c.req.url)],
+    });
+    if (owner.discoverable && post!.visibility === "public") {
+      await forwardActivityToRelays(db, fedCtx, owner, activity);
+    }
     return c.json(serializePost(post!, owner, c.req.url));
   },
 );
@@ -1208,6 +1225,9 @@ async function addEmojiReaction(
     activity,
     { preferSharedInbox: true, excludeBaseUris: [new URL(c.req.url)] },
   );
+  if (owner.discoverable && post.visibility === "public") {
+    await forwardActivityToRelays(db, fedCtx, owner, activity);
+  }
   return c.json(serializePost(post, owner, c.req.url));
 }
 
@@ -1301,6 +1321,9 @@ async function removeEmojiReaction(
     activity,
     { preferSharedInbox: true, excludeBaseUris: [new URL(c.req.url)] },
   );
+  if (owner.discoverable && post.visibility === "public") {
+    await forwardActivityToRelays(db, fedCtx, owner, activity);
+  }
   return c.json(serializePost(post, owner, c.req.url));
 }
 
