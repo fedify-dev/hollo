@@ -117,12 +117,7 @@ accounts.post("/", async (c) => {
       400,
     );
   }
-  const fedCtx = federation.createContext(c.req.raw, undefined);
-  const bioResult = await formatText(db, bio ?? "", fedCtx);
-  const nameEmojis = await extractCustomEmojis(db, name);
-  const emojis = { ...nameEmojis, ...bioResult.emojis };
-  const handle = `@${username}@${fedCtx.host}`;
-  if (handle === `@${HOLLO_OFFICIAL_ACCOUNT}@${fedCtx.host}`) {
+  if (username === HOLLO_RELAY_ACTOR_USERNAME) {
     return c.html(
       <NewAccountPage
         values={{
@@ -143,6 +138,11 @@ accounts.post("/", async (c) => {
       400,
     );
   }
+  const fedCtx = federation.createContext(c.req.raw, undefined);
+  const bioResult = await formatText(db, bio ?? "", fedCtx);
+  const nameEmojis = await extractCustomEmojis(db, name);
+  const emojis = { ...nameEmojis, ...bioResult.emojis };
+  const handle = `@${username}@${fedCtx.host}`;
   const [account, owner] = await db.transaction(async (tx) => {
     await tx
       .insert(instances)
