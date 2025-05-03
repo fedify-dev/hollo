@@ -17,7 +17,6 @@ import { persistAccount } from "../federation/account";
 import { isPost, persistPost } from "../federation/post";
 import { loginRequired } from "../login";
 import { accountOwners, accounts, instances, relays } from "../schema";
-import type { Uuid } from "../uuid";
 
 const data = new Hono();
 
