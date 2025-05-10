@@ -38,7 +38,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: hollo_test
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U ${POSTGRES_USER}"
           --health-interval 10ms
           --health-timeout 3s
           --health-retries 50

@@ -10,8 +10,6 @@ import {
   accessTokens,
 } from "../schema.ts";
 
-import { verifyAuthorizationCode } from "./helpers.ts";
-
 export type Variables = {
   token: AccessToken & {
     application: Application;
@@ -24,39 +22,19 @@ export type Variables = {
 export const tokenRequired = createMiddleware(async (c, next) => {
   const authorization = c.req.header("Authorization");
   if (authorization == null) return c.json({ error: "unauthorized" }, 401);
-  const match = /^(?:bearer|token)\s+(.+)$/i.exec(authorization);
+  const match = /^(?:bearer)\s+(.+)$/i.exec(authorization);
   if (match == null) return c.json({ error: "unauthorized" }, 401);
   const token = match[1];
 
-  let tokenCode: string;
-  if (token.includes("^")) {
-    const result = await verifyAuthorizationCode(token);
-
-    if (!result.verified) {
-      return c.json(
-        {
-          error: "invalid_token",
-          error_description: result.error_description,
-        },
-        401,
-      );
-    }
-
-    tokenCode = result.code;
-  } else {
-    // client credentials
-    tokenCode = token;
-  }
-
   const accessToken = await db.query.accessTokens.findFirst({
-    where: eq(accessTokens.code, tokenCode),
+    where: eq(accessTokens.code, token),
     with: {
       accountOwner: { with: { account: { with: { successor: true } } } },
       application: true,
     },
   });
 
-  if (accessToken == null) {
+  if (accessToken === undefined) {
     return c.json({ error: "invalid_token" }, 401);
   }
 

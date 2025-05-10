@@ -1,128 +1,94 @@
 import { base64 } from "@hexagon/base64";
 import { getLogger } from "@logtape/logtape";
 
-import db from "../db";
-import { SECRET_KEY } from "../env";
+import db, { type Transaction } from "../db";
 import * as schema from "../schema";
 import type { Uuid } from "../uuid";
 
 const logger = getLogger(["hollo", "oauth"]);
 
-export async function createAuthorizationCode(
+const ACCESS_GRANT_SIZE = 64;
+const ACCESS_TOKEN_SIZE = 64;
+const TEN_MINUTES = 10 * 60 * 1000;
+
+export type AccessGrant = {
+  code: string;
+};
+
+export async function createAccessGrant(
   application_id: Uuid,
   account_id: Uuid,
   scopes: schema.Scope[],
-): Promise<string> {
+  redirect_uri: string,
+): Promise<AccessGrant> {
   const code = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(16)).buffer as ArrayBuffer,
+    crypto.getRandomValues(new Uint8Array(ACCESS_GRANT_SIZE))
+      .buffer as ArrayBuffer,
     true,
   );
 
-  await db.insert(schema.accessTokens).values({
-    accountOwnerId: account_id,
+  await db.insert(schema.accessGrants).values({
+    id: crypto.randomUUID(),
     code,
     applicationId: application_id,
+    resourceOwnerId: account_id,
     scopes: scopes,
-  });
+    redirectUri: redirect_uri,
+    expiresIn: TEN_MINUTES,
+  } satisfies schema.NewAccessGrant);
 
-  return code;
+  return { code };
 }
-
-export type AuthorizationCodeVerification =
-  | { verified: true; code: string }
-  | {
-      verified: false;
-      error_description: string;
-    };
-
-export async function verifyAuthorizationCode(
-  token: string,
-): Promise<AuthorizationCodeVerification> {
-  const values = token.split("^");
-  if (values.length !== 3) {
-    return {
-      verified: false,
-      error_description: "invalid authorization code",
-    };
-  }
-
-  const [signature, created, code] = values;
-  const textEncoder = new TextEncoder();
-  const sig = base64.toArrayBuffer(signature, true);
-
-  try {
-    const secretKey = await crypto.subtle.importKey(
-      "raw",
-      textEncoder.encode(SECRET_KEY),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
-
-    const verified = await crypto.subtle.verify(
-      { name: "HMAC", hash: "SHA-256" },
-      secretKey,
-      sig,
-      textEncoder.encode(`${created}^${code}`),
-    );
-
-    if (!verified) {
-      return {
-        verified: false,
-        error_description: "invalid authorization code",
-      };
-    }
-
-    return { verified: true, code: code };
-  } catch (err) {
-    logger.error("Error verifying authorization code", { error: err });
-
-    return {
-      verified: false,
-      error_description: "invalid authorization code",
-    };
-  }
-}
-
-export type AuthorizationError = {
-  error: string;
-  error_description: string;
-};
 
 export type AccessToken = {
   token: string;
   type: "Bearer";
   scope: string;
-  createdAt: number;
+  created: number;
 };
 
-export type AuthorizationGrant = schema.AccessToken;
-
 export async function createAccessToken(
-  authorization_grant: AuthorizationGrant,
-): Promise<AccessToken> {
-  const now = (Date.now() / 1000) | 0;
-  const message = `${now}^${authorization_grant.code}`;
-  const textEncoder = new TextEncoder();
-  const secretKey = await crypto.subtle.importKey(
-    "raw",
-    textEncoder.encode(SECRET_KEY),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
+  accessGrant: schema.AccessGrant,
+  tx: Transaction,
+): Promise<AccessToken | undefined> {
+  const code = base64.fromArrayBuffer(
+    crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_SIZE))
+      .buffer as ArrayBuffer,
+    true,
   );
 
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    secretKey,
-    textEncoder.encode(message),
-  );
+  const result = await tx
+    .insert(schema.accessTokens)
+    .values({
+      code,
+      applicationId: accessGrant.applicationId,
+      accountOwnerId: accessGrant.resourceOwnerId,
+      scopes: accessGrant.scopes,
+      grant_type: "authorization_code",
+    })
+    .returning();
+
+  /* c8 ignore start */
+  // This case is only possible if there's some sort of database error, which
+  // can't really be tested, unless we mock drizzle somehow?
+  if (result.length !== 1) {
+    logger.info(
+      "Could not create access token, grant: {grant}, code: {token}",
+      {
+        grant: accessGrant.code,
+        token: code,
+      },
+    );
+
+    return undefined;
+  }
+  /* c8 ignore end */
 
   return {
-    token: `${base64.fromArrayBuffer(signature, true)}^${message}`,
+    token: result[0].code,
     type: "Bearer",
-    scope: authorization_grant.scopes.join(" "),
-    createdAt: now,
+    scope: result[0].scopes.join(" "),
+    created: result[0].created.valueOf(),
   };
 }
 
@@ -131,7 +97,8 @@ export async function createClientCredential(
   scopes?: schema.Scope[],
 ): Promise<AccessToken> {
   const code = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(16)).buffer as ArrayBuffer,
+    crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_SIZE))
+      .buffer as ArrayBuffer,
     true,
   );
 
@@ -145,6 +112,10 @@ export async function createClientCredential(
     })
     .returning();
 
+  /* c8 ignore start */
+  // This case is only possible if there's some sort of database error, which
+  // can't really be tested, unless we mock drizzle somehow?
+  //
   // This would only happen if by some amazing luck we managed to generate two
   // of the exact same `code` values:
   if (result.length !== 1) {
@@ -152,11 +123,12 @@ export async function createClientCredential(
       "We were unable to create a client credential access token at this time.",
     );
   }
+  /* c8 ignore end */
 
   return {
     token: result[0].code,
     type: "Bearer",
     scope: result[0].scopes.join(" "),
-    createdAt: (+result[0].created / 1000) | 0,
+    created: (+result[0].created / 1000) | 0,
   };
 }

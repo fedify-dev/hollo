@@ -1,6 +1,11 @@
 import { getLogger } from "@logtape/logtape";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { Logger } from "drizzle-orm/logger";
-import { drizzle } from "drizzle-orm/postgres-js";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import {
+  type PostgresJsQueryResultHKT,
+  drizzle,
+} from "drizzle-orm/postgres-js";
 import createPostgres from "postgres";
 import * as schema from "./schema";
 
@@ -61,5 +66,12 @@ export const postgres = createPostgres(databaseUrl, {
   connection: { IntervalStyle: "iso_8601" },
 });
 export const db = drizzle(postgres, { schema, logger: new LogTapeLogger() });
+
+// This is necessary for passing a transaction into a function:
+export type Transaction = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 export default db;
