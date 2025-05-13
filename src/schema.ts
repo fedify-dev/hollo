@@ -302,6 +302,7 @@ export const applications = pgTable("applications", {
   website: text("website"),
   clientId: text("client_id").notNull().unique(),
   clientSecret: text("client_secret").notNull(),
+  confidential: boolean("confidential").default(false).notNull(),
   created: timestamp("created", { withTimezone: true })
     .notNull()
     .default(currentTimestamp),

@@ -14,7 +14,10 @@ import {
   createAccessToken,
   createClientCredential,
 } from "./oauth/helpers";
-import type { Variables } from "./oauth/middleware";
+import {
+  type ClientAuthenticationVariables,
+  clientAuthentication,
+} from "./oauth/middleware";
 import { scopesSchema } from "./oauth/validators";
 import {
   type Account,
@@ -30,7 +33,7 @@ import { uuid } from "./uuid";
 
 const logger = getLogger(["hollo", "oauth"]);
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: ClientAuthenticationVariables }>();
 
 app.get(
   "/authorize",
@@ -248,14 +251,14 @@ const INVALID_GRANT_ERROR_DESCRIPTION =
 
 const tokenRequestSchema = z.object({
   grant_type: z.enum(["authorization_code", "client_credentials"]),
-  client_id: z.string(),
-  client_secret: z.string(),
   redirect_uri: z.string().url().optional(),
   code: z.string().optional(),
   scope: scopesSchema.optional(),
 });
 
-app.post("/token", cors(), async (c) => {
+app.post("/token", cors(), clientAuthentication, async (c) => {
+  const client = c.get("client");
+
   let form: z.infer<typeof tokenRequestSchema>;
   const contentType = c.req.header("Content-Type");
   if (
@@ -265,32 +268,16 @@ app.post("/token", cors(), async (c) => {
     const json = await c.req.json();
     const result = await tokenRequestSchema.safeParseAsync(json);
     if (!result.success) {
-      return c.json({ error: "Invalid request", zod_error: result.error }, 400);
+      return c.json({ error: "invalid_request", zod_error: result.error }, 400);
     }
     form = result.data;
   } else {
     const formData = await c.req.parseBody();
     const result = await tokenRequestSchema.safeParseAsync(formData);
     if (!result.success) {
-      return c.json({ error: "Invalid request", zod_error: result.error }, 400);
+      return c.json({ error: "invalid_request", zod_error: result.error }, 400);
     }
     form = result.data;
-  }
-
-  const application = await db.query.applications.findFirst({
-    where: eq(applications.clientId, form.client_id),
-  });
-  if (application == null || application.clientSecret !== form.client_secret) {
-    return c.json(
-      {
-        error: "invalid_client",
-        error_description:
-          "Client authentication failed due to unknown client, " +
-          "no client authentication included, or unsupported authentication " +
-          "method.",
-      },
-      401,
-    );
   }
 
   if (form.grant_type === "authorization_code") {
@@ -331,7 +318,7 @@ app.post("/token", cors(), async (c) => {
 
           if (
             accessGrant === undefined ||
-            accessGrant.applicationId !== application.id ||
+            accessGrant.applicationId !== client.id ||
             accessGrant?.revoked !== null
           ) {
             return c.json(
@@ -440,7 +427,19 @@ app.post("/token", cors(), async (c) => {
       );
     }
 
-    if (form.scope?.some((s) => !application.scopes.includes(s))) {
+    // Public clients cannot use the client_credentials grant flow
+    if (!client.confidential) {
+      return c.json(
+        {
+          error: "unauthorized_client",
+          error_description:
+            "The authenticated client is not authorized to use this authorization grant type.",
+        },
+        400,
+      );
+    }
+
+    if (form.scope?.some((s) => !client.scopes.includes(s))) {
       return c.json(
         {
           error: "invalid_scope",
@@ -451,10 +450,7 @@ app.post("/token", cors(), async (c) => {
       );
     }
 
-    const clientCredential = await createClientCredential(
-      application,
-      form.scope,
-    );
+    const clientCredential = await createClientCredential(client, form.scope);
 
     return c.json({
       access_token: clientCredential.token,

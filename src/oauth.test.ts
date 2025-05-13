@@ -6,6 +6,7 @@ import type * as Schema from "./schema";
 
 import { cleanDatabase } from "../tests/helpers";
 import {
+  basicAuthorization,
   createAccount,
   createOAuthApplication,
   getAccessGrant,
@@ -79,6 +80,7 @@ describe("OAuth / POST /oauth/authorize", () => {
     client = await createOAuthApplication({
       scopes: ["read:accounts"],
       redirectUris: [OOB_REDIRECT_URI, APP_REDIRECT_URI],
+      confidential: true,
     });
     application = await getApplication(client);
   });
@@ -196,7 +198,7 @@ describe("OAuth / POST /oauth/authorize", () => {
   );
 });
 
-describe("OAuth / POST /oauth/token", () => {
+describe("OAuth / POST /oauth/token (Confidential Client)", () => {
   let application: Schema.Application;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
@@ -206,6 +208,7 @@ describe("OAuth / POST /oauth/token", () => {
     client = await createOAuthApplication({
       scopes: ["read:accounts"],
       redirectUris: [OOB_REDIRECT_URI],
+      confidential: true,
     });
     application = await getApplication(client);
   });
@@ -215,7 +218,117 @@ describe("OAuth / POST /oauth/token", () => {
   });
 
   it(
-    "Can request a client credentials access token",
+    "cannot request an access token without using a client authentication method",
+    { plan: 3 },
+    async (t: TestContext) => {
+      // Here we are deliberately not using any client authentication method,
+      // which is not acceptable
+
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("scope", "read:accounts");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      t.assert.equal(response.status, 401);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const responseBody = await response.json();
+      t.assert.equal(responseBody.error, "invalid_client");
+    },
+  );
+
+  it(
+    "cannot request an access token using multiple client authentication methods",
+    { plan: 3 },
+    async (t: TestContext) => {
+      // Here we are using both client_secret_post and client_secret_basic
+      // together, which is not acceptable
+
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("client_id", application.clientId);
+      body.set("client_secret", application.clientSecret);
+      body.set("scope", "read:accounts");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          authorization: basicAuthorization(application),
+        },
+        body,
+      });
+
+      t.assert.equal(response.status, 400);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const responseBody = await response.json();
+      t.assert.equal(responseBody.error, "invalid_request");
+    },
+  );
+
+  it(
+    "cannot request an access token using invalid client authentication",
+    { plan: 3 },
+    async (t: TestContext) => {
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("client_id", application.clientId);
+      body.set("client_secret", "invalid");
+      body.set("scope", "read:accounts");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      t.assert.equal(response.status, 401);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const responseBody = await response.json();
+      t.assert.equal(responseBody.error, "invalid_client");
+    },
+  );
+
+  it(
+    "can request an access token using the client credentials grant flow with client_secret_basic",
+    { plan: 7 },
+    async (t: TestContext) => {
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("scope", "read:accounts");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          authorization: basicAuthorization(application),
+        },
+        body,
+      });
+
+      t.assert.equal(response.status, 200);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const responseBody = await response.json();
+      const lastAccessToken = await getLastAccessToken();
+
+      t.assert.equal(lastAccessToken.grant_type, "client_credentials");
+      t.assert.deepStrictEqual(lastAccessToken.scopes, ["read:accounts"]);
+      t.assert.equal(
+        responseBody.access_token,
+        lastAccessToken.code,
+        "Generates an Access Token",
+      );
+      t.assert.equal(responseBody.token_type, "Bearer");
+      t.assert.equal(responseBody.scope, lastAccessToken.scopes.join(" "));
+    },
+  );
+
+  it(
+    "can request an access token using the client credentials grant flow with client_secret_post",
     { plan: 7 },
     async (t: TestContext) => {
       const body = new FormData();
@@ -248,7 +361,7 @@ describe("OAuth / POST /oauth/token", () => {
   );
 
   it(
-    "Can exchange an access grant for an access token",
+    "can exchange an access grant for an access token",
     { plan: 8 },
     async (t: TestContext) => {
       const accessGrant = await createAccessGrant(
@@ -297,6 +410,104 @@ describe("OAuth / POST /oauth/token", () => {
       );
       t.assert.equal(responseBody.token_type, "Bearer");
       t.assert.equal(responseBody.scope, lastAccessToken.scopes.join(" "));
+    },
+  );
+});
+
+describe("OAuth / POST /oauth/token (Public Client)", () => {
+  let application: Schema.Application;
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let account: Awaited<ReturnType<typeof createAccount>>;
+
+  beforeEach(async () => {
+    account = await createAccount();
+    client = await createOAuthApplication({
+      scopes: ["read:accounts"],
+      redirectUris: [OOB_REDIRECT_URI],
+      confidential: false,
+    });
+    application = await getApplication(client);
+  });
+
+  afterEach(async () => {
+    await cleanDatabase();
+  });
+
+  it(
+    "can request an access token using the authorization code grant flow",
+    { plan: 8 },
+    async (t: TestContext) => {
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+
+      const response = await app.request(
+        `/oauth/token?client_id=${application.clientId}`,
+        {
+          method: "POST",
+          body,
+        },
+      );
+
+      const responseBody = await response.json();
+
+      t.assert.equal(response.status, 200);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      const lastAccessToken = await getLastAccessToken();
+      const changedAccessGrant = await getAccessGrant(accessGrant.code);
+
+      t.assert.notEqual(
+        changedAccessGrant.revoked,
+        null,
+        "Successfully revokes the access grant",
+      );
+      t.assert.equal(lastAccessToken.grant_type, "authorization_code");
+      t.assert.deepStrictEqual(
+        lastAccessToken.scopes,
+        changedAccessGrant.scopes,
+      );
+
+      t.assert.equal(
+        responseBody.access_token,
+        lastAccessToken.code,
+        "Generates an Access Token",
+      );
+      t.assert.equal(responseBody.token_type, "Bearer");
+      t.assert.equal(responseBody.scope, lastAccessToken.scopes.join(" "));
+    },
+  );
+
+  it(
+    "cannot request an access token using the client credentials grant flow",
+    { plan: 3 },
+    async (t: TestContext) => {
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("scope", "read:accounts");
+
+      const response = await app.request(
+        `/oauth/token?client_id=${application.clientId}`,
+        {
+          method: "POST",
+          body,
+        },
+      );
+
+      const responseBody = await response.json();
+
+      t.assert.equal(response.status, 400);
+      t.assert.equal(response.headers.get("content-type"), "application/json");
+
+      t.assert.equal(responseBody.error, "unauthorized_client");
     },
   );
 });

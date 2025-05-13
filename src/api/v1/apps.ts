@@ -63,6 +63,7 @@ app.post("/", async (c) => {
     contentType?.match(/^application\/json\s*;/)
   ) {
     const json = await c.req.json();
+    // FIXME: this currently parses without a body
     const result = await applicationSchema.safeParseAsync(json);
     if (!result.success) {
       logger.debug("Invalid request: {error}", { error: result.error });
@@ -71,6 +72,7 @@ app.post("/", async (c) => {
     form = result.data;
   } else {
     const formData = await c.req.parseBody();
+    // FIXME: this currently parses without a body
     const result = await applicationSchema.safeParseAsync(formData);
     if (!result.success) {
       logger.debug("Invalid request: {error}", { error: result.error });
@@ -78,6 +80,9 @@ app.post("/", async (c) => {
     }
     form = result.data;
   }
+
+  console.log({ form });
+
   if (form == null) {
     return c.json({ error: "Invalid request" }, 400);
   }
@@ -99,6 +104,8 @@ app.post("/", async (c) => {
       website: form.website,
       clientId,
       clientSecret,
+      // TODO: Support public clients
+      confidential: true,
     } satisfies NewApplication)
     .returning();
   const app = apps[0];

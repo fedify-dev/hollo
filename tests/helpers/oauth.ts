@@ -8,6 +8,16 @@ import * as Schema from "../../src/schema";
 import { OOB_REDIRECT_URI } from "../../src/oauth/constants";
 import { createAccessGrant, createAccessToken } from "../../src/oauth/helpers";
 
+export function basicAuthorization(
+  client: Pick<Schema.Application, "clientId" | "clientSecret">,
+) {
+  const credential = Buffer.from(
+    `${client.clientId}:${client.clientSecret}`,
+  ).toString("base64");
+
+  return `Basic ${credential}`;
+}
+
 export async function createAccount(
   options = { generateKeyPair: false },
 ): Promise<Pick<Schema.Account, "id">> {
@@ -89,19 +99,25 @@ export async function createAccount(
 export type OAuthApplicationOptions = {
   scopes?: Schema.Scope[];
   redirectUris?: string[];
+  confidential?: boolean;
 };
 
 export async function createOAuthApplication(
-  options: OAuthApplicationOptions = { redirectUris: [OOB_REDIRECT_URI] },
+  options: OAuthApplicationOptions = {
+    redirectUris: [OOB_REDIRECT_URI],
+  },
 ): Promise<Pick<Schema.Application, "id">> {
   const clientId = base64.fromArrayBuffer(
     crypto.getRandomValues(new Uint8Array(16)).buffer as ArrayBuffer,
     true,
   );
-  const clientSecret = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer,
-    true,
-  );
+  const clientSecret =
+    options.confidential === true
+      ? base64.fromArrayBuffer(
+          crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer,
+          true,
+        )
+      : "";
 
   const app = await db
     .insert(Schema.applications)
@@ -113,6 +129,7 @@ export async function createOAuthApplication(
       website: "",
       clientId,
       clientSecret,
+      confidential: !!options.confidential,
     } satisfies Schema.NewApplication)
     .returning({
       id: Schema.applications.id,
@@ -134,6 +151,20 @@ export async function getApplication(
   }
 
   return application;
+}
+
+export async function getLastApplication(): Promise<Schema.Application> {
+  const result = await db
+    .select()
+    .from(Schema.applications)
+    .orderBy(desc(Schema.applications.created))
+    .limit(1);
+
+  if (result.length !== 1) {
+    throw new Error("Could not retrieve last created application");
+  }
+
+  return result[0];
 }
 
 export async function getAccessToken(

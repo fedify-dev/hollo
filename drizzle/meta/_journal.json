@@ -463,6 +463,13 @@
       "when": 1741623334620,
       "tag": "0065_change_oauth_access_grants_token_to_code",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1747007123812,
+      "tag": "0066_add_oauth_application_confidentiality",
+      "breakpoints": true
     }
   ]
 }
