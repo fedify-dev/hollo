@@ -48,7 +48,7 @@ const CorsPolicy = (allowMethods: string[]) =>
 // the /api router adds its own cors policy middleware:
 app.use("/.well-known/*", CorsPolicy(["GET"]));
 app.use("/nodeinfo/*", CorsPolicy(["GET"]));
-app.use("/oauth/token", CorsPolicy(["POST"]));
+app.use("/oauth/token", CorsPolicy(["POST", "OPTIONS"]));
 // Hollo doesn't support token revocation currently:
 // app.use("/oauth/revoke", CorsPolicy(["POST"]));
 app.use("/oauth/userinfo", CorsPolicy(["GET", "POST"]));
