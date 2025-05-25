@@ -25,18 +25,24 @@ export async function postMedia(c: Context<{ Variables: Variables }>) {
   const description = form.get("description")?.toString();
   const id = uuidv7();
   const imageData = new Uint8Array(await file.arrayBuffer());
-  let imageBytes: Uint8Array = imageData;
+  let imageBytes: Uint8Array;
+  let image: sharp.Sharp;
+  let fileMetadata: sharp.Metadata;
+  let content: Uint8Array;
   if (file.type.startsWith("video/")) {
     imageBytes = await makeVideoScreenshot(imageData);
+    image = sharp(imageBytes);
+    fileMetadata = await image.metadata();
+    content = new Uint8Array(imageData);
+  } else if (file.type.startsWith("image/")) {
+    imageBytes = imageData;
+    image = sharp(imageBytes).rotate();
+    const rmMetaImage = await image.keepIccProfile().toBuffer();
+    fileMetadata = await sharp(rmMetaImage).metadata();
+    content = new Uint8Array(rmMetaImage);
+  } else {
+    return c.json({ error: "Unsupported media type" }, 400);
   }
-
-  const image = sharp(imageBytes).rotate();
-  const rmMetaImage = await image.keepIccProfile().toBuffer();
-  const fileMetadata = await sharp(rmMetaImage).metadata();
-  const content = file.type.startsWith("video/")
-    ? new Uint8Array(imageData)
-    : new Uint8Array(rmMetaImage);
-
   const extension = mime.getExtension(file.type);
   if (!extension) {
     return c.json({ error: "Unsupported media type" }, 400);
