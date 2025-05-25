@@ -34,9 +34,12 @@ export async function postMedia(c: Context<{ Variables: Variables }>) {
   if (file.type.startsWith("video/")) {
     imageBytes = await makeVideoScreenshot(imageData);
   }
-  const image = sharp(imageBytes);
-  const fileMetadata = await image.metadata();
-  const content = new Uint8Array(imageData);
+
+  const image = sharp(imageBytes).rotate();
+  const rmMetaImage = await image.toBuffer();
+  const fileMetadata = await sharp(rmMetaImage).metadata();
+  const content = file.type.startsWith("video/") ? new Uint8Array(imageData) : new Uint8Array(rmMetaImage);
+  
   const extension = mime.getExtension(file.type);
   if (!extension) {
     return c.json({ error: "Unsupported media type" }, 400);
