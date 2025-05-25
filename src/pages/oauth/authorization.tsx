@@ -21,7 +21,7 @@ export function AuthorizationPage(props: AuthorizationPageProps) {
         <p>Do you want to authorize this application to access your account?</p>
       </hgroup>
       <p>It allows the application to:</p>
-      <ul>
+      <ul id="scopes">
         {props.scopes.map((scope) => (
           <li key={scope}>
             <code>{scope}</code>
