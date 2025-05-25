@@ -19,7 +19,11 @@ import {
 } from "../tests/helpers/oauth";
 import { getLoginCookie } from "../tests/helpers/web";
 import { OOB_REDIRECT_URI } from "./oauth/constants";
-import { createAccessGrant } from "./oauth/helpers";
+import {
+  calculatePKCECodeChallenge,
+  createAccessGrant,
+  generatePKCECodeVerifier,
+} from "./oauth/helpers";
 
 describe.sequential("OAuth", () => {
   afterEach(async () => {
@@ -110,6 +114,66 @@ describe.sequential("OAuth", () => {
       expect(response.headers.get("Location")).toBe(
         "custom://oauth_callback?error=access_denied&error_description=The+resource+owner+or+authorization+server+denied+the+request.",
       );
+    });
+
+    it("does not create an access grant if code_challenge is missing but code_challenge_method is set", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", APP_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("code_challenge_method", "S256");
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body).toMatchObject({
+        error: "invalid_request",
+      });
+    });
+
+    it("does not create an access grant if code_challenge_method is missing but code_challenge is set", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", APP_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("code_challenge", codeChallenge);
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body).toMatchObject({
+        error: "invalid_request",
+      });
     });
 
     it("Can return authorization code out-of-bounds", async () => {
@@ -284,6 +348,157 @@ describe.sequential("OAuth", () => {
       expect(body).toMatchObject({
         error: "invalid_redirect_uri",
       });
+    });
+  });
+
+  describe.sequential("POST /oauth/token PKCE", () => {
+    let account: Awaited<ReturnType<typeof createAccount>>;
+    let application: Schema.Application;
+    let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+
+    beforeEach(async () => {
+      account = await createAccount();
+      client = await createOAuthApplication({
+        scopes: ["read:accounts"],
+        redirectUris: [OOB_REDIRECT_URI],
+        confidential: true,
+      });
+      application = await getApplication(client);
+    });
+
+    afterEach(async () => {
+      await cleanDatabase();
+    });
+
+    it("can exchange an access grant for an access token using PKCE", async () => {
+      expect.assertions(8);
+
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+      const codeChallengeMethod = "S256";
+
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+        codeChallenge,
+        codeChallengeMethod,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+      body.set("code_verifier", codeVerifier);
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+
+      const lastAccessToken = await getLastAccessToken();
+      const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+      expect(changedAccessGrant.revoked).not.toBeNull();
+      expect(lastAccessToken.grant_type).toBe("authorization_code");
+      expect(lastAccessToken.scopes).toEqual(changedAccessGrant.scopes);
+
+      expect(responseBody.access_token).toBe(lastAccessToken.code);
+      expect(responseBody.token_type).toBe("Bearer");
+      expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
+    });
+
+    it("cannot exchange an access grant for an access token using invalid verifier", async () => {
+      expect.assertions(4);
+
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+      const codeChallengeMethod = "S256";
+
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+        codeChallenge,
+        codeChallengeMethod,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+      body.set("code_verifier", "invalid");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+
+      expect(responseBody.error).toBe("invalid_grant");
+
+      const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+      expect(changedAccessGrant.revoked).toBeNull();
+    });
+
+    it("cannot exchange an access grant for an access token using without verifier", async () => {
+      expect.assertions(4);
+
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+      const codeChallengeMethod = "S256";
+
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+        codeChallenge,
+        codeChallengeMethod,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+      // explicitly no code_verifier property
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+
+      expect(responseBody.error).toBe("invalid_grant");
+
+      const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+      expect(changedAccessGrant.revoked).toBeNull();
     });
   });
 

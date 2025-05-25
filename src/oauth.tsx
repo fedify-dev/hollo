@@ -9,6 +9,7 @@ import { requestBody } from "./helpers.ts";
 import { loginRequired } from "./login.ts";
 import { OOB_REDIRECT_URI } from "./oauth/constants.ts";
 import {
+  calculatePKCECodeChallenge,
   createAccessGrant,
   createAccessToken,
   createClientCredential,
@@ -33,7 +34,15 @@ const logger = getLogger(["hollo", "oauth"]);
 
 const app = new Hono<{ Variables: ClientAuthenticationVariables }>();
 
-/* v8 ignore start */
+const hasMissingPKCEParameter = (
+  code_challenge?: string,
+  code_challenge_method?: string,
+) => {
+  return (
+    (code_challenge && !code_challenge_method) ||
+    (code_challenge_method && !code_challenge)
+  );
+};
 
 app.get(
   "/authorize",
@@ -45,25 +54,48 @@ app.get(
       redirect_uri: z.string().url(),
       scope: scopesSchema.optional(),
       state: z.string().optional(),
+      // PKCE: we only support S256 code challenges
+      code_challenge: z.string().optional(),
+      code_challenge_method: z.literal("S256").optional(),
     }),
   ),
   loginRequired,
   async (c) => {
     const data = c.req.valid("query");
+
     const application = await db.query.applications.findFirst({
       where: eq(applications.clientId, data.client_id),
     });
-    if (application == null) return c.json({ error: "invalid_client_id" }, 400);
+    if (application == null) {
+      return c.json({ error: "invalid_client_id" }, 400);
+    }
+
     const scopes = data.scope ?? ["read"];
     if (scopes.some((s) => !application.scopes.includes(s))) {
       return c.json({ error: "invalid_scope" }, 400);
     }
+
     if (!application.redirectUris.includes(data.redirect_uri)) {
       return c.json({ error: "invalid_redirect_uri" }, 400);
     }
+
+    if (
+      hasMissingPKCEParameter(data.code_challenge, data.code_challenge_method)
+    ) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "Missing code_challenge or code_challenge_method parameter",
+        },
+        400,
+      );
+    }
+
     const accountOwners = await db.query.accountOwners.findMany({
       with: { account: true },
     });
+
     return c.html(
       <AuthorizationPage
         accountOwners={accountOwners}
@@ -71,12 +103,12 @@ app.get(
         redirectUri={data.redirect_uri}
         scopes={scopes}
         state={data.state}
+        codeChallenge={data.code_challenge}
+        codeChallengeMethod={data.code_challenge_method}
       />,
     );
   },
 );
-
-/* v8 ignore stop */
 
 app.post(
   "/authorize",
@@ -89,11 +121,28 @@ app.post(
       redirect_uri: z.string().url(),
       scopes: scopesSchema,
       state: z.string().optional(),
+      // we only support S256:
+      code_challenge: z.string().optional(),
+      code_challenge_method: z.literal("S256").optional(),
       decision: z.enum(["allow", "deny"]),
     }),
   ),
   async (c) => {
     const form = c.req.valid("form");
+
+    if (
+      hasMissingPKCEParameter(form.code_challenge, form.code_challenge_method)
+    ) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description:
+            "Missing code_challenge or code_challenge_method parameters",
+        },
+        400,
+      );
+    }
+
     const application = await db.query.applications.findFirst({
       where: eq(applications.id, form.application_id),
     });
@@ -129,6 +178,8 @@ app.post(
         accountOwner.id,
         form.scopes,
         form.redirect_uri,
+        form.code_challenge,
+        form.code_challenge_method,
       );
 
       if (form.redirect_uri === OOB_REDIRECT_URI) {
@@ -155,6 +206,11 @@ const INVALID_GRANT_ERROR_DESCRIPTION =
   "does not match the redirection URI used in the authorization " +
   "request, or was issued to another client.";
 
+const INVALID_GRANT_ERROR = {
+  error: "invalid_grant",
+  error_description: INVALID_GRANT_ERROR_DESCRIPTION,
+};
+
 const tokenRequestSchema = z.discriminatedUnion("grant_type", [
   z.strictObject({
     grant_type: z.literal("client_credentials"),
@@ -168,6 +224,7 @@ const tokenRequestSchema = z.discriminatedUnion("grant_type", [
     grant_type: z.literal("authorization_code"),
     redirect_uri: z.string().url(),
     code: z.string(),
+    code_verifier: z.string().optional(),
     // client_id and client_secret are present but consumed by the
     // clientAuthentication middleware:
     client_id: z.string().optional(),
@@ -218,35 +275,31 @@ app.post("/token", cors(), clientAuthentication, async (c) => {
             accessGrant.applicationId !== client.id ||
             accessGrant?.revoked !== null
           ) {
-            return c.json(
-              {
-                error: "invalid_grant",
-                error_description: INVALID_GRANT_ERROR_DESCRIPTION,
-              },
-              400,
+            return c.json(INVALID_GRANT_ERROR, 400);
+          }
+
+          if (accessGrant.codeChallenge && accessGrant.codeChallengeMethod) {
+            if (!form.code_verifier) {
+              return c.json(INVALID_GRANT_ERROR, 400);
+            }
+
+            const expectedCodeChallenge = await calculatePKCECodeChallenge(
+              form.code_verifier,
             );
+
+            if (expectedCodeChallenge !== accessGrant.codeChallenge) {
+              return c.json(INVALID_GRANT_ERROR, 400);
+            }
           }
 
           const notAfter =
             accessGrant.created.valueOf() + accessGrant.expiresIn;
           if (Date.now() > notAfter) {
-            return c.json(
-              {
-                error: "invalid_grant",
-                error_description: INVALID_GRANT_ERROR_DESCRIPTION,
-              },
-              400,
-            );
+            return c.json(INVALID_GRANT_ERROR, 400);
           }
 
           if (accessGrant.redirectUri !== form.redirect_uri) {
-            return c.json(
-              {
-                error: "invalid_grant",
-                error_description: INVALID_GRANT_ERROR_DESCRIPTION,
-              },
-              400,
-            );
+            return c.json(INVALID_GRANT_ERROR, 400);
           }
 
           // Revoke the access grant:

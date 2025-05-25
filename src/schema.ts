@@ -323,6 +323,8 @@ export const accessGrants = pgTable(
     expiresIn: integer("expires_in").notNull(),
     redirectUri: text("redirect_uri").notNull(),
     scopes: scopeEnum("scopes").array().notNull(),
+    codeChallenge: text("code_challenge"),
+    codeChallengeMethod: varchar("code_challenge_method", { length: 256 }),
     applicationId: uuid("application_id")
       .$type<Uuid>()
       .notNull()

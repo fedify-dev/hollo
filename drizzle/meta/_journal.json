@@ -470,6 +470,13 @@
       "when": 1747007123812,
       "tag": "0066_add_oauth_application_confidentiality",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1748209114780,
+      "tag": "0067_add_pkce_to_access_grants",
+      "breakpoints": true
     }
   ]
 }
