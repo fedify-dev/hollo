@@ -25,18 +25,16 @@ export async function postMedia(c: Context<{ Variables: Variables }>) {
   const description = form.get("description")?.toString();
   const id = uuidv7();
   const mediaData = new Uint8Array(await file.arrayBuffer());
-  let imageBytes: Uint8Array;
   let image: sharp.Sharp;
   let fileMetadata: sharp.Metadata;
   let content: Uint8Array;
   if (file.type.startsWith("video/")) {
-    imageBytes = await makeVideoScreenshot(mediaData);
+    const imageBytes: Uint8Array = await makeVideoScreenshot(mediaData);
     image = sharp(imageBytes);
     fileMetadata = await image.metadata();
     content = new Uint8Array(mediaData);
   } else if (file.type.startsWith("image/")) {
-    imageBytes = mediaData;
-    image = sharp(imageBytes).rotate();
+    image = sharp(mediaData).rotate();
     const rmMetaImage = await image.keepIccProfile().toBuffer();
     fileMetadata = await sharp(rmMetaImage).metadata();
     content = new Uint8Array(rmMetaImage);
