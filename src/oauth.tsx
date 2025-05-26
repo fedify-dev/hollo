@@ -460,6 +460,7 @@ export async function oauthAuthorizationServer(c: Context) {
       // Not supported until we support public clients:
       // "none",
     ],
+    code_challenge_methods_supported: ["S256"],
     app_registration_endpoint: new URL("/api/v1/apps", url).href,
   });
 }

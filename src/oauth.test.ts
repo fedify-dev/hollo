@@ -40,7 +40,7 @@ describe.sequential("OAuth", () => {
   });
 
   it("Can GET /.well-known/oauth-authorization-server", async () => {
-    expect.assertions(12);
+    expect.assertions(14);
     // We use the full URL in this test as the route calculates values based
     // on the Host header
     const response = await app.request(
@@ -80,6 +80,11 @@ describe.sequential("OAuth", () => {
 
     expect(Array.isArray(metadata.scopes_supported)).toBeTruthy();
     expect(metadata.scopes_supported).toEqual(scopeEnum.enumValues);
+
+    expect(
+      Array.isArray(metadata.code_challenge_methods_supported),
+    ).toBeTruthy();
+    expect(metadata.code_challenge_methods_supported).toEqual(["S256"]);
   });
 
   describe.sequential("GET /oauth/authorize", () => {
