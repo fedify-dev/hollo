@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import app from "./index";
 import type * as Schema from "./schema";
+import { scopeEnum } from "./schema";
 
 import { cleanDatabase } from "../tests/helpers";
 import {
@@ -77,9 +78,8 @@ describe.sequential("OAuth", () => {
       "client_secret_basic",
     ]);
 
-    expect(metadata.scopes_supported).to;
-
     expect(Array.isArray(metadata.scopes_supported)).toBeTruthy();
+    expect(metadata.scopes_supported).toEqual(scopeEnum.enumValues);
   });
 
   describe.sequential("GET /oauth/authorize", () => {
