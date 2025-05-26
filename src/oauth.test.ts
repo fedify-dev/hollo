@@ -257,7 +257,8 @@ describe.sequential("OAuth", () => {
         form.querySelector("input[name=redirect_uri]")?.getAttribute("value"),
       ).toBe("http://app.example/");
 
-      // Test the buttons, as we're using OOB there's no deny button:
+      // Test the buttons, as we're using an external redirect_uri there are
+      // deny and allow buttons:
       const buttons = form.querySelectorAll("button[name=decision]");
       expect(buttons.length).toBe(2);
       expect(buttons[0].getAttribute("value")).toBe("deny");
@@ -311,7 +312,7 @@ describe.sequential("OAuth", () => {
     });
 
     it("successfully displays an authorization page with state", async () => {
-      expect.assertions(9);
+      expect.assertions(5);
 
       const cookie = await getLoginCookie();
       const state = crypto.randomUUID();
@@ -349,22 +350,12 @@ describe.sequential("OAuth", () => {
       expect(form.getAttribute("action"), "/oauth/authorize");
 
       expect(
-        form.querySelector("input[name=redirect_uri]")?.getAttribute("value"),
-      ).toBe("http://app.example/");
-
-      expect(
         form.querySelector("input[name=state]")?.getAttribute("value"),
       ).toBe(state);
-
-      // Test the buttons, as we're using OOB there's no deny button:
-      const buttons = form.querySelectorAll("button[name=decision]");
-      expect(buttons.length).toBe(2);
-      expect(buttons[0].getAttribute("value")).toBe("deny");
-      expect(buttons[1].getAttribute("value")).toBe("allow");
     });
 
     it("successfully displays an authorization page with PKCE fields", async () => {
-      expect.assertions(10);
+      expect.assertions(6);
 
       const cookie = await getLoginCookie();
       const codeVerifier = generatePKCECodeVerifier();
@@ -404,10 +395,6 @@ describe.sequential("OAuth", () => {
       expect(form.getAttribute("action"), "/oauth/authorize");
 
       expect(
-        form.querySelector("input[name=redirect_uri]")?.getAttribute("value"),
-      ).toBe("http://app.example/");
-
-      expect(
         form.querySelector("input[name=code_challenge]")?.getAttribute("value"),
       ).toBe(codeChallenge);
       expect(
@@ -415,12 +402,6 @@ describe.sequential("OAuth", () => {
           .querySelector("input[name=code_challenge_method]")
           ?.getAttribute("value"),
       ).toBe("S256");
-
-      // Test the buttons, as we're using OOB there's no deny button:
-      const buttons = form.querySelectorAll("button[name=decision]");
-      expect(buttons.length).toBe(2);
-      expect(buttons[0].getAttribute("value")).toBe("deny");
-      expect(buttons[1].getAttribute("value")).toBe("allow");
     });
 
     it("returns an error with invalid client_id", async () => {
