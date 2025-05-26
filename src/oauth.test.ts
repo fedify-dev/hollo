@@ -89,7 +89,6 @@ describe.sequential("OAuth", () => {
 
     beforeEach(async () => {
       account = await createAccount();
-
       client = await createOAuthApplication({
         scopes: ["read", "read:accounts", "follow"],
         redirectUris: [OOB_REDIRECT_URI, "http://app.example/"],
@@ -99,7 +98,7 @@ describe.sequential("OAuth", () => {
     });
 
     it("successfully displays an authorization page", async () => {
-      expect.assertions(13);
+      expect.assertions(14);
 
       const cookie = await getLoginCookie();
       const parameters = new URLSearchParams();
@@ -139,15 +138,11 @@ describe.sequential("OAuth", () => {
 
       expect(form.getAttribute("action"), "/oauth/authorize");
 
-      // FIXME: Test with multiple accounts
-      //
-      // Sometimes querying for accounts returns the two created accounts,
-      // sometimes only a single account despite
-      //
-      // const accountSelectors = Array.from(
-      //   form.querySelectorAll("input[name=account_id]"),
-      // ).map((input) => input.getAttribute("value"));
-      // expect(accountSelectors).toEqual([account.id]);
+      const accountSelectors = Array.from(
+        form.querySelectorAll("input[name=account_id]"),
+      ).map((input) => input.getAttribute("value"));
+
+      expect(accountSelectors).toEqual([account.id]);
 
       expect(
         form.querySelector("input[name=application_id]")?.getAttribute("value"),
@@ -172,6 +167,50 @@ describe.sequential("OAuth", () => {
       const buttons = form.querySelectorAll("button[name=decision]");
       expect(buttons.length).toBe(1);
       expect(buttons[0].getAttribute("value")).toBe("allow");
+    });
+
+    it("successfully displays an authorization page with multiple accounts", async () => {
+      expect.assertions(5);
+
+      const secondaryAccount = await createAccount({ username: "secondary" });
+
+      const cookie = await getLoginCookie();
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", OOB_REDIRECT_URI);
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      const accountSelectors = Array.from(
+        form.querySelectorAll("input[name=account_id]"),
+      ).map((input) => input.getAttribute("value"));
+
+      expect(accountSelectors).toEqual([account.id, secondaryAccount.id]);
     });
 
     it("successfully displays an authorization page with external redirect_uri", async () => {
