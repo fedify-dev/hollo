@@ -19,18 +19,36 @@ export type AccessGrant = {
   expiry: Date;
 };
 
+export function randomBytes(length: number): string {
+  return base64.fromArrayBuffer(
+    crypto.getRandomValues(new Uint8Array(length)).buffer as ArrayBuffer,
+    true,
+  );
+}
+
+export function generatePKCECodeVerifier() {
+  return randomBytes(32);
+}
+
+const textEncoder = new TextEncoder();
+
+export async function calculatePKCECodeChallenge(codeVerifier: string) {
+  return base64.fromArrayBuffer(
+    await crypto.subtle.digest("SHA-256", textEncoder.encode(codeVerifier)),
+  );
+}
+
 export async function createAccessGrant(
   application_id: Uuid,
   account_id: Uuid,
   scopes: schema.Scope[],
   redirect_uri: string,
+  code_challenge?: string,
+  code_challenge_method?: string,
 ): Promise<AccessGrant> {
-  const code = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(ACCESS_GRANT_SIZE))
-      .buffer as ArrayBuffer,
-    true,
-  );
+  const code = randomBytes(ACCESS_GRANT_SIZE);
 
+  /* v8 ignore start */
   try {
     await db
       .delete(schema.accessGrants)
@@ -43,6 +61,7 @@ export async function createAccessGrant(
   } catch (err) {
     logger.warn("Failed to clean up expired access grants", { err });
   }
+  /* v8 ignore stop */
 
   const accessGrant = await db
     .insert(schema.accessGrants)
@@ -54,6 +73,8 @@ export async function createAccessGrant(
       scopes: scopes,
       redirectUri: redirect_uri,
       expiresIn: ACCESS_GRANT_EXPIRES_IN,
+      codeChallenge: code_challenge ?? null,
+      codeChallengeMethod: code_challenge_method ?? null,
     } satisfies schema.NewAccessGrant)
     .returning({
       code: schema.accessGrants.code,
@@ -61,9 +82,11 @@ export async function createAccessGrant(
       expiresIn: schema.accessGrants.expiresIn,
     });
 
+  /* v8 ignore start */
   if (accessGrant.length !== 1) {
     throw new Error("Error creating access grant");
   }
+  /* v8 ignore stop */
 
   return {
     code: accessGrant[0].code,
@@ -84,11 +107,7 @@ export async function createAccessToken(
   accessGrant: schema.AccessGrant,
   tx: Transaction,
 ): Promise<AccessToken | undefined> {
-  const code = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_SIZE))
-      .buffer as ArrayBuffer,
-    true,
-  );
+  const code = randomBytes(ACCESS_TOKEN_SIZE);
 
   const result = await tx
     .insert(schema.accessTokens)
@@ -129,11 +148,7 @@ export async function createClientCredential(
   application: schema.Application,
   scopes?: schema.Scope[],
 ): Promise<AccessToken> {
-  const code = base64.fromArrayBuffer(
-    crypto.getRandomValues(new Uint8Array(ACCESS_TOKEN_SIZE))
-      .buffer as ArrayBuffer,
-    true,
-  );
+  const code = randomBytes(ACCESS_TOKEN_SIZE);
 
   const result = await db
     .insert(schema.accessTokens)

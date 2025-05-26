@@ -27,82 +27,95 @@ export function bearerAuthorization(token: Token) {
   return `Bearer ${token.token}`;
 }
 
-export async function createAccount(
-  options = { generateKeyPair: false },
-): Promise<Pick<Schema.Account, "id">> {
-  const account = await db.transaction(async (tx) => {
-    await tx
-      .insert(Schema.instances)
-      .values({
-        host: "http://hollo.test",
-        software: "hollo",
-        softwareVersion: null,
-      })
-      .onConflictDoNothing();
+type createAccountOptions = {
+  generateKeyPair?: boolean;
+  username?: string;
+};
 
-    const account = await tx
-      .insert(Schema.accounts)
-      .values({
-        id: crypto.randomUUID(),
-        iri: "http://hollo.test/@hollo",
+export async function createAccount(
+  options: createAccountOptions = { generateKeyPair: false },
+): Promise<Pick<Schema.Account, "id">> {
+  const username = options.username ?? "hollo";
+
+  const account = await db.transaction(
+    async (tx) => {
+      await tx
+        .insert(Schema.instances)
+        .values({
+          host: "http://hollo.test",
+          software: "hollo",
+          softwareVersion: null,
+        })
+        .onConflictDoNothing();
+
+      const accountId = crypto.randomUUID();
+      const accountIri = `http://hollo.test/@${username}`;
+      const accountUrl = `https://hollo.test/@${username}`;
+
+      await tx.insert(Schema.accounts).values({
+        id: accountId,
+        iri: accountIri,
         instanceHost: "http://hollo.test",
         type: "Person",
-        name: "Hollo Test",
+        name: `Test: ${username}`,
         emojis: {},
-        handle: "@hollo@hollo.test",
+        handle: `@${username}@hollo.test`,
         bioHtml: "",
-        url: "https://hollo.test/@hollo",
+        url: accountUrl,
         protected: false,
-        inboxUrl: "https://hollo.test/@hollo/inbox",
-        followersUrl: "https://hollo.test/@hollo/followers",
+        inboxUrl: `${accountIri}/inbox`,
+        followersUrl: `${accountIri}/followers`,
         sharedInboxUrl: "https://hollo.test/inbox",
-        featuredUrl: "https://hollo.test/@hollo/pinned",
+        featuredUrl: `${accountIri}/pinned`,
         published: new Date(),
-      })
-      .returning({ id: Schema.accounts.id });
+      });
 
-    const keyPairs: {
-      rsaPrivateKeyJwk: object;
-      rsaPublicKeyJwk: object;
-      ed25519PrivateKeyJwk: object;
-      ed25519PublicKeyJwk: object;
-    } = {
-      rsaPrivateKeyJwk: {},
-      rsaPublicKeyJwk: {},
-      ed25519PrivateKeyJwk: {},
-      ed25519PublicKeyJwk: {},
-    };
+      const keyPairs: {
+        rsaPrivateKeyJwk: object;
+        rsaPublicKeyJwk: object;
+        ed25519PrivateKeyJwk: object;
+        ed25519PublicKeyJwk: object;
+      } = {
+        rsaPrivateKeyJwk: {},
+        rsaPublicKeyJwk: {},
+        ed25519PrivateKeyJwk: {},
+        ed25519PublicKeyJwk: {},
+      };
 
-    if (options.generateKeyPair) {
-      const rsaKeyPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
-      const ed25519KeyPair = await generateCryptoKeyPair("Ed25519");
+      if (options.generateKeyPair) {
+        const rsaKeyPair = await generateCryptoKeyPair("RSASSA-PKCS1-v1_5");
+        const ed25519KeyPair = await generateCryptoKeyPair("Ed25519");
 
-      keyPairs.rsaPrivateKeyJwk = await exportJwk(rsaKeyPair.privateKey);
-      keyPairs.rsaPublicKeyJwk = await exportJwk(rsaKeyPair.publicKey);
-      keyPairs.ed25519PrivateKeyJwk = await exportJwk(
-        ed25519KeyPair.privateKey,
-      );
-      keyPairs.ed25519PublicKeyJwk = await exportJwk(ed25519KeyPair.publicKey);
-    }
+        keyPairs.rsaPrivateKeyJwk = await exportJwk(rsaKeyPair.privateKey);
+        keyPairs.rsaPublicKeyJwk = await exportJwk(rsaKeyPair.publicKey);
+        keyPairs.ed25519PrivateKeyJwk = await exportJwk(
+          ed25519KeyPair.privateKey,
+        );
+        keyPairs.ed25519PublicKeyJwk = await exportJwk(
+          ed25519KeyPair.publicKey,
+        );
+      }
 
-    await tx
-      .insert(Schema.accountOwners)
-      .values({
-        id: account[0].id,
-        handle: "hollo",
+      await tx.insert(Schema.accountOwners).values({
+        id: accountId,
+        handle: username,
         ...keyPairs,
         bio: "",
         language: "en",
         visibility: "public",
         themeColor: "amber",
         discoverable: false,
-      })
-      .returning({ id: Schema.accountOwners.id });
+      });
 
-    return account;
-  });
+      return { id: accountId };
+    },
+    {
+      isolationLevel: "read committed",
+      accessMode: "read write",
+    },
+  );
 
-  return account[0];
+  return account;
 }
 
 export type OAuthApplicationOptions = {

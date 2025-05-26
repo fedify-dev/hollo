@@ -9,6 +9,8 @@ interface AuthorizationPageProps {
   redirectUri: string;
   scopes: Scope[];
   state?: string;
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
 }
 
 export function AuthorizationPage(props: AuthorizationPageProps) {
@@ -19,7 +21,7 @@ export function AuthorizationPage(props: AuthorizationPageProps) {
         <p>Do you want to authorize this application to access your account?</p>
       </hgroup>
       <p>It allows the application to:</p>
-      <ul>
+      <ul id="scopes">
         {props.scopes.map((scope) => (
           <li key={scope}>
             <code>{scope}</code>
@@ -58,6 +60,20 @@ export function AuthorizationPage(props: AuthorizationPageProps) {
         <input type="hidden" name="scopes" value={props.scopes.join(" ")} />
         {props.state != null && (
           <input type="hidden" name="state" value={props.state} />
+        )}
+        {typeof props.codeChallenge === "string" && (
+          <>
+            <input
+              type="hidden"
+              name="code_challenge"
+              value={props.codeChallenge}
+            />
+            <input
+              type="hidden"
+              name="code_challenge_method"
+              value={props.codeChallengeMethod}
+            />
+          </>
         )}
         <div role="group">
           {props.redirectUri !== "urn:ietf:wg:oauth:2.0:oob" && (

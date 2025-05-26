@@ -1,8 +1,10 @@
+import { parseHTML } from "linkedom";
 import * as timekeeper from "timekeeper";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import app from "./index";
 import type * as Schema from "./schema";
+import { scopeEnum } from "./schema";
 
 import { cleanDatabase } from "../tests/helpers";
 import {
@@ -19,7 +21,18 @@ import {
 } from "../tests/helpers/oauth";
 import { getLoginCookie } from "../tests/helpers/web";
 import { OOB_REDIRECT_URI } from "./oauth/constants";
-import { createAccessGrant } from "./oauth/helpers";
+import {
+  calculatePKCECodeChallenge,
+  createAccessGrant,
+  generatePKCECodeVerifier,
+} from "./oauth/helpers";
+
+async function getPage(response: Response) {
+  const text = await response.text();
+  const { document } = parseHTML(text);
+
+  return document;
+}
 
 describe.sequential("OAuth", () => {
   afterEach(async () => {
@@ -27,7 +40,7 @@ describe.sequential("OAuth", () => {
   });
 
   it("Can GET /.well-known/oauth-authorization-server", async () => {
-    expect.assertions(12);
+    expect.assertions(14);
     // We use the full URL in this test as the route calculates values based
     // on the Host header
     const response = await app.request(
@@ -65,9 +78,485 @@ describe.sequential("OAuth", () => {
       "client_secret_basic",
     ]);
 
-    expect(metadata.scopes_supported).to;
-
     expect(Array.isArray(metadata.scopes_supported)).toBeTruthy();
+    expect(metadata.scopes_supported).toEqual(scopeEnum.enumValues);
+
+    expect(
+      Array.isArray(metadata.code_challenge_methods_supported),
+    ).toBeTruthy();
+    expect(metadata.code_challenge_methods_supported).toEqual(["S256"]);
+  });
+
+  describe.sequential("GET /oauth/authorize", () => {
+    let application: Schema.Application;
+    let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+    let account: Awaited<ReturnType<typeof createAccount>>;
+
+    beforeEach(async () => {
+      account = await createAccount();
+      client = await createOAuthApplication({
+        scopes: ["read", "read:accounts", "follow"],
+        redirectUris: [OOB_REDIRECT_URI, "http://app.example/"],
+        confidential: true,
+      });
+      application = await getApplication(client);
+    });
+
+    it("successfully displays an authorization page", async () => {
+      expect.assertions(14);
+
+      const cookie = await getLoginCookie();
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", OOB_REDIRECT_URI);
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const listedScopes = Array.from(
+        page.querySelectorAll("#scopes > li > code"),
+      ).map((scopeElement) => scopeElement.textContent);
+
+      expect(listedScopes).toEqual(["read:accounts", "follow"]);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      const accountSelectors = Array.from(
+        form.querySelectorAll("input[name=account_id]"),
+      ).map((input) => input.getAttribute("value"));
+
+      expect(accountSelectors).toEqual([account.id]);
+
+      expect(
+        form.querySelector("input[name=application_id]")?.getAttribute("value"),
+      ).toBe(application.id);
+
+      expect(
+        form.querySelector("input[name=redirect_uri]")?.getAttribute("value"),
+      ).toBe(OOB_REDIRECT_URI);
+
+      expect(
+        form.querySelector("input[name=scopes]")?.getAttribute("value"),
+      ).toBe("read:accounts follow");
+
+      // We didn't pass state, code_challenge, or code_challenge_method
+      expect(form.querySelector("input[name=state]")).toBeNull();
+      expect(form.querySelector("input[name=code_challenge]")).toBeNull();
+      expect(
+        form.querySelector("input[name=code_challenge_method]"),
+      ).toBeNull();
+
+      // Test the buttons, as we're using OOB there's no deny button:
+      const buttons = form.querySelectorAll("button[name=decision]");
+      expect(buttons.length).toBe(1);
+      expect(buttons[0].getAttribute("value")).toBe("allow");
+    });
+
+    it("successfully displays an authorization page with multiple accounts", async () => {
+      expect.assertions(5);
+
+      const secondaryAccount = await createAccount({ username: "secondary" });
+
+      const cookie = await getLoginCookie();
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", OOB_REDIRECT_URI);
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      const accountSelectors = Array.from(
+        form.querySelectorAll("input[name=account_id]"),
+      ).map((input) => input.getAttribute("value"));
+
+      expect(accountSelectors).toEqual([account.id, secondaryAccount.id]);
+    });
+
+    it("successfully displays an authorization page with external redirect_uri", async () => {
+      expect.assertions(8);
+
+      const cookie = await getLoginCookie();
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", "http://app.example/");
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      expect(
+        form.querySelector("input[name=redirect_uri]")?.getAttribute("value"),
+      ).toBe("http://app.example/");
+
+      // Test the buttons, as we're using an external redirect_uri there are
+      // deny and allow buttons:
+      const buttons = form.querySelectorAll("button[name=decision]");
+      expect(buttons.length).toBe(2);
+      expect(buttons[0].getAttribute("value")).toBe("deny");
+      expect(buttons[1].getAttribute("value")).toBe("allow");
+    });
+
+    it("successfully displays an authorization page without scope", async () => {
+      expect.assertions(6);
+
+      const cookie = await getLoginCookie();
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", OOB_REDIRECT_URI);
+      // no scope parameter
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      const listedScopes = Array.from(
+        page.querySelectorAll("#scopes > li > code"),
+      ).map((scopeElement) => scopeElement.textContent);
+
+      expect(listedScopes).toEqual(["read"]);
+
+      expect(
+        form.querySelector("input[name=scopes]")?.getAttribute("value"),
+      ).toBe("read");
+    });
+
+    it("successfully displays an authorization page with state", async () => {
+      expect.assertions(5);
+
+      const cookie = await getLoginCookie();
+      const state = crypto.randomUUID();
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("state", state);
+      parameters.set("redirect_uri", "http://app.example/");
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      expect(
+        form.querySelector("input[name=state]")?.getAttribute("value"),
+      ).toBe(state);
+    });
+
+    it("successfully displays an authorization page with PKCE fields", async () => {
+      expect.assertions(6);
+
+      const cookie = await getLoginCookie();
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("code_challenge", codeChallenge);
+      parameters.set("code_challenge_method", "S256");
+      parameters.set("redirect_uri", "http://app.example/");
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action"), "/oauth/authorize");
+
+      expect(
+        form.querySelector("input[name=code_challenge]")?.getAttribute("value"),
+      ).toBe(codeChallenge);
+      expect(
+        form
+          .querySelector("input[name=code_challenge_method]")
+          ?.getAttribute("value"),
+      ).toBe("S256");
+    });
+
+    it("returns an error with invalid client_id", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", "invalid");
+      parameters.set("redirect_uri", "http://app.example/");
+      parameters.set("scope", "read:accounts follow");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(400);
+
+      const json = await response.json();
+      expect(json).toMatchObject({
+        error: "invalid_client_id",
+      });
+    });
+
+    it("returns an error with invalid client_id", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", "http://app.example/");
+      parameters.set("scope", "write:accounts");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(400);
+
+      const json = await response.json();
+      expect(json).toMatchObject({
+        error: "invalid_scope",
+      });
+    });
+
+    it("returns an error with invalid redirect_uri", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", "http://invalid.example/");
+      parameters.set("scope", "read:accounts");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(400);
+
+      const json = await response.json();
+      expect(json).toMatchObject({
+        error: "invalid_redirect_uri",
+      });
+    });
+
+    it("returns an error with missing PKCE method", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", OOB_REDIRECT_URI);
+      parameters.set("code_challenge", "123");
+      // explicitly no code_challenge_method
+      parameters.set("scope", "read:accounts");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(400);
+
+      const json = await response.json();
+      expect(json).toMatchObject({
+        error: "invalid_request",
+      });
+    });
+
+    it("returns an error with missing PKCE value", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("redirect_uri", OOB_REDIRECT_URI);
+      // explicitly no code_challenge
+      parameters.set("code_challenge_method", "S256");
+      parameters.set("scope", "read:accounts");
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(400);
+
+      const json = await response.json();
+      expect(json).toMatchObject({
+        error: "invalid_request",
+      });
+    });
   });
 
   describe.sequential("POST /oauth/authorize", () => {
@@ -110,6 +599,66 @@ describe.sequential("OAuth", () => {
       expect(response.headers.get("Location")).toBe(
         "custom://oauth_callback?error=access_denied&error_description=The+resource+owner+or+authorization+server+denied+the+request.",
       );
+    });
+
+    it("does not create an access grant if code_challenge is missing but code_challenge_method is set", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", APP_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("code_challenge_method", "S256");
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body).toMatchObject({
+        error: "invalid_request",
+      });
+    });
+
+    it("does not create an access grant if code_challenge_method is missing but code_challenge is set", async () => {
+      expect.assertions(2);
+
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      formData.set("redirect_uri", APP_REDIRECT_URI);
+      formData.set("scopes", "read:accounts");
+      formData.set("code_challenge", codeChallenge);
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body).toMatchObject({
+        error: "invalid_request",
+      });
     });
 
     it("Can return authorization code out-of-bounds", async () => {
@@ -284,6 +833,157 @@ describe.sequential("OAuth", () => {
       expect(body).toMatchObject({
         error: "invalid_redirect_uri",
       });
+    });
+  });
+
+  describe.sequential("POST /oauth/token PKCE", () => {
+    let account: Awaited<ReturnType<typeof createAccount>>;
+    let application: Schema.Application;
+    let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+
+    beforeEach(async () => {
+      account = await createAccount();
+      client = await createOAuthApplication({
+        scopes: ["read:accounts"],
+        redirectUris: [OOB_REDIRECT_URI],
+        confidential: true,
+      });
+      application = await getApplication(client);
+    });
+
+    afterEach(async () => {
+      await cleanDatabase();
+    });
+
+    it("can exchange an access grant for an access token using PKCE", async () => {
+      expect.assertions(8);
+
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+      const codeChallengeMethod = "S256";
+
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+        codeChallenge,
+        codeChallengeMethod,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+      body.set("code_verifier", codeVerifier);
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+
+      const lastAccessToken = await getLastAccessToken();
+      const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+      expect(changedAccessGrant.revoked).not.toBeNull();
+      expect(lastAccessToken.grant_type).toBe("authorization_code");
+      expect(lastAccessToken.scopes).toEqual(changedAccessGrant.scopes);
+
+      expect(responseBody.access_token).toBe(lastAccessToken.code);
+      expect(responseBody.token_type).toBe("Bearer");
+      expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
+    });
+
+    it("cannot exchange an access grant for an access token using invalid verifier", async () => {
+      expect.assertions(4);
+
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+      const codeChallengeMethod = "S256";
+
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+        codeChallenge,
+        codeChallengeMethod,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+      body.set("code_verifier", "invalid");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+
+      expect(responseBody.error).toBe("invalid_grant");
+
+      const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+      expect(changedAccessGrant.revoked).toBeNull();
+    });
+
+    it("cannot exchange an access grant for an access token using without verifier", async () => {
+      expect.assertions(4);
+
+      const codeVerifier = generatePKCECodeVerifier();
+      const codeChallenge = await calculatePKCECodeChallenge(codeVerifier);
+      const codeChallengeMethod = "S256";
+
+      const accessGrant = await createAccessGrant(
+        application.id,
+        account.id,
+        ["read:accounts"],
+        OOB_REDIRECT_URI,
+        codeChallenge,
+        codeChallengeMethod,
+      );
+
+      const body = new FormData();
+      body.set("grant_type", "authorization_code");
+      body.set("client_id", application.clientId);
+      // client_secret is technically optional, but we don't support public clients yet:
+      body.set("client_secret", application.clientSecret);
+      body.set("redirect_uri", OOB_REDIRECT_URI);
+      body.set("code", accessGrant.code);
+      // explicitly no code_verifier property
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        body,
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+
+      expect(responseBody.error).toBe("invalid_grant");
+
+      const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+      expect(changedAccessGrant.revoked).toBeNull();
     });
   });
 
