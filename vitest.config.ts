@@ -17,5 +17,20 @@ export default defineConfig(() => ({
     expect: {
       requireAssertions: true,
     },
+    coverage: {
+      include: ["src/**/*.ts", "src/**/*.tsx"],
+      // These files don't really make sense to try to collect coverage on as
+      // they're setup files:
+      exclude: [
+        "src/env.ts",
+        "src/logging.ts",
+        "src/sentry.ts",
+        // database setup:
+        "src/db.ts",
+        "src/schema.ts",
+        // storage setup:
+        "src/storage.ts",
+      ],
+    },
   },
 }));
