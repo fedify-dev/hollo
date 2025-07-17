@@ -454,6 +454,7 @@ export const posts = pgTable(
     unique("posts_id_actor_id_unique").on(table.id, table.accountId),
     unique().on(table.pollId),
     unique().on(table.accountId, table.sharingId),
+    index().on(table.id.desc()),
     index().on(table.sharingId),
     index().on(table.accountId),
     index().on(table.accountId, table.sharingId),
