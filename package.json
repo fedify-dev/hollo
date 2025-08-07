@@ -1,7 +1,7 @@
 {
   "name": "@fedify/hollo",
   "description": "Federated single-user microblogging software",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "private": true,
   "scripts": {
     "prod": "bun run migrate && bun run src/index.tsx",
