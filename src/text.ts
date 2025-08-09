@@ -272,7 +272,7 @@ export async function formatPostContent(
     ExtractTablesWithRelations<typeof schema>
   >,
   text: string,
-  language: string | undefined,
+  language: string | null | undefined,
   options: {
     url: URL | string;
     contextLoader?: DocumentLoader;

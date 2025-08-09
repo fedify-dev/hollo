@@ -169,4 +169,36 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
     expect(typeof updateJson).toBe("object");
     expect(updateJson.content).toBe("<p>Test Update</p>\n");
   });
+
+  it("Issue 177: successfully creates a status with null values for optional fields", async () => {
+    expect.assertions(6);
+    const body = JSON.stringify({
+      language: "en",
+      status: "Awoo!",
+      in_reply_to_id: null,
+      sensitive: false,
+      spoiler_text: null,
+      media_ids: null,
+      visibility: "public",
+      poll: null,
+    });
+
+    const response = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/json");
+
+    const json = await response.json();
+    expect(typeof json).toBe("object");
+    expect(json.content).toBe("<p>Awoo!</p>\n");
+    expect(json.account.id).toBe(account.id);
+    expect(json.language).toBe("en");
+  });
 });
