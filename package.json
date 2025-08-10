@@ -32,7 +32,7 @@
     "@logtape/logtape": "~1.0.4",
     "@logtape/sentry": "^1.0.4",
     "@sentry/core": "^8.47.0",
-    "@sentry/node": "^8.47.0",
+    "@sentry/node": "^8.49.0",
     "@shikijs/markdown-it": "^3.5.0",
     "@supercharge/promise-pool": "^3.2.0",
     "argon2": "^0.41.1",
