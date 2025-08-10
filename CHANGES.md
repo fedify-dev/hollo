@@ -17,9 +17,17 @@ To be released.
     LogTape to 1.0 and now uses `jsonLinesFormatter` to ensure proper
     JSON Lines format with one JSON object per line.  [[#174]]
 
+ -  Fixed `POST /api/v1/statuses` endpoint rejecting requests with `null`
+    values in optional fields. The endpoint now properly accepts `null`
+    values for fields like `media_ids`, `poll`, `spoiler_text`,
+    `in_reply_to_id`, and other optional parameters, improving
+    compatibility with Mastodon clients.  [[#177], [#179] by Lee ByeongJun]
+
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
+[#177]: https://github.com/fedify-dev/hollo/issues/177
+[#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
 Version 0.6.6
