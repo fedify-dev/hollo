@@ -169,4 +169,45 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
     expect(typeof updateJson).toBe("object");
     expect(updateJson.content).toBe("<p>Test Update</p>\n");
   });
+
+  it("Issue 177: successfully creates a status with null values, setting appropriate defaults", async () => {
+    const body = JSON.stringify({
+      language: null,
+      status: "Awoo!",
+      in_reply_to_id: null,
+      sensitive: false,
+      spoiler_text: null,
+      media_ids: null,
+      visibility: null,
+      poll: null,
+    });
+
+    const response = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/json");
+
+    const json = await response.json();
+    expect(typeof json).toBe("object");
+
+    // Basic creation success
+    expect(json.content).toBe("<p>Awoo!</p>\n");
+    expect(json.account.id).toBe(account.id);
+
+    // Verify null values are replaced with appropriate defaults
+    expect(json.visibility).not.toBeNull();
+    expect(json.visibility).toBe("public");
+    expect(json.spoiler_text).toBe("");
+    expect(json.media_attachments).toEqual([]);
+    expect(json.sensitive).toBe(false);
+    expect(json.language).not.toBeNull();
+    expect(json.poll).toBeNull(); // This one stays null as expected
+  });
 });

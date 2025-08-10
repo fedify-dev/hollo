@@ -160,8 +160,8 @@ function buildMuteAndBlockConditions(viewerAccountId: Uuid | null | undefined) {
 }
 
 const statusSchema = z.object({
-  status: z.string().min(1).optional(),
-  media_ids: z.array(uuid).optional(),
+  status: z.string().min(1).optional().nullable(),
+  media_ids: z.array(uuid).optional().nullable(),
   poll: z
     .object({
       options: z.array(z.string()),
@@ -175,18 +175,22 @@ const statusSchema = z.object({
       multiple: z.boolean().default(false),
       hide_totals: z.boolean().default(false),
     })
-    .optional(),
+    .optional()
+    .nullable(),
   sensitive: z.boolean().default(false),
-  spoiler_text: z.string().optional(),
-  language: z.string().min(2).optional(),
+  spoiler_text: z.string().optional().nullable(),
+  language: z.string().min(2).optional().nullable(),
 });
 
 const createStatusSchema = statusSchema.merge(
   z.object({
-    in_reply_to_id: uuid.optional(),
-    quote_id: uuid.optional(),
-    visibility: z.enum(["public", "unlisted", "private", "direct"]).optional(),
-    scheduled_at: z.string().datetime().optional(),
+    in_reply_to_id: uuid.optional().nullable(),
+    quote_id: uuid.optional().nullable(),
+    visibility: z
+      .enum(["public", "unlisted", "private", "direct"])
+      .optional()
+      .nullable(),
+    scheduled_at: z.string().datetime().optional().nullable(),
   }),
 );
 
