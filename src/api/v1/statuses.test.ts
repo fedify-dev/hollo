@@ -201,4 +201,44 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
     expect(json.account.id).toBe(account.id);
     expect(json.language).toBe("en");
   });
+
+  it("Null values are replaced with appropriate defaults", async () => {
+    expect.assertions(10);
+
+    // Send a request with nulls
+    const body = JSON.stringify({
+      status: "Testing defaults",
+      visibility: null,
+      in_reply_to_id: null,
+      spoiler_text: null,
+      media_ids: null,
+      poll: null,
+      language: null,
+    });
+
+    const response = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: body,
+    });
+
+    expect(response.status).toBe(200);
+
+    const json = await response.json();
+
+    expect(json.visibility).not.toBeNull();
+    expect(json.visibility).toBe("public");
+    expect(json.in_reply_to_id).toBeNull();
+
+    expect(json.spoiler_text).toBe("");
+    expect(json.media_attachments).toEqual([]);
+    expect(json.poll).toBeNull();
+
+    expect(json.sensitive).toBe(false);
+    expect(json.language).not.toBeNull();
+    expect(json.content).toBe("<p>Testing defaults</p>\n");
+  });
 });
