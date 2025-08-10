@@ -66,7 +66,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@dotenvx/dotenvx": "^1.37.0",
-    "@reporters/github": "^1.7.2",
+    "@reporters/github": "^1.9.1",
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.13.4",
