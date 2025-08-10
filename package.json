@@ -56,7 +56,7 @@
     "qrcode": "^1.5.4",
     "semver": "^7.6.3",
     "sharp": "^0.33.5",
-    "ssrfcheck": "^1.1.1",
+    "ssrfcheck": "^1.2.0",
     "tsx": "^4.19.2",
     "uuidv7-js": "^1.1.4",
     "x-forwarded-fetch": "^0.2.0",
