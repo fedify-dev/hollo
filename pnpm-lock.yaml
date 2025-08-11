@@ -75,8 +75,8 @@ importers:
         specifier: ^0.44.4
         version: 0.44.4(@opentelemetry/api@1.9.0)(@types/pg@8.6.1)(bun-types@1.1.37)(postgres@3.4.5)
       es-toolkit:
-        specifier: ^1.30.1
-        version: 1.30.1
+        specifier: ^1.39.9
+        version: 1.39.9
       fluent-ffmpeg:
         specifier: ^2.1.3
         version: 2.1.3
@@ -2350,9 +2350,6 @@ packages:
 
   es-module-lexer@1.7.0:
     resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
-
-  es-toolkit@1.30.1:
-    resolution: {integrity: sha512-ZXflqanzH8BpHkDhFa10bBf6ONDCe84EPUm7SSICGzuuROSluT2ynTPtwn9PcRelMtorCRozSknI/U0MNYp0Uw==}
 
   es-toolkit@1.39.9:
     resolution: {integrity: sha512-9OtbkZmTA2Qc9groyA1PUNeb6knVTkvB2RSdr/LcJXDL8IdEakaxwXLHXa7VX/Wj0GmdMJPR3WhnPGhiP3E+qg==}
@@ -6115,8 +6112,6 @@ snapshots:
   entities@6.0.0: {}
 
   es-module-lexer@1.7.0: {}
-
-  es-toolkit@1.30.1: {}
 
   es-toolkit@1.39.9: {}
 
