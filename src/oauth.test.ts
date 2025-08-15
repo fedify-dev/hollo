@@ -351,6 +351,47 @@ describe.sequential("OAuth", () => {
       ).toBe("S256");
     });
 
+    it("successfully displays an authorization page without redirect_uri (uses default)", async () => {
+      expect.assertions(5);
+
+      const cookie = await getLoginCookie();
+      const parameters = new URLSearchParams();
+
+      parameters.set("response_type", "code");
+      parameters.set("client_id", application.clientId);
+      parameters.set("scope", "read:accounts follow");
+      // Deliberately not setting redirect_uri - should use the first one in the list
+
+      const response = await app.request(
+        `/oauth/authorize?${parameters.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Cookie: cookie,
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^text\/html/);
+
+      const page = await getPage(response);
+
+      const form = page.querySelector("form[method='post']");
+      expect(form).not.toBeNull();
+
+      if (!form) {
+        throw new Error("Invariant error: form was not null but not found");
+      }
+
+      expect(form.getAttribute("action")).toEqual("/oauth/authorize");
+
+      // Should default to the first redirect_uri in the list (OOB_REDIRECT_URI)
+      expect(
+        form.querySelector("input[name=redirect_uri]")?.getAttribute("value"),
+      ).toBe(OOB_REDIRECT_URI);
+    });
+
     it("returns an error with invalid client_id", async () => {
       expect.assertions(2);
 
@@ -818,6 +859,40 @@ describe.sequential("OAuth", () => {
       expect(body).toMatchObject({
         error: "invalid_redirect_uri",
       });
+    });
+
+    it("Can return authorization code without redirect_uri (uses default)", async () => {
+      expect.assertions(7);
+
+      const cookie = await getLoginCookie();
+      const formData = new FormData();
+
+      formData.set("account_id", account.id);
+      formData.set("application_id", application.id);
+      // Deliberately not setting redirect_uri - should use the first one in the list
+      formData.set("scopes", "read:accounts");
+      formData.set("decision", "allow");
+
+      const response = await app.request("/oauth/authorize", {
+        method: "POST",
+        body: formData,
+        headers: {
+          Cookie: cookie,
+        },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type") ?? "").toMatch(/text\/html/);
+
+      await response.text();
+      const lastAccessGrant = await getLastAccessGrant();
+
+      expect(lastAccessGrant.applicationId).toBe(application.id);
+      expect(lastAccessGrant.resourceOwnerId).toBe(account.id);
+      // Should default to the first redirect_uri in the list (OOB_REDIRECT_URI)
+      expect(lastAccessGrant.redirectUri).toBe(OOB_REDIRECT_URI);
+      expect(lastAccessGrant.scopes).toEqual(["read:accounts"]);
+      expect(lastAccessGrant.revoked).toBeNull();
     });
   });
 
