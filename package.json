@@ -36,7 +36,7 @@
     "@shikijs/markdown-it": "^3.9.2",
     "@supercharge/promise-pool": "^3.2.0",
     "argon2": "^0.41.1",
-    "cheerio": "^1.0.0",
+    "cheerio": "^1.1.2",
     "cssfilter": "^0.0.11",
     "csv-writer-portable": "^1.7.6",
     "drizzle-kit": "^0.31.4",
