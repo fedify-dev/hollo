@@ -15,8 +15,8 @@ importers:
         specifier: ~1.8.5
         version: 1.8.5(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
-        specifier: ~0.2.0
-        version: 0.2.0
+        specifier: ~0.3.0
+        version: 0.3.0
       '@fedify/markdown-it-mention':
         specifier: ~0.1.1
         version: 0.1.1
@@ -1034,8 +1034,8 @@ packages:
     resolution: {integrity: sha512-Bmx28+F8xEgepI4XVRZUiSERAH2kOx8TWRMds9zTihVCsuwN4WuAYUqJ24M5bis3dXsHQjitiUwAVeI/T+FgcA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/markdown-it-hashtag@0.2.0':
-    resolution: {integrity: sha512-kg8LKcSzemcG356ZBjfV2WyRAIqUbZ1t1XTRgYOlmjv1HNrMaKQiQc6I2zYtZIb+8LKAJbDld7ZScVLCE/RSWQ==}
+  '@fedify/markdown-it-hashtag@0.3.0':
+    resolution: {integrity: sha512-DCtfQ1OlFstob382d2iwEi77ezNqDQkUjS664q2r7ZOQQkBExvgvKDkL851tf1XRYp4A425/HO2yGRLZ1u1pSg==}
 
   '@fedify/markdown-it-mention@0.1.1':
     resolution: {integrity: sha512-l27FWC+X6VqXdO00Ip0vK5GfaI6IbRnqZWv4asdofrci7q2Nl/exxFNXPK8wY2wYUZE3Zrwpy2PvDG3wcBFF/A==}
@@ -4741,7 +4741,7 @@ snapshots:
     transitivePeerDependencies:
       - web-streams-polyfill
 
-  '@fedify/markdown-it-hashtag@0.2.0':
+  '@fedify/markdown-it-hashtag@0.3.0':
     dependencies:
       markdown-it: 14.1.0
 
