@@ -74,7 +74,7 @@
     "@types/semver": "^7.7.0",
     "@vitest/coverage-v8": "3.1.4",
     "dotenv": "^16.5.0",
-    "linkedom": "^0.18.10",
+    "linkedom": "^0.18.11",
     "timekeeper": "^2.3.1",
     "typescript": "^5.7.2",
     "vitest": "^3.1.4"
