@@ -28,10 +28,10 @@ importers:
         version: 2.0.4
       '@hono/node-server':
         specifier: ^1.13.7
-        version: 1.13.7(hono@4.6.14)
+        version: 1.13.7(hono@4.9.2)
       '@hono/zod-validator':
         specifier: ^0.2.2
-        version: 0.2.2(hono@4.6.14)(zod@3.24.1)
+        version: 0.2.2(hono@4.9.2)(zod@3.24.1)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -84,8 +84,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(@aws-sdk/client-s3@3.713.0)(@aws-sdk/s3-request-presigner@3.713.0)
       hono:
-        specifier: ^4.6.14
-        version: 4.6.14
+        specifier: ^4.9.2
+        version: 4.9.2
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.5
@@ -2609,8 +2609,8 @@ packages:
   hast-util-whitespace@3.0.0:
     resolution: {integrity: sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw==}
 
-  hono@4.6.14:
-    resolution: {integrity: sha512-j4VkyUp2xazGJ8eCCLN1Vm/bxdvm/j5ZuU9AIjLu9vapn2M44p9L3Ktr9Vnb2RN2QtcR/wVjZVMlT5k7GJQgPw==}
+  hono@4.9.2:
+    resolution: {integrity: sha512-UG2jXGS/gkLH42l/1uROnwXpkjvvxkl3kpopL3LBo27NuaDPI6xHNfuUSilIHcrBkPfl4y0z6y2ByI455TjNRw==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -4754,13 +4754,13 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@1.13.7(hono@4.6.14)':
+  '@hono/node-server@1.13.7(hono@4.9.2)':
     dependencies:
-      hono: 4.6.14
+      hono: 4.9.2
 
-  '@hono/zod-validator@0.2.2(hono@4.6.14)(zod@3.24.1)':
+  '@hono/zod-validator@0.2.2(hono@4.9.2)(zod@3.24.1)':
     dependencies:
-      hono: 4.6.14
+      hono: 4.9.2
       zod: 3.24.1
 
   '@hugoalh/http-header-link@1.0.3':
@@ -6619,7 +6619,7 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.4
 
-  hono@4.6.14: {}
+  hono@4.9.2: {}
 
   html-escaper@2.0.2: {}
 
