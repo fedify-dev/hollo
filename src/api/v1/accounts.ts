@@ -12,6 +12,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  lte,
   notInArray,
   or,
   sql,
@@ -592,6 +593,8 @@ app.get(
             ),
           ),
         ),
+        // Hide future posts
+        lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
         // Hide the posts from the muted accounts:
         notInArray(
           posts.accountId,

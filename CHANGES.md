@@ -30,6 +30,20 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.7
+-------------
+
+Released on August 19, 2025.
+
+ -  Fixed timeline pollution caused by future-dated posts from malicious or
+    misconfigured remote instances.  Posts with timestamps more than 5 minutes
+    in the future are now filtered from all timeline endpoints while preserving
+    them in the database for future display.  [[#199], [#201] by Hyeonseo Kim]
+
+[#199]: https://github.com/fedify-dev/hollo/issues/199
+[#201]: https://github.com/fedify-dev/hollo/pull/201
+
+
 Version 0.6.6
 -------------
 

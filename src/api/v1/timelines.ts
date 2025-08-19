@@ -8,6 +8,7 @@ import {
   inArray,
   isNull,
   lt,
+  lte,
   ne,
   notInArray,
   or,
@@ -94,6 +95,8 @@ app.get(
               db.select({ id: accountOwners.id }).from(accountOwners),
             )
           : undefined,
+        // Hide future posts
+        lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
         // Hide the posts from the muted accounts:
         notInArray(
           posts.accountId,
@@ -302,6 +305,8 @@ app.get(
                 ),
             ),
           ),
+          // Hide future posts
+          lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
           // Hide the posts from the muted accounts:
           notInArray(
             posts.accountId,
@@ -492,6 +497,8 @@ app.get(
                     ),
                 ),
           ),
+          // Hide future posts
+          lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
           // Hide the posts from the muted accounts:
           notInArray(
             posts.accountId,
@@ -647,6 +654,8 @@ app.get(
               db.select({ id: accountOwners.id }).from(accountOwners),
             )
           : undefined,
+        // Hide future posts
+        lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
         // Hide the posts from the muted accounts:
         notInArray(
           posts.accountId,

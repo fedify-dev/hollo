@@ -7,7 +7,7 @@ import {
 } from "@fedify/fedify";
 import { zValidator } from "@hono/zod-validator";
 import { getLogger } from "@logtape/logtape";
-import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../../db";
@@ -77,7 +77,11 @@ app.get(
     const statuses =
       query.offset < 1
         ? await db.query.posts.findMany({
-            where: or(eq(posts.iri, q), eq(posts.url, q)),
+            where: or(
+              eq(posts.iri, q),
+              eq(posts.url, q),
+              lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
+            ),
             with: getPostRelations(owner.id),
           })
         : [];
