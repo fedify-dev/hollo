@@ -1,10 +1,6 @@
 import { parseHTML } from "linkedom";
 import * as timekeeper from "timekeeper";
 import { beforeEach, describe, expect, it } from "vitest";
-
-import app from "./index";
-import type * as Schema from "./schema";
-
 import { cleanDatabase } from "../tests/helpers";
 import {
   basicAuthorization,
@@ -17,12 +13,14 @@ import {
   revokeAccessGrant,
 } from "../tests/helpers/oauth";
 import { getLoginCookie } from "../tests/helpers/web";
+import app from "./index";
 import { OOB_REDIRECT_URI } from "./oauth/constants";
 import {
   calculatePKCECodeChallenge,
   createAccessGrant,
   generatePKCECodeVerifier,
 } from "./oauth/helpers";
+import type * as Schema from "./schema";
 
 async function getPage(response: Response) {
   const text = await response.text();

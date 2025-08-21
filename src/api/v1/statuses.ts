@@ -45,28 +45,28 @@ import { appendPostToTimelines } from "../../federation/timeline";
 import { requestBody } from "../../helpers";
 import { getAccessToken } from "../../oauth/helpers";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
-import { type PreviewCard, fetchPreviewCard } from "../../previewcard";
+import { fetchPreviewCard, type PreviewCard } from "../../previewcard";
 import {
+  blocks,
+  bookmarks,
+  customEmojis,
+  follows,
   type Like,
+  likes,
   type Mention,
+  media,
+  mentions,
+  mutes,
   type NewBookmark,
   type NewLike,
   type NewPinnedPost,
   type NewPollOption,
   type NewPost,
   type Poll,
-  blocks,
-  bookmarks,
-  customEmojis,
-  follows,
-  likes,
-  media,
-  mentions,
-  mutes,
   pinnedPosts,
   pollOptions,
   polls,
@@ -74,7 +74,7 @@ import {
   reactions,
 } from "../../schema";
 import { formatPostContent } from "../../text";
-import { type Uuid, isUuid, uuid, uuidv7 } from "../../uuid";
+import { isUuid, type Uuid, uuid, uuidv7 } from "../../uuid";
 
 const app = new Hono<{ Variables: Variables }>();
 const logger = getLogger(["hollo", "api", "v1", "statuses"]);
@@ -170,7 +170,7 @@ const statusSchema = z.object({
         z
           .string()
           .regex(/^\d+$/)
-          .transform((v) => Number.parseInt(v)),
+          .transform((v) => Number.parseInt(v, 10)),
       ]),
       multiple: z.boolean().default(false),
       hide_totals: z.boolean().default(false),
@@ -269,9 +269,7 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   await db.transaction(async (tx) => {
     let poll: Poll | null = null;
     if (data.poll != null) {
-      const expires = new Date(
-        new Date().getTime() + data.poll.expires_in * 1000,
-      );
+      const expires = new Date(Date.now() + data.poll.expires_in * 1000);
       [poll] = await tx
         .insert(polls)
         .values({

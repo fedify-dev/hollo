@@ -7,16 +7,16 @@ import { db } from "../../db";
 import { serializeReport } from "../../entities/report";
 import federation from "../../federation";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import {
-  type Post,
-  type Report,
   accountOwners,
   accounts,
+  type Post,
   posts,
+  type Report,
   reports,
 } from "../../schema";
 import { uuid, uuidv7 } from "../../uuid";

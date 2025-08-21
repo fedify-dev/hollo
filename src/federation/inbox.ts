@@ -12,6 +12,7 @@ import {
   Follow,
   Image,
   type InboxContext,
+  isActor,
   Like,
   Link,
   type Move,
@@ -21,19 +22,18 @@ import {
   type Remove,
   type Undo,
   type Update,
-  isActor,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
-  type NewLike,
-  type NewPinnedPost,
   accountOwners,
   accounts,
   blocks,
   follows,
   likes,
+  type NewLike,
+  type NewPinnedPost,
   pinnedPosts,
   pollOptions,
   posts,

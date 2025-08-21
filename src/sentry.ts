@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import { getGlobalScope, setCurrentClient } from "@sentry/core";
-import { type NodeClient, init, initOpenTelemetry } from "@sentry/node";
+import { init, initOpenTelemetry, type NodeClient } from "@sentry/node";
 
 const logger = getLogger(["hollo", "sentry"]);
 

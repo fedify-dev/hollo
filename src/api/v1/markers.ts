@@ -5,11 +5,11 @@ import { z } from "zod";
 import { db } from "../../db";
 import { serializeMarkers } from "../../entities/marker";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
-import { type MarkerType, type NewMarker, markers } from "../../schema";
+import { type MarkerType, markers, type NewMarker } from "../../schema";
 
 const app = new Hono<{ Variables: Variables }>();
 

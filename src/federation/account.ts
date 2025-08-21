@@ -7,21 +7,21 @@ import {
   type DocumentLoader,
   Emoji,
   Follow,
-  Link,
-  PropertyValue,
-  Reject,
-  Undo,
   formatSemVer,
   getActorHandle,
   getActorTypeName,
   getNodeInfo,
   isActor,
+  Link,
   lookupObject,
+  PropertyValue,
+  Reject,
+  Undo,
 } from "@fedify/fedify";
 import {
-  type ExtractTablesWithRelations,
   and,
   count,
+  type ExtractTablesWithRelations,
   eq,
   inArray,
   isNotNull,
@@ -29,8 +29,8 @@ import {
 } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
-import * as schema from "../schema";
 import type { NewPinnedPost, Post } from "../schema";
+import * as schema from "../schema";
 import { type Uuid, uuidv7 } from "../uuid";
 import { iterateCollection } from "./collection";
 import { toDate } from "./date";
@@ -44,6 +44,7 @@ import {
 export const REMOTE_ACTOR_FETCH_POSTS = Number.parseInt(
   // biome-ignore lint/complexity/useLiteralKeys: tsc rants about this (TS4111)
   process.env["REMOTE_ACTOR_FETCH_POSTS"] ?? "10",
+  10,
 );
 
 export async function persistAccount(

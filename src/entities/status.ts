@@ -5,7 +5,9 @@ import {
   type AccountOwner,
   type Application,
   type Bookmark,
+  bookmarks,
   type Like,
+  likes,
   type Medium,
   type Mention,
   type PinnedPost,
@@ -13,12 +15,10 @@ import {
   type PollOption,
   type PollVote,
   type Post,
-  type Reaction,
-  bookmarks,
-  likes,
   pollOptions,
   pollVotes,
   posts,
+  type Reaction,
 } from "../schema";
 import type { Uuid } from "../uuid";
 import { sanitizeHtml } from "../xss";
@@ -360,13 +360,13 @@ export function serializePreviewCard(
       card.image?.width == null
         ? 0
         : typeof card.image.width === "string"
-          ? Number.parseInt(card.image.width)
+          ? Number.parseInt(card.image.width, 10)
           : card.image.width,
     height:
       card.image?.height == null
         ? 0
         : typeof card.image.height === "string"
-          ? Number.parseInt(card.image.height)
+          ? Number.parseInt(card.image.height, 10)
           : card.image.height,
     image: card.image == null ? null : card.image.url,
     embed_url: "",

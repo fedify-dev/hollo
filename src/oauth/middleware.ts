@@ -9,9 +9,9 @@ import {
   type Account,
   type AccountOwner,
   type Application,
-  type Scope,
   accessTokens,
   applications,
+  type Scope,
 } from "../schema.ts";
 
 export type Variables = {

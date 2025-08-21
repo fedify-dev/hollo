@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { base64Url, randomBytes } from "./helpers";
-
-import { URL_SAFE_REGEXP } from "./helpers";
+import { base64Url, randomBytes, URL_SAFE_REGEXP } from "./helpers";
 
 describe("Helpers", () => {
   describe("base64Url", () => {

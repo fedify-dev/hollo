@@ -1,16 +1,22 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.3/schema.json",
-  "organizeImports": {
-    "enabled": true
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "files": {
-    "ignore": [
-      ".github/",
-      "docs/.astro/",
-      "docs/dist/",
-      "docs/node_modules/",
-      "drizzle/",
-      "src/public/"
+    "includes": [
+      "**",
+      "!.github/**/*",
+      "!docs/.astro/**/*",
+      "!docs/dist/**/*",
+      "!docs/node_modules/**/*",
+      "!drizzle/**/*",
+      "!node_modules/**/*",
+      "!src/public/**/*"
     ]
   },
   "formatter": {

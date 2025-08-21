@@ -2,11 +2,11 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
 import { cleanDatabase } from "../../tests/helpers";
+import * as oauthHelpers from "../../tests/helpers/oauth";
 import {
   createAccount,
   createOAuthApplication,
 } from "../../tests/helpers/oauth";
-import * as oauthHelpers from "../../tests/helpers/oauth";
 import db from "../db";
 import { URL_SAFE_REGEXP } from "../helpers";
 import * as schema from "../schema";

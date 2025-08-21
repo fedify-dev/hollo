@@ -1,4 +1,4 @@
-// @ts-ignore: cssfilter does not have types
+// @ts-expect-error: cssfilter does not have types
 import * as cssfilter from "cssfilter";
 import { FilterXSS } from "xss";
 

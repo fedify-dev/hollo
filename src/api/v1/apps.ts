@@ -3,11 +3,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../../db";
 import { randomBytes, requestBody } from "../../helpers";
-import { type Variables, tokenRequired } from "../../oauth/middleware";
+import { tokenRequired, type Variables } from "../../oauth/middleware";
 import {
+  applications,
   type NewApplication,
   type Scope,
-  applications,
   scopeEnum,
 } from "../../schema";
 

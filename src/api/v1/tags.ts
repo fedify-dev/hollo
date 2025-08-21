@@ -3,9 +3,9 @@ import { Hono } from "hono";
 import { db } from "../../db";
 import { serializeTag } from "../../entities/tag";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import { accountOwners } from "../../schema";
 

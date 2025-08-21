@@ -24,9 +24,9 @@ import {
 import { serializeReaction } from "../../entities/emoji";
 import { getPostRelations, serializePost } from "../../entities/status";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import {
   accounts,
@@ -35,8 +35,8 @@ import {
   likes,
   mentions,
   mutes,
-  pollVotes,
   polls,
+  pollVotes,
   posts,
   reactions,
 } from "../../schema";
@@ -75,7 +75,7 @@ app.get(
     const excludeTypes = c.req.queries("exclude_types[]") as NotificationType[];
     const olderThanStr = c.req.query("older_than");
     const olderThan = olderThanStr == null ? null : new Date(olderThanStr);
-    const limit = Number.parseInt(c.req.query("limit") ?? "40");
+    const limit = Number.parseInt(c.req.query("limit") ?? "40", 10);
     if (types == null || types.length < 1) {
       types = [
         "mention",

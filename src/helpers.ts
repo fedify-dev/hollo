@@ -21,7 +21,7 @@ export async function requestBody<T extends z.ZodType = z.ZodTypeAny>(
 }
 
 // URL safe in ABNF is: ALPHA / DIGIT / "-" / "." / "_" / "~"
-export const URL_SAFE_REGEXP = /[A-Za-z0-9\_\-\.\~]/;
+export const URL_SAFE_REGEXP = /[A-Za-z0-9_\-.~]/;
 
 export function base64Url(buffer: ArrayBuffer) {
   return base64.fromArrayBuffer(buffer, true);

@@ -1,9 +1,9 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { getLogger } from "@logtape/logtape";
 import {
-  type ExtractTablesWithRelations,
   and,
   desc,
+  type ExtractTablesWithRelations,
   eq,
   inArray,
   lt,

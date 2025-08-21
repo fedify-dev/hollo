@@ -1,9 +1,8 @@
 import { isIP } from "node:net";
 import { serve } from "@hono/node-server";
 import { behindProxy } from "x-forwarded-fetch";
-import { configureSentry } from "../src/sentry";
-
 import app from "../src/index";
+import { configureSentry } from "../src/sentry";
 
 // biome-ignore lint/complexity/useLiteralKeys: tsc complains about this (TS4111)
 configureSentry(process.env["SENTRY_DSN"]);

@@ -6,13 +6,13 @@ import db from "../../db.ts";
 import {
   type Account,
   type AccountOwner,
+  accountOwners,
   type Medium,
   type Poll,
   type PollOption,
   type Post,
-  type Reaction,
-  accountOwners,
   posts,
+  type Reaction,
 } from "../../schema.ts";
 import { isUuid } from "../../uuid.ts";
 

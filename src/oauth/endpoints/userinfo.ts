@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { type Variables, scopeRequired, tokenRequired } from "../middleware";
+import { scopeRequired, tokenRequired, type Variables } from "../middleware";
 
 const app = new Hono<{ Variables: Variables }>();
 

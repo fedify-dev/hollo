@@ -36,12 +36,16 @@ export async function fetchPreviewCard(
             width:
               result.ogImage[0].width == null
                 ? null
-                : Number.parseInt(result.ogImage[0].width as unknown as string),
+                : Number.parseInt(
+                    result.ogImage[0].width as unknown as string,
+                    10,
+                  ),
             height:
               result.ogImage[0].height == null
                 ? null
                 : Number.parseInt(
                     result.ogImage[0].height as unknown as string,
+                    10,
                   ),
           },
   };

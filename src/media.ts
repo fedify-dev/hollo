@@ -1,5 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import ffmpeg from "fluent-ffmpeg";
@@ -28,7 +27,6 @@ export async function uploadThumbnail(
     originalMetadata.orientation != null &&
     originalMetadata.orientation !== 1
   ) {
-    // biome-ignore lint/style/noParameterAssign:
     original = original.clone();
     original.rotate();
     if (originalMetadata.orientation !== 3) {

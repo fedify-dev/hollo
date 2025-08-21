@@ -1,6 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
 import {
-  type SQL,
   and,
   desc,
   eq,
@@ -12,6 +11,7 @@ import {
   ne,
   notInArray,
   or,
+  type SQL,
   sql,
 } from "drizzle-orm";
 import { Hono } from "hono";
@@ -19,13 +19,13 @@ import { z } from "zod";
 import { db } from "../../db";
 import { getPostRelations, serializePost } from "../../entities/status";
 import {
-  TIMELINE_INBOXES,
   TIMELINE_INBOX_LIMIT,
+  TIMELINE_INBOXES,
 } from "../../federation/timeline";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import {
   accountOwners,
@@ -52,7 +52,7 @@ export const timelineQuerySchema = z.object({
   limit: z
     .string()
     .default("20")
-    .transform((v) => Number.parseInt(v)),
+    .transform((v) => Number.parseInt(v, 10)),
 });
 
 export const publicTimelineQuerySchema = timelineQuerySchema.merge(

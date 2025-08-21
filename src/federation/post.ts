@@ -11,8 +11,10 @@ import {
   Emoji,
   Hashtag,
   Image,
+  isActor,
   LanguageString,
   Link,
+  lookupObject,
   Note,
   OrderedCollection,
   PUBLIC_COLLECTION,
@@ -22,15 +24,13 @@ import {
   Tombstone,
   Update,
   Video,
-  isActor,
-  lookupObject,
 } from "@fedify/fedify";
 import * as vocab from "@fedify/fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
-  type ExtractTablesWithRelations,
   and,
   count,
+  type ExtractTablesWithRelations,
   eq,
   gte,
   inArray,
@@ -40,31 +40,31 @@ import {
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import sharp from "sharp";
-// @ts-ignore: No type definitions available
+// @ts-expect-error: No type definitions available
 import { isSSRFSafeURL } from "ssrfcheck";
-import { type Thumbnail, makeVideoScreenshot, uploadThumbnail } from "../media";
+import { makeVideoScreenshot, type Thumbnail, uploadThumbnail } from "../media";
 import { fetchPreviewCard } from "../previewcard";
+import type * as schema from "../schema";
 import {
   type Account,
   type AccountOwner,
+  accountOwners,
+  likes,
   type Medium,
   type Mention,
+  media,
+  mentions,
   type NewMedium,
   type NewPost,
   type Poll,
   type PollOption,
   type PollVote,
   type Post,
-  accountOwners,
-  likes,
-  media,
-  mentions,
   pollOptions,
-  pollVotes,
   polls,
+  pollVotes,
   posts,
 } from "../schema";
-import type * as schema from "../schema";
 import { extractPreviewLink } from "../text";
 import { type Uuid, uuidv7 } from "../uuid";
 import { persistAccount, persistAccountByIri } from "./account";

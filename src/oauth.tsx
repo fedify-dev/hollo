@@ -8,6 +8,8 @@ import { db } from "./db.ts";
 import { requestBody } from "./helpers.ts";
 import { loginRequired } from "./login.ts";
 import { OOB_REDIRECT_URI } from "./oauth/constants.ts";
+import revokeEndpoint from "./oauth/endpoints/revoke.ts";
+import userInfoEndpoint from "./oauth/endpoints/userinfo.ts";
 import {
   calculatePKCECodeChallenge,
   createAccessGrant,
@@ -19,14 +21,10 @@ import {
   clientAuthentication,
 } from "./oauth/middleware.ts";
 import { scopesSchema } from "./oauth/validators.ts";
-import { accessGrants, accountOwners, applications } from "./schema.ts";
-import { uuid } from "./uuid.ts";
-
-import revokeEndpoint from "./oauth/endpoints/revoke.ts";
-import userInfoEndpoint from "./oauth/endpoints/userinfo.ts";
-
 import { AuthorizationPage } from "./pages/oauth/authorization.tsx";
 import { AuthorizationCodePage } from "./pages/oauth/authorization_code.tsx";
+import { accessGrants, accountOwners, applications } from "./schema.ts";
+import { uuid } from "./uuid.ts";
 
 const logger = getLogger(["hollo", "oauth"]);
 

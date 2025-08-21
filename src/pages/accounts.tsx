@@ -1,15 +1,15 @@
 import {
   type Actor,
   Delete,
+  exportJwk,
+  generateCryptoKeyPair,
+  getActorHandle,
+  isActor,
   Move,
   type Object,
   PUBLIC_COLLECTION,
   type Recipient,
   Update,
-  exportJwk,
-  generateCryptoKeyPair,
-  getActorHandle,
-  isActor,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import { PromisePool } from "@supercharge/promise-pool";
@@ -29,11 +29,11 @@ import {
 import db from "../db.ts";
 import federation from "../federation";
 import {
-  REMOTE_ACTOR_FETCH_POSTS,
   blockAccount,
   followAccount,
   persistAccount,
   persistAccountPosts,
+  REMOTE_ACTOR_FETCH_POSTS,
   unfollowAccount,
 } from "../federation/account.ts";
 import { isPost, persistPost } from "../federation/post.ts";
@@ -41,9 +41,6 @@ import { loginRequired } from "../login.ts";
 import {
   type Account,
   type AccountOwner,
-  type Post,
-  type PostVisibility,
-  type ThemeColor,
   accountOwners,
   accounts as accountsTable,
   blocks,
@@ -53,9 +50,12 @@ import {
   listMembers,
   lists,
   mutes,
+  type Post,
+  type PostVisibility,
+  type ThemeColor,
 } from "../schema.ts";
 import { extractCustomEmojis, formatText } from "../text.ts";
-import { type Uuid, isUuid } from "../uuid.ts";
+import { isUuid, type Uuid } from "../uuid.ts";
 
 const HOLLO_OFFICIAL_ACCOUNT = "@hollo@hollo.social";
 

@@ -1,8 +1,5 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-
-import type * as Schema from "../schema";
-
 import { cleanDatabase } from "../../tests/helpers";
 import {
   bearerAuthorization,
@@ -11,8 +8,9 @@ import {
   getAccessToken,
   getApplication,
 } from "../../tests/helpers/oauth";
+import type * as Schema from "../schema";
 import { createClientCredential } from "./helpers";
-import { type Variables, scopeRequired, tokenRequired } from "./middleware";
+import { scopeRequired, tokenRequired, type Variables } from "./middleware";
 
 describe.sequential("OAuth / Middleware", () => {
   describe.sequential("tokenRequired", () => {

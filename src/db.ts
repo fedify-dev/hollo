@@ -3,8 +3,8 @@ import type { ExtractTablesWithRelations } from "drizzle-orm";
 import type { Logger } from "drizzle-orm/logger";
 import type { PgDatabase, PgTransaction } from "drizzle-orm/pg-core";
 import {
-  type PostgresJsQueryResultHKT,
   drizzle,
+  type PostgresJsQueryResultHKT,
 } from "drizzle-orm/postgres-js";
 import createPostgres from "postgres";
 import * as schema from "./schema";

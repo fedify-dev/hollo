@@ -7,7 +7,6 @@ export function serializeAccount(
   account: Account & { successor: Account | null },
   baseUrl: URL | string,
 ): Record<string, unknown> {
-  // biome-ignore lint/style/noParameterAssign: make sure the URL is a URL
   baseUrl = new URL(baseUrl);
   const username = account.handle.replaceAll(/(?:^@)|(?:@[^@]+$)/g, "");
   const defaultAvatarUrl = new URL(

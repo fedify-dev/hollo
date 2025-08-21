@@ -1,8 +1,8 @@
 import { zValidator } from "@hono/zod-validator";
 import {
-  type ExtractTablesWithRelations,
   and,
   count,
+  type ExtractTablesWithRelations,
   eq,
   max,
   sql,
@@ -14,13 +14,13 @@ import { z } from "zod";
 import db from "../../db";
 import { serializeFeaturedTag } from "../../entities/tag";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import type * as schema from "../../schema";
 import { featuredTags, posts } from "../../schema";
-import { type Uuid, isUuid, uuidv7 } from "../../uuid";
+import { isUuid, type Uuid, uuidv7 } from "../../uuid";
 
 const app = new Hono<{ Variables: Variables }>();
 

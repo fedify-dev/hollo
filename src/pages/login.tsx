@@ -11,7 +11,7 @@ import { OtpForm } from "../components/OtpForm.tsx";
 import { db } from "../db.ts";
 import { credentials } from "../schema.ts";
 
-// biome-ignore lint/complexity/useLiteralKeys: <explanation>
+// biome-ignore lint/complexity/useLiteralKeys: tsc complains about this (TS4111)
 const SECRET_KEY = process.env["SECRET_KEY"];
 if (SECRET_KEY == null) throw new Error("SECRET_KEY is required");
 

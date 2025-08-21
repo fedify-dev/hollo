@@ -1,4 +1,4 @@
-import { ParallelMessageQueue, createFederation } from "@fedify/fedify";
+import { createFederation, ParallelMessageQueue } from "@fedify/fedify";
 import { PostgresKvStore, PostgresMessageQueue } from "@fedify/postgres";
 import metadata from "../../package.json" with { type: "json" };
 import { postgres } from "../db";

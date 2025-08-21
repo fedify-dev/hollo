@@ -6,9 +6,9 @@ import { db } from "../../db";
 import { serializeMedium } from "../../entities/medium";
 import { makeVideoScreenshot, uploadThumbnail } from "../../media";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import { media } from "../../schema";
 import { drive } from "../../storage";
@@ -54,7 +54,7 @@ export async function postMedia(c: Context<{ Variables: Variables }>) {
       contentLength: content.byteLength,
       visibility: "public",
     });
-  } catch (error) {
+  } catch (_error) {
     return c.json({ error: "Failed to save media file" }, 500);
   }
   const url = await disk.getUrl(path);
@@ -95,7 +95,7 @@ app.put("/:id", tokenRequired, scopeRequired(["write:media"]), async (c) => {
   try {
     const json = await c.req.json();
     description = json.description;
-  } catch (e) {
+  } catch (_e) {
     const form = await c.req.formData();
     description = form.get("description")?.toString();
   }

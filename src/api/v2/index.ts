@@ -1,9 +1,9 @@
 import {
   Article,
-  Note,
-  type Object,
   isActor,
   lookupObject,
+  Note,
+  type Object,
 } from "@fedify/fedify";
 import { zValidator } from "@hono/zod-validator";
 import { getLogger } from "@logtape/logtape";
@@ -17,9 +17,9 @@ import { federation } from "../../federation";
 import { persistAccount } from "../../federation/account";
 import { persistPost } from "../../federation/post";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import { type Account, accounts, posts } from "../../schema";
 import { uuid } from "../../uuid";
@@ -48,12 +48,12 @@ app.get(
         .string()
         .regex(/\d+/)
         .default("20")
-        .transform((v) => Number.parseInt(v)),
+        .transform((v) => Number.parseInt(v, 10)),
       offset: z
         .string()
         .regex(/\d+/)
         .default("0")
-        .transform((v) => Number.parseInt(v)),
+        .transform((v) => Number.parseInt(v, 10)),
     }),
   ),
   async (c) => {

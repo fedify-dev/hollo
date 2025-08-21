@@ -61,7 +61,7 @@ homePage.get("/", async (c) => {
               <p style="user-select: all;">{owner.account.handle}</p>
             </hgroup>
             <div
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: safely escaped
               dangerouslySetInnerHTML={{ __html: bioHtml }}
             />
           </article>

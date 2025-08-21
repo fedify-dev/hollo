@@ -9,11 +9,11 @@ import { serializePoll } from "../../entities/poll";
 import { federation } from "../../federation";
 import { toUpdate } from "../../federation/post";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
-import { pollOptions, pollVotes, polls } from "../../schema";
+import { pollOptions, polls, pollVotes } from "../../schema";
 import { isUuid } from "../../uuid";
 
 const app = new Hono<{ Variables: Variables }>();
@@ -47,7 +47,7 @@ app.post(
           z
             .string()
             .regex(/^\d+$/)
-            .transform((s) => Number.parseInt(s)),
+            .transform((s) => Number.parseInt(s, 10)),
         ]),
       ),
     }),

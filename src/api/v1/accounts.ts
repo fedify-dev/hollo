@@ -1,4 +1,4 @@
-import { Block, Undo, isActor, lookupObject } from "@fedify/fedify";
+import { Block, isActor, lookupObject, Undo } from "@fedify/fedify";
 import * as vocab from "@fedify/fedify/vocab";
 import { zValidator } from "@hono/zod-validator";
 import {
@@ -30,22 +30,21 @@ import { serializeList } from "../../entities/list";
 import { getPostRelations, serializePost } from "../../entities/status";
 import { federation } from "../../federation";
 import {
-  REMOTE_ACTOR_FETCH_POSTS,
   blockAccount,
   followAccount,
   persistAccount,
   persistAccountPosts,
+  REMOTE_ACTOR_FETCH_POSTS,
   unfollowAccount,
 } from "../../federation/account";
 import {
-  type Variables,
   scopeRequired,
   tokenRequired,
+  type Variables,
 } from "../../oauth/middleware";
 import {
   type Account,
   type AccountOwner,
-  type NewMute,
   accountOwners,
   accounts,
   blocks,
@@ -55,12 +54,13 @@ import {
   media,
   mentions,
   mutes,
+  type NewMute,
   pinnedPosts,
   posts,
 } from "../../schema";
 import { drive } from "../../storage";
 import { extractCustomEmojis, formatText } from "../../text";
-import { type Uuid, isUuid } from "../../uuid";
+import { isUuid, type Uuid } from "../../uuid";
 import { timelineQuerySchema } from "./timelines";
 
 const app = new Hono<{ Variables: Variables }>();
@@ -122,7 +122,7 @@ app.patch(
     }
     const account = owner.account;
     const form = c.req.valid("form");
-    let avatarUrl = undefined;
+    let avatarUrl: string | undefined;
     if (form.avatar instanceof File) {
       if (!allowedImageMimeTypes.includes(form.avatar.type)) {
         return c.json({ error: "Invalid avatar file type." }, 400);
@@ -141,7 +141,7 @@ app.patch(
       });
       avatarUrl = await disk.getUrl(path);
     }
-    let coverUrl = undefined;
+    let coverUrl: string | undefined;
     if (form.header instanceof File) {
       if (!allowedImageMimeTypes.includes(form.header.type)) {
         return c.json({ error: "Invalid header file type." }, 400);
@@ -159,7 +159,7 @@ app.patch(
           contentLength: content.byteLength,
           visibility: "public",
         });
-      } catch (error) {
+      } catch {
         return c.json({ error: "Failed to upload header image." }, 500);
       }
       coverUrl = await disk.getUrl(path);
@@ -383,11 +383,11 @@ app.get(
       limit: z
         .string()
         .default("40")
-        .transform((v) => Number.parseInt(v)),
+        .transform((v) => Number.parseInt(v, 10)),
       offset: z
         .string()
         .default("0")
-        .transform((v) => Number.parseInt(v)),
+        .transform((v) => Number.parseInt(v, 10)),
       resolve: z
         .enum(["true", "false"])
         .default("false")

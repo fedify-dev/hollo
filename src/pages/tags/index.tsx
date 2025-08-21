@@ -5,13 +5,13 @@ import { Post as PostView } from "../../components/Post.tsx";
 import { db } from "../../db.ts";
 import {
   type Account,
+  accountOwners,
   type Medium,
   type Poll,
   type PollOption,
   type Post,
-  type Reaction,
-  accountOwners,
   posts,
+  type Reaction,
 } from "../../schema.ts";
 
 const tags = new Hono().basePath("/:tag");

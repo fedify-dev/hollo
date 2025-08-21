@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import { Hono } from "hono";
+import { describe, expect, it } from "vitest";
 
 import * as Schema from "../../schema";
 import metadataEndpoint from "./metadata";

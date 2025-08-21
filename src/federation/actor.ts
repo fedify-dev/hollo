@@ -1,12 +1,12 @@
 import {
   Emoji,
   Endpoints,
+  getActorClassByTypeName,
   Hashtag,
   Image,
+  importJwk,
   Like,
   PropertyValue,
-  getActorClassByTypeName,
-  importJwk,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import { and, count, desc, eq, ilike, inArray, isNotNull } from "drizzle-orm";
@@ -117,7 +117,7 @@ federation
         "Gathering followers for {identifier} with cursor {cursor} and filter {filter}...",
         { identifier, cursor, filter },
       );
-      const offset = cursor == null ? undefined : Number.parseInt(cursor);
+      const offset = cursor == null ? undefined : Number.parseInt(cursor, 10);
       if (offset != null && !Number.isInteger(offset)) return null;
       const followers = await db.query.accounts.findMany({
         where: and(
@@ -177,7 +177,7 @@ federation
         where: eq(accountOwners.handle, identifier),
       });
       if (owner == null || cursor == null) return null;
-      const offset = Number.parseInt(cursor);
+      const offset = Number.parseInt(cursor, 10);
       if (!Number.isInteger(offset)) return null;
       const following = await db.query.accounts.findMany({
         where: inArray(
@@ -223,7 +223,7 @@ federation
       const items = await db.query.posts.findMany({
         where: eq(posts.accountId, owner.id),
         orderBy: desc(posts.published),
-        offset: Number.parseInt(cursor),
+        offset: Number.parseInt(cursor, 10),
         limit: 41,
         with: {
           account: { with: { owner: true } },
@@ -243,7 +243,7 @@ federation
             p.sharing == null ? toCreate(p, ctx) : toAnnounce(p, ctx),
           ),
         nextCursor:
-          items.length > 40 ? `${Number.parseInt(cursor) + 40}` : null,
+          items.length > 40 ? `${Number.parseInt(cursor, 10) + 40}` : null,
       };
     },
   )
@@ -274,7 +274,7 @@ federation
       const items = await db.query.likes.findMany({
         where: eq(likes.accountId, owner.id),
         orderBy: desc(likes.created),
-        offset: Number.parseInt(cursor),
+        offset: Number.parseInt(cursor, 10),
         limit: 41,
         with: { post: true },
       });
@@ -291,7 +291,7 @@ federation
             }),
         ),
         nextCursor:
-          items.length > 40 ? `${Number.parseInt(cursor) + 40}` : null,
+          items.length > 40 ? `${Number.parseInt(cursor, 10) + 40}` : null,
       };
     },
   )

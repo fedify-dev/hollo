@@ -1,4 +1,4 @@
-import { constants, access, lstatSync } from "node:fs";
+import { access, constants, lstatSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { fromEnv } from "@aws-sdk/credential-providers";
 import { getLogger } from "@logtape/logtape";

@@ -8,16 +8,16 @@ import { db } from "../../db.ts";
 import {
   type Account,
   type AccountOwner,
+  accountOwners,
   type FeaturedTag,
+  featuredTags,
   type Medium,
   type Poll,
   type PollOption,
   type Post,
-  type Reaction,
-  accountOwners,
-  featuredTags,
   pinnedPosts,
   posts,
+  type Reaction,
 } from "../../schema.ts";
 import { isUuid } from "../../uuid.ts";
 import profilePost from "./profilePost.tsx";
@@ -42,13 +42,14 @@ profile.get<"/:handle">(async (c) => {
   const pageStr = c.req.query("page");
   if (
     pageStr !== undefined &&
-    (Number.isNaN(Number.parseInt(pageStr)) || Number.parseInt(pageStr) < 1)
+    (Number.isNaN(Number.parseInt(pageStr, 10)) ||
+      Number.parseInt(pageStr, 10) < 1)
   ) {
     return c.notFound();
   }
   const page =
-    pageStr !== undefined && !Number.isNaN(Number.parseInt(pageStr))
-      ? Number.parseInt(pageStr)
+    pageStr !== undefined && !Number.isNaN(Number.parseInt(pageStr, 10))
+      ? Number.parseInt(pageStr, 10)
       : 1;
   const [{ totalPosts }] = await db
     .select({ totalPosts: count() })

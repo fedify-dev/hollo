@@ -8,6 +8,7 @@ import {
   Delete,
   EmojiReact,
   Follow,
+  isActor,
   Like,
   Move,
   Note,
@@ -15,13 +16,14 @@ import {
   Remove,
   Undo,
   Update,
-  isActor,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
 import { db } from "../db";
 import "./actor";
 import { federation } from "./federation";
+
 export { federation } from "./federation";
+
 import {
   onAccountDeleted,
   onAccountMoved,
@@ -30,8 +32,8 @@ import {
   onEmojiReactionAdded,
   onEmojiReactionRemoved,
   onFollowAccepted,
-  onFollowRejected,
   onFollowed,
+  onFollowRejected,
   onLiked,
   onPostCreated,
   onPostDeleted,
