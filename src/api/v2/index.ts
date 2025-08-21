@@ -77,9 +77,8 @@ app.get(
     const statuses =
       query.offset < 1
         ? await db.query.posts.findMany({
-            where: or(
-              eq(posts.iri, q),
-              eq(posts.url, q),
+            where: and(
+              or(eq(posts.iri, q), eq(posts.url, q)),
               lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
             ),
             with: getPostRelations(owner.id),
