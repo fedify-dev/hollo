@@ -25,7 +25,7 @@
     "@fedify/markdown-it-mention": "~0.1.1",
     "@fedify/postgres": "~0.3.0",
     "@hexagon/base64": "^2.0.4",
-    "@hono/node-server": "^1.13.7",
+    "@hono/node-server": "^1.19.0",
     "@hono/zod-validator": "^0.2.2",
     "@js-temporal/polyfill": "^0.5.0",
     "@logtape/file": "~1.0.4",
