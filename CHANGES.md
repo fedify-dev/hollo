@@ -23,11 +23,26 @@ To be released.
     `in_reply_to_id`, and other optional parameters, improving
     compatibility with Mastodon clients.  [[#177], [#179] by Lee ByeongJun]
 
+ -  Upgraded Fedify to 1.8.7.
+
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
 [#177]: https://github.com/fedify-dev/hollo/issues/177
 [#179]: https://github.com/fedify-dev/hollo/pull/179
+
+
+Version 0.6.9
+-------------
+
+Released on August 25, 2025.
+
+ -  Fixed a bug where ActivityPub Discovery failed to recognize XHTML
+    self-closing `<link>` tags. The HTML/XHTML parser now correctly handles
+    whitespace before the self-closing slash (`/>`), improving compatibility
+    with XHTML documents that follow the self-closing tag format.
+
+ -  Upgraded Fedify to 1.5.6.
 
 
 Version 0.6.8

@@ -12,8 +12,8 @@ importers:
         specifier: ^3.864.0
         version: 3.864.0
       '@fedify/fedify':
-        specifier: ~1.8.6
-        version: 1.8.6(web-streams-polyfill@3.3.3)
+        specifier: ~1.8.7
+        version: 1.8.7(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -1037,8 +1037,8 @@ packages:
     resolution: {integrity: sha512-gGD8+mwkLsavBoj/qyfhMD8Tnv9+hid59NrQ6ZrD5Zn5rWvq4LleU09GF78OqPWdSLY03ihxb6+EArcsb5VZCA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=20.0.0'}
 
-  '@fedify/fedify@1.8.6':
-    resolution: {integrity: sha512-3O45+cal6Ov68eHBB4urBODwlH95Og62xEIcqvBFLjv66nMuvHgwOtF6OL1pHK4wRTdFzD9ZURdtFlZLnBLAqQ==}
+  '@fedify/fedify@1.8.7':
+    resolution: {integrity: sha512-5gOVGGFPYlkgzxbpmrStRYtqawxRlAPO2VfNjNu6tfTBU2ta7MA8OM7gfsO7NesoHfNdkpsOxu61Gzef1mmNLQ==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -4732,7 +4732,7 @@ snapshots:
     transitivePeerDependencies:
       - web-streams-polyfill
 
-  '@fedify/fedify@1.8.6(web-streams-polyfill@3.3.3)':
+  '@fedify/fedify@1.8.7(web-streams-polyfill@3.3.3)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@hugoalh/http-header-link': 1.0.3
