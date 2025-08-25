@@ -23,13 +23,24 @@ To be released.
     `in_reply_to_id`, and other optional parameters, improving
     compatibility with Mastodon clients.  [[#177], [#179] by Lee ByeongJun]
 
- -  Upgraded Fedify to 1.8.7.
+ -  Upgraded Fedify to 1.8.8.
 
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
 [#177]: https://github.com/fedify-dev/hollo/issues/177
 [#179]: https://github.com/fedify-dev/hollo/pull/179
+
+
+Version 0.6.10
+--------------
+
+Released on August 26, 2025.
+
+ -  Upgraded Fedifyh to 1.5.7 which fixes a bug where HTTP Signature
+    verification failed for requests having `created` or `expires` fields
+    in their `Signature` header, causing `500 Internal Server Error` responses
+    in inbox handlers.
 
 
 Version 0.6.9

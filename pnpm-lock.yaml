@@ -12,8 +12,8 @@ importers:
         specifier: ^3.864.0
         version: 3.864.0
       '@fedify/fedify':
-        specifier: ~1.8.7
-        version: 1.8.7(web-streams-polyfill@3.3.3)
+        specifier: ~1.8.8
+        version: 1.8.8(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -21,8 +21,8 @@ importers:
         specifier: ~0.1.1
         version: 0.1.1
       '@fedify/postgres':
-        specifier: ~0.3.0
-        version: 0.3.0(web-streams-polyfill@3.3.3)
+        specifier: ~1.8.8
+        version: 1.8.8(@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3))(postgres@3.4.5)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -551,15 +551,6 @@ packages:
   '@cfworker/json-schema@4.1.1':
     resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
-  '@deno/shim-crypto@0.3.1':
-    resolution: {integrity: sha512-ed4pNnfur6UbASEgF34gVxR9p7Mc3qF+Ygbmjiil8ws5IhNFhPDFy5vE5hQAUA9JmVsSxXPcVLM5Rf8LOZqQ5Q==}
-
-  '@deno/shim-deno-test@0.5.0':
-    resolution: {integrity: sha512-4nMhecpGlPi0cSzT67L+Tm+GOJqvuk8gqHBziqcUQOarnuIax1z96/gJHCSIz2Z0zhxE6Rzwb3IZXPtFh51j+w==}
-
-  '@deno/shim-deno@0.18.2':
-    resolution: {integrity: sha512-oQ0CVmOio63wlhwQF75zA4ioolPvOwAoK0yuzcS5bDC1JUvH3y1GS8xPh8EOpcoDQRU4FTG8OQfxhpR+c6DrzA==}
-
   '@digitalbazaar/http-client@3.4.1':
     resolution: {integrity: sha512-Ahk1N+s7urkgj7WvvUND5f8GiWEPfUw0D41hdElaqLgu8wZScI8gdI0q+qWw5N1d35x7GCRH2uk9mi+Uzo9M3g==}
     engines: {node: '>=14.0'}
@@ -1033,12 +1024,8 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@fedify/fedify@1.5.0':
-    resolution: {integrity: sha512-gGD8+mwkLsavBoj/qyfhMD8Tnv9+hid59NrQ6ZrD5Zn5rWvq4LleU09GF78OqPWdSLY03ihxb6+EArcsb5VZCA==}
-    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=20.0.0'}
-
-  '@fedify/fedify@1.8.7':
-    resolution: {integrity: sha512-5gOVGGFPYlkgzxbpmrStRYtqawxRlAPO2VfNjNu6tfTBU2ta7MA8OM7gfsO7NesoHfNdkpsOxu61Gzef1mmNLQ==}
+  '@fedify/fedify@1.8.8':
+    resolution: {integrity: sha512-1w5YfKbh8wNbcJ1s0Ttb2l3i4oiWmQ7z5sbKqQJMhBW6odaGGVgEO2bl6ZI5Tg0i5o/LK3ODOKLTlr8F1wibHA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -1047,8 +1034,11 @@ packages:
   '@fedify/markdown-it-mention@0.1.1':
     resolution: {integrity: sha512-l27FWC+X6VqXdO00Ip0vK5GfaI6IbRnqZWv4asdofrci7q2Nl/exxFNXPK8wY2wYUZE3Zrwpy2PvDG3wcBFF/A==}
 
-  '@fedify/postgres@0.3.0':
-    resolution: {integrity: sha512-FQzEeJccmCGvwOLUVvz5iNoJ44O+co0X8zorP7YtlV5RD4wXTSXKV7Iac3zv/wNyqAOzSRoZ4wNNXMy4e08uiw==}
+  '@fedify/postgres@1.8.8':
+    resolution: {integrity: sha512-Pyse5R9aIKVrvgXqZUMIGOABJIoOWcBoyXFWyDt3oF0ScjiyJvFIksRkbrnxlGy5xK95Kwez12zDP80IJzPSxw==}
+    peerDependencies:
+      '@fedify/fedify': 1.8.8
+      postgres: ^3.4.7
 
   '@hexagon/base64@2.0.4':
     resolution: {integrity: sha512-H/ZY6rGyaEuk0mwQgZ3BVi9hMjFTYpBNFbmtOuec/pPibuGhCMXd8fGtwBaO0h44FkWMurysMsDrpkJsBRmoWQ==}
@@ -1215,12 +1205,6 @@ packages:
     resolution: {integrity: sha512-G4bIP16NfqXG3BzdYsaHHogkC1lwxRqN8q5MKObICyDnv5YHJXChIQw2aIV46qckIlx+AEiD/rPJePieIE1tKA==}
     peerDependencies:
       '@logtape/logtape': 1.0.4
-
-  '@logtape/logtape@0.8.2':
-    resolution: {integrity: sha512-KikaMHi64p0BHYrYOE2Lom4dOE3R8PGT+21QJ5Ql/SWy0CNOp69dkAlG9RXzENQ6PAMWtiU+4kelJYNvfUvHOQ==}
-
-  '@logtape/logtape@0.9.1':
-    resolution: {integrity: sha512-L/MNHzc0BWpbb+PIAC9yAdqHDW1ZQrBSmOep/gbp/9DMeFcLvshlxJPH4+isjwueWt01b6jPWjT1PMbtiUPZlg==}
 
   '@logtape/logtape@1.0.4':
     resolution: {integrity: sha512-YvNVrXIxVpnY528zoiEjX8PqTfr0UCtKXyssvaWL8AE+OByFTCooKuKMdPlm6g65YUI9fPXrHn4UnogSskABnA==}
@@ -3268,9 +3252,6 @@ packages:
     resolution: {integrity: sha512-4oszoaEKE/mQOtAmdMWqIRHmkxWkUZMnXFnjQ5i01CuRSK3uluxcH1MRVVVWmhlnzT1SCDfKxxficm2G37qzCA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  urlpattern-polyfill@10.0.0:
-    resolution: {integrity: sha512-H/A06tKD7sS1O1X2SshBVeA5FLycRpjqiBeqGKmBwBDBy28EnRjORxTNe269KSSr5un5qyWi1iL61wLxpd+ZOg==}
-
   urlpattern-polyfill@10.1.0:
     resolution: {integrity: sha512-IGjKp/o0NL3Bso1PymYURCJxMPNAf/ILOpendP9f5B6e1rTJgdgiOvgfoT8VxCAdY+Wisb9uhGaJJf3yZ2V9nw==}
 
@@ -4437,15 +4418,6 @@ snapshots:
 
   '@cfworker/json-schema@4.1.1': {}
 
-  '@deno/shim-crypto@0.3.1': {}
-
-  '@deno/shim-deno-test@0.5.0': {}
-
-  '@deno/shim-deno@0.18.2':
-    dependencies:
-      '@deno/shim-deno-test': 0.5.0
-      which: 4.0.0
-
   '@digitalbazaar/http-client@3.4.1(web-streams-polyfill@3.3.3)':
     dependencies:
       ky: 0.33.3
@@ -4710,29 +4682,7 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@fedify/fedify@1.5.0(web-streams-polyfill@3.3.3)':
-    dependencies:
-      '@deno/shim-crypto': 0.3.1
-      '@deno/shim-deno': 0.18.2
-      '@hugoalh/http-header-link': 1.0.3
-      '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 0.8.2
-      '@multiformats/base-x': 4.0.1
-      '@opentelemetry/api': 1.9.0
-      '@opentelemetry/semantic-conventions': 1.36.0
-      '@phensley/language-tag': 1.13.1
-      asn1js: 3.0.6
-      json-canon: 1.0.1
-      jsonld: 8.3.3(web-streams-polyfill@3.3.3)
-      multicodec: 3.2.1
-      pkijs: 3.2.5
-      uri-template-router: 0.0.17
-      url-template: 3.1.1
-      urlpattern-polyfill: 10.0.0
-    transitivePeerDependencies:
-      - web-streams-polyfill
-
-  '@fedify/fedify@1.8.7(web-streams-polyfill@3.3.3)':
+  '@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@hugoalh/http-header-link': 1.0.3
@@ -4764,15 +4714,12 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/postgres@0.3.0(web-streams-polyfill@3.3.3)':
+  '@fedify/postgres@1.8.8(@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3))(postgres@3.4.5)':
     dependencies:
-      '@deno/shim-deno': 0.18.2
-      '@fedify/fedify': 1.5.0(web-streams-polyfill@3.3.3)
+      '@fedify/fedify': 1.8.8(web-streams-polyfill@3.3.3)
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 0.9.1
+      '@logtape/logtape': 1.0.4
       postgres: 3.4.5
-    transitivePeerDependencies:
-      - web-streams-polyfill
 
   '@hexagon/base64@2.0.4': {}
 
@@ -4903,10 +4850,6 @@ snapshots:
   '@logtape/file@1.0.4(@logtape/logtape@1.0.4)':
     dependencies:
       '@logtape/logtape': 1.0.4
-
-  '@logtape/logtape@0.8.2': {}
-
-  '@logtape/logtape@0.9.1': {}
 
   '@logtape/logtape@1.0.4': {}
 
@@ -7303,8 +7246,6 @@ snapshots:
   uri-template-router@0.0.17: {}
 
   url-template@3.1.1: {}
-
-  urlpattern-polyfill@10.0.0: {}
 
   urlpattern-polyfill@10.1.0: {}
 
