@@ -1,0 +1,2 @@
+DROP INDEX "timeline_posts_account_id_post_id_index";--> statement-breakpoint
+CREATE INDEX "timeline_posts_account_id_post_id_index" ON "timeline_posts" USING btree ("account_id","post_id" DESC NULLS LAST);

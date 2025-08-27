@@ -1084,7 +1084,7 @@ export const timelinePosts = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.accountId, table.postId] }),
-    index().on(table.accountId, table.postId),
+    index().on(table.accountId, table.postId.desc()),
   ],
 );
 
