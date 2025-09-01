@@ -18,8 +18,8 @@ importers:
         specifier: ~0.3.0
         version: 0.3.0
       '@fedify/markdown-it-mention':
-        specifier: ~0.1.1
-        version: 0.1.1
+        specifier: ~0.3.0
+        version: 0.3.0
       '@fedify/postgres':
         specifier: ~1.8.8
         version: 1.8.8(@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3))(postgres@3.4.5)
@@ -1031,8 +1031,8 @@ packages:
   '@fedify/markdown-it-hashtag@0.3.0':
     resolution: {integrity: sha512-DCtfQ1OlFstob382d2iwEi77ezNqDQkUjS664q2r7ZOQQkBExvgvKDkL851tf1XRYp4A425/HO2yGRLZ1u1pSg==}
 
-  '@fedify/markdown-it-mention@0.1.1':
-    resolution: {integrity: sha512-l27FWC+X6VqXdO00Ip0vK5GfaI6IbRnqZWv4asdofrci7q2Nl/exxFNXPK8wY2wYUZE3Zrwpy2PvDG3wcBFF/A==}
+  '@fedify/markdown-it-mention@0.3.0':
+    resolution: {integrity: sha512-4uVELsxh9AW0hzC6BVFqN59YWj6M/p6AZpwb/CQDjvcinfHyQp2yYtGDV4fBgsE5WC/ukpvU1pBNH20ts8TK4w==}
 
   '@fedify/postgres@1.8.8':
     resolution: {integrity: sha512-Pyse5R9aIKVrvgXqZUMIGOABJIoOWcBoyXFWyDt3oF0ScjiyJvFIksRkbrnxlGy5xK95Kwez12zDP80IJzPSxw==}
@@ -4710,7 +4710,7 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/markdown-it-mention@0.1.1':
+  '@fedify/markdown-it-mention@0.3.0':
     dependencies:
       markdown-it: 14.1.0
 
