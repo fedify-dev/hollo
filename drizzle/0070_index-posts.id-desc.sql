@@ -1,0 +1,1 @@
+CREATE INDEX "posts_id_index" ON "posts" USING btree ("id" DESC NULLS LAST);
