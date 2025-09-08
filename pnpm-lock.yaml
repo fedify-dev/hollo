@@ -102,8 +102,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0
       open-graph-scraper:
-        specifier: ^6.8.3
-        version: 6.8.3
+        specifier: ^6.10.0
+        version: 6.10.0
       otpauth:
         specifier: ^9.3.6
         version: 9.3.6
@@ -2237,8 +2237,8 @@ packages:
   character-entities-legacy@3.0.0:
     resolution: {integrity: sha512-RpPp0asT/6ufRm//AJVwpViZbGM/MkjQFxJccQRHmISF/22NBtsHqAWmL+/pmkPWoIUJdWyeVleTl1wydHATVQ==}
 
-  chardet@2.0.0:
-    resolution: {integrity: sha512-xVgPpulCooDjY6zH4m9YW3jbkaBe3FKIAvF5sj5t7aBNsVl2ljIE+xwJ4iNgiDZHFQvNIpjdKdVOQvvk5ZfxbQ==}
+  chardet@2.1.0:
+    resolution: {integrity: sha512-bNFETTG/pM5ryzQ9Ad0lJOTa6HWD/YsScAR3EnCPZRPlQh77JocYktSHOUHelyhm8IARL+o4c4F1bP5KVOjiRA==}
 
   check-error@2.1.1:
     resolution: {integrity: sha512-OAlb+T7V4Op9OwdkjmguYRqncdlx5JiofwOAUkmTF+jNdHwzTaTs4sRAGpzLF3oOz5xAyDGrPgeIDFQmDOTiJw==}
@@ -2893,8 +2893,8 @@ packages:
   oniguruma-to-es@4.3.3:
     resolution: {integrity: sha512-rPiZhzC3wXwE59YQMRDodUwwT9FZ9nNBwQQfsd1wfdtlKEyCdRV0avrTcSZ5xlIvGRVPd/cx6ZN45ECmS39xvg==}
 
-  open-graph-scraper@6.8.3:
-    resolution: {integrity: sha512-nzMlmvwoFOcFsghNxtrSMXayxiZKqEN373AbtTGKrOxw6LRXaTay8kBjGpUaTIAc0gsjpnGZloR2uQuNc7QoQA==}
+  open-graph-scraper@6.10.0:
+    resolution: {integrity: sha512-JTuaO/mWUPduYCIQvunmsQnfGpSRFUTEh4k5cW2KOafJxTm3Z99z25/c1oO9QnIh2DK7ol5plJAq3EUVy+5xyw==}
     engines: {node: '>=18.0.0'}
 
   otpauth@9.3.6:
@@ -3251,8 +3251,8 @@ packages:
     resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
     engines: {node: '>=14.0'}
 
-  undici@6.21.0:
-    resolution: {integrity: sha512-BUgJXc752Kou3oOIuU1i+yZZypyZRqNPW0vqoMPl8VaoalSfeR0D8/t4iAS3yirs79SSMTxTag+ZC86uswv+Cw==}
+  undici@6.21.3:
+    resolution: {integrity: sha512-gBLkYIlEnSp8pFbT64yFgGE6UIB9tAkhukC23PmMDCe5Nd+cRqKxSjw5y54MK2AZMgZfJWMaNE4nYUHgi1XEOw==}
     engines: {node: '>=18.17'}
 
   undici@7.14.0:
@@ -6260,7 +6260,7 @@ snapshots:
 
   character-entities-legacy@3.0.0: {}
 
-  chardet@2.0.0: {}
+  chardet@2.1.0: {}
 
   check-error@2.1.1: {}
 
@@ -6902,12 +6902,12 @@ snapshots:
       regex: 6.0.1
       regex-recursion: 6.0.2
 
-  open-graph-scraper@6.8.3:
+  open-graph-scraper@6.10.0:
     dependencies:
-      chardet: 2.0.0
+      chardet: 2.1.0
       cheerio: 1.1.2
       iconv-lite: 0.6.3
-      undici: 6.21.0
+      undici: 6.21.3
 
   otpauth@9.3.6:
     dependencies:
@@ -7266,7 +7266,7 @@ snapshots:
     dependencies:
       '@fastify/busboy': 2.1.1
 
-  undici@6.21.0: {}
+  undici@6.21.3: {}
 
   undici@7.14.0: {}
 

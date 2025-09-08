@@ -50,7 +50,7 @@
     "markdown-it-replace-link": "^1.2.2",
     "mime": "^4.0.6",
     "neat-csv": "^7.0.0",
-    "open-graph-scraper": "^6.8.3",
+    "open-graph-scraper": "^6.10.0",
     "otpauth": "^9.3.6",
     "postgres": "^3.4.7",
     "qrcode": "^1.5.4",
