@@ -145,8 +145,8 @@ importers:
         specifier: ^1.48.4
         version: 1.48.4
       '@reporters/github':
-        specifier: ^1.9.1
-        version: 1.9.1
+        specifier: ^1.11.0
+        version: 1.11.0
       '@types/fluent-ffmpeg':
         specifier: ^2.1.27
         version: 2.1.27
@@ -1498,8 +1498,8 @@ packages:
   '@prisma/instrumentation@5.22.0':
     resolution: {integrity: sha512-LxccF392NN37ISGxIurUljZSh1YWnphO34V5a0+T7FVQG2u9bhAXRTJpgmQ3483woVhkraQZFF7cbRrpbw/F4Q==}
 
-  '@reporters/github@1.9.1':
-    resolution: {integrity: sha512-MIuO3Ci0vCKV5CkueQOieiYKPqJvHkHJxYsk+raotCHcB4yPU4ns6yfy3tcXDsUFCkj+vbB+XXucdac139J6uA==}
+  '@reporters/github@1.11.0':
+    resolution: {integrity: sha512-sP/fSOgIoMYXZFWVy2Hw6vWUG3akUBiykqnFjx2jWI/kdqj55VZNXAQ27MYuiNffWlITW6mMBcv8+i47O7C77w==}
 
   '@rollup/rollup-android-arm-eabi@4.41.1':
     resolution: {integrity: sha512-NELNvyEWZ6R9QMkiytB4/L4zSEaBC03KIXEghptLGLZWJ6VPrL63ooZQCOnlx36aQPGhzuOMwDerC1Eb2VmrLw==}
@@ -5226,7 +5226,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@reporters/github@1.9.1':
+  '@reporters/github@1.11.0':
     dependencies:
       '@actions/core': 1.11.1
       stack-utils: 2.0.6
