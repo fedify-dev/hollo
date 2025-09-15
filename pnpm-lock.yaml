@@ -96,8 +96,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(@types/markdown-it@14.1.2)(markdown-it@14.1.0)
       mime:
-        specifier: ^4.0.6
-        version: 4.0.6
+        specifier: ^4.1.0
+        version: 4.1.0
       neat-csv:
         specifier: ^7.0.0
         version: 7.0.0
@@ -2809,8 +2809,8 @@ packages:
     resolution: {integrity: sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==}
     engines: {node: '>= 0.6'}
 
-  mime@4.0.6:
-    resolution: {integrity: sha512-4rGt7rvQHBbaSOF9POGkk1ocRP16Md1x36Xma8sz8h8/vfCUI2OtEIeCqe4Ofes853x4xDoPiFLIT47J5fI/7A==}
+  mime@4.1.0:
+    resolution: {integrity: sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -6828,7 +6828,7 @@ snapshots:
     dependencies:
       mime-db: 1.54.0
 
-  mime@4.0.6: {}
+  mime@4.1.0: {}
 
   mimic-fn@2.1.0: {}
 
