@@ -23,13 +23,26 @@ To be released.
     `in_reply_to_id`, and other optional parameters, improving
     compatibility with Mastodon clients.  [[#177], [#179] by Lee ByeongJun]
 
- -  Upgraded Fedify to 1.8.8.
+ -  Upgraded Fedify to 1.8.11.
 
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
 [#177]: https://github.com/fedify-dev/hollo/issues/177
 [#179]: https://github.com/fedify-dev/hollo/pull/179
+
+
+Version 0.6.11
+--------------
+
+Released on September 17, 2025.
+
+ -  Fixed a bug where `Like` activities from Bluesky via BridgyFed were not
+    being received due to invalid AT Protocol URIs.  This was resolved by
+    upgrading Fedify to 1.5.9, which includes improved AT Protocol URI
+    handling to properly parse URIs with DID authorities.  [[#217]]
+
+[#217]: https://github.com/fedify-dev/hollo/issues/217
 
 
 Version 0.6.10

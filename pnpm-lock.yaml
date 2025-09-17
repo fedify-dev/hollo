@@ -12,8 +12,8 @@ importers:
         specifier: ^3.883.0
         version: 3.883.0
       '@fedify/fedify':
-        specifier: ~1.8.8
-        version: 1.8.8(web-streams-polyfill@3.3.3)
+        specifier: ~1.8.11
+        version: 1.8.11(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -22,7 +22,7 @@ importers:
         version: 0.3.0
       '@fedify/postgres':
         specifier: ~1.8.8
-        version: 1.8.8(@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3))(postgres@3.4.7)
+        version: 1.8.8(@fedify/fedify@1.8.11(web-streams-polyfill@3.3.3))(postgres@3.4.7)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -1020,8 +1020,8 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@fedify/fedify@1.8.8':
-    resolution: {integrity: sha512-1w5YfKbh8wNbcJ1s0Ttb2l3i4oiWmQ7z5sbKqQJMhBW6odaGGVgEO2bl6ZI5Tg0i5o/LK3ODOKLTlr8F1wibHA==}
+  '@fedify/fedify@1.8.11':
+    resolution: {integrity: sha512-MRnvfoEu+09nKNrDLIx+xLHW0RVWnRuAGVbrvPUAzXf0EMzPPrAO52dgDbAxr0MKbDdo4Ak4pT9YsMbKolDshA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -4702,7 +4702,7 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3)':
+  '@fedify/fedify@1.8.11(web-streams-polyfill@3.3.3)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@hugoalh/http-header-link': 1.0.3
@@ -4734,9 +4734,9 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/postgres@1.8.8(@fedify/fedify@1.8.8(web-streams-polyfill@3.3.3))(postgres@3.4.7)':
+  '@fedify/postgres@1.8.8(@fedify/fedify@1.8.11(web-streams-polyfill@3.3.3))(postgres@3.4.7)':
     dependencies:
-      '@fedify/fedify': 1.8.8(web-streams-polyfill@3.3.3)
+      '@fedify/fedify': 1.8.11(web-streams-polyfill@3.3.3)
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 1.1.0
       postgres: 3.4.7
