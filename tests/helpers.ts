@@ -15,7 +15,7 @@ export async function getFixtureFile(
   const filePath = join(fixtureFiles, name);
   const data = await readFile(filePath);
 
-  return new File([data], name, {
+  return new File([new Uint8Array(data)], name, {
     type,
   });
 }
