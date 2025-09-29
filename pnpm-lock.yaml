@@ -21,8 +21,8 @@ importers:
         specifier: ~0.3.0
         version: 0.3.0
       '@fedify/postgres':
-        specifier: ~1.8.11
-        version: 1.8.11(@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3))(postgres@3.4.7)
+        specifier: ~1.8.12
+        version: 1.8.12(@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3))(postgres@3.4.7)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -1034,10 +1034,10 @@ packages:
   '@fedify/markdown-it-mention@0.3.0':
     resolution: {integrity: sha512-4uVELsxh9AW0hzC6BVFqN59YWj6M/p6AZpwb/CQDjvcinfHyQp2yYtGDV4fBgsE5WC/ukpvU1pBNH20ts8TK4w==}
 
-  '@fedify/postgres@1.8.11':
-    resolution: {integrity: sha512-QMjKhpYJTUPvvhdRMV0dhM7BHSyC5/QFkojyCZKHe2ekXidBf8ZaNqWJ+VKQU906CMTwumBOgTf5p+6kfxt85w==}
+  '@fedify/postgres@1.8.12':
+    resolution: {integrity: sha512-TFKNbPDWecV4n3h39G7TXKFfBt+Zbr/dOd0pYjwXfEBLlgc7cTIcsVLyHYZ8g6KonKJj/MPvCWWJJ7VeOx5ttw==}
     peerDependencies:
-      '@fedify/fedify': ^1.8.11
+      '@fedify/fedify': ^1.8.12
       postgres: ^3.4.7
 
   '@hexagon/base64@2.0.4':
@@ -4739,7 +4739,7 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/postgres@1.8.11(@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3))(postgres@3.4.7)':
+  '@fedify/postgres@1.8.12(@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3))(postgres@3.4.7)':
     dependencies:
       '@fedify/fedify': 1.8.12(web-streams-polyfill@3.3.3)
       '@js-temporal/polyfill': 0.5.1
