@@ -23,7 +23,7 @@
     "@fedify/fedify": "~1.8.12",
     "@fedify/markdown-it-hashtag": "~0.3.0",
     "@fedify/markdown-it-mention": "~0.3.0",
-    "@fedify/postgres": "~1.8.11",
+    "@fedify/postgres": "~1.8.12",
     "@hexagon/base64": "^2.0.4",
     "@hono/node-server": "^1.19.0",
     "@hono/zod-validator": "^0.2.2",
