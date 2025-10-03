@@ -32,6 +32,20 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.12
+--------------
+
+Released on October 4, 2025.
+
+ -  Fixed a critical security vulnerability where direct messages were leaked
+    on public post pages. The replies list below posts now correctly filters
+    to show only public or unlisted replies, preventing private conversations
+    from being exposed.  [[#246], [#248] by Hyeonseo Kim]
+
+[#246]: https://github.com/fedify-dev/hollo/issues/246
+[#248]: https://github.com/fedify-dev/hollo/pull/248
+
+
 Version 0.6.11
 --------------
 
