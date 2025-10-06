@@ -51,7 +51,7 @@
     "mime": "^4.1.0",
     "neat-csv": "^7.0.0",
     "open-graph-scraper": "^6.10.0",
-    "otpauth": "^9.3.6",
+    "otpauth": "^9.4.1",
     "postgres": "^3.4.7",
     "qrcode": "^1.5.4",
     "semver": "^7.7.2",
