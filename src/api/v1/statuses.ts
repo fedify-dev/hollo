@@ -113,6 +113,13 @@ function buildVisibilityConditions(viewerAccountId: Uuid | null | undefined) {
         ),
       ),
     ),
+    // Also include posts that mention the viewer
+    exists(
+      db
+        .select({ id: mentions.postId })
+        .from(mentions)
+        .where(eq(mentions.accountId, viewerAccountId)),
+    ),
   );
 }
 

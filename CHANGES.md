@@ -32,6 +32,17 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.13
+--------------
+
+Released on October 7, 2025.
+
+ -  Fixed a bug where replies from followers who are not followed back were not
+    visible in conversation threads. The visibility filter now correctly
+    includes posts that mention the authenticated user, ensuring that all
+    replies directed to the user are displayed regardless of follow-back status.
+
+
 Version 0.6.12
 --------------
 
