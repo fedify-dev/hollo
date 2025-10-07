@@ -32,6 +32,22 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.14
+--------------
+
+Released on October 7, 2025.
+
+ -  Fixed a critical security vulnerability where direct messages (DMs) were
+    visible to all authenticated users regardless of whether they were
+    participants in the conversation. The visibility filter now correctly
+    restricts direct messages to only the sender and mentioned recipients,
+    preventing unauthorized access to private conversations.
+    [[#247], [#255] by Hyeonseo Kim]
+
+[#247]: https://github.com/fedify-dev/hollo/issues/247
+[#255]: https://github.com/fedify-dev/hollo/pull/255
+
+
 Version 0.6.13
 --------------
 
@@ -982,3 +998,5 @@ Version 0.1.0
 -------------
 
 Released on October 22, 2024.  Initial release.
+
+<!-- cSpell: ignore Hyeonseo -->

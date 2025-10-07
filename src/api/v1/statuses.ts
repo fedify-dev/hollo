@@ -82,7 +82,8 @@ const logger = getLogger(["hollo", "api", "v1", "statuses"]);
 /**
  * Builds visibility conditions for post queries based on viewer's permissions.
  * For unauthenticated users, only public/unlisted posts are visible.
- * For authenticated users, includes private posts from accounts they follow.
+ * For authenticated users, includes private posts from accounts they follow,
+ * and direct posts where they are mentioned or are the author.
  */
 function buildVisibilityConditions(viewerAccountId: Uuid | null | undefined) {
   if (viewerAccountId == null) {
@@ -90,9 +91,9 @@ function buildVisibilityConditions(viewerAccountId: Uuid | null | undefined) {
     return inArray(posts.visibility, ["public", "unlisted"]);
   }
 
-  // Authenticated: include private posts based on follower relationships
+  // Authenticated: include private and direct posts based on relationships
   return or(
-    inArray(posts.visibility, ["public", "unlisted", "direct"]),
+    inArray(posts.visibility, ["public", "unlisted"]),
     and(
       eq(posts.visibility, "private"),
       or(
@@ -113,12 +114,24 @@ function buildVisibilityConditions(viewerAccountId: Uuid | null | undefined) {
         ),
       ),
     ),
-    // Also include posts that mention the viewer
-    exists(
-      db
-        .select({ id: mentions.postId })
-        .from(mentions)
-        .where(eq(mentions.accountId, viewerAccountId)),
+    and(
+      inArray(posts.visibility, ["private", "direct"]),
+      or(
+        // User's own direct posts
+        eq(posts.accountId, viewerAccountId),
+        // Direct posts where the user is mentioned
+        exists(
+          db
+            .select({ postId: mentions.postId })
+            .from(mentions)
+            .where(
+              and(
+                eq(mentions.postId, posts.id),
+                eq(mentions.accountId, viewerAccountId),
+              ),
+            ),
+        ),
+      ),
     ),
   );
 }
