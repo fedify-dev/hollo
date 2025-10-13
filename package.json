@@ -41,7 +41,7 @@
     "csv-writer-portable": "^1.7.6",
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.5",
-    "es-toolkit": "^1.39.10",
+    "es-toolkit": "^1.40.0",
     "fluent-ffmpeg": "^2.1.3",
     "flydrive": "^1.3.0",
     "hono": "^4.9.9",
