@@ -96,7 +96,7 @@ login.get(
   zValidator(
     "query",
     z.object({
-      next: z.string().url().optional(),
+      next: z.url().optional(),
     }),
   ),
   (c) => {
@@ -111,7 +111,7 @@ login.post(
     "form",
     z.object({
       token: z.string().regex(/^\d+$/),
-      next: z.string().url().optional(),
+      next: z.url().optional(),
     }),
   ),
   async (c) => {

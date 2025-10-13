@@ -39,7 +39,7 @@ auth.post(
   "/2fa",
   zValidator(
     "form",
-    z.object({ totp: z.string().url(), token: z.string().regex(/^\d+$/) }),
+    z.object({ totp: z.url(), token: z.string().regex(/^\d+$/) }),
   ),
   async (c) => {
     const form = c.req.valid("form");

@@ -32,7 +32,7 @@ describe("OAuth / Validators", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).not.toBeNull();
-    expect(result.error?.errors[0].code).toBe("invalid_enum_value");
+    expect(result.error?.issues[0].code).toBe("invalid_value");
     expect(Array.isArray(result.data)).toBeFalsy();
   });
 
@@ -43,7 +43,7 @@ describe("OAuth / Validators", () => {
 
     expect(result.success).toBe(false);
     expect(result.error).not.toBeNull();
-    expect(result.error?.errors[0].code).toBe("invalid_enum_value");
+    expect(result.error?.issues[0].code).toBe("invalid_value");
     expect(Array.isArray(result.data)).toBeFalsy();
   });
 });

@@ -245,7 +245,7 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   const result = await requestBody(c.req, createStatusSchema);
 
   if (!result.success) {
-    logger.debug("Invalid request: {error}", { error: result.error.errors });
+    logger.debug("Invalid request: {error}", { error: result.error.issues });
     return c.json({ error: "invalid_request", zod_error: result.error }, 422);
   }
 
@@ -405,7 +405,7 @@ app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   const result = await requestBody(c.req, statusSchema);
 
   if (!result.success) {
-    logger.debug("Invalid request: {error}", { error: result.error.errors });
+    logger.debug("Invalid request: {error}", { error: result.error.issues });
     return c.json({ error: "invalid_request", zod_error: result.error }, 422);
   }
 

@@ -6,7 +6,7 @@ export async function requestBody<T extends z.ZodType = z.ZodTypeAny>(
   req: HonoRequest,
   schema: T,
   // biome-ignore lint/suspicious/noExplicitAny: Input type is `any` as it comes from the request
-): Promise<z.SafeParseReturnType<any, z.output<T>>> {
+): Promise<z.ZodSafeParseSuccess<z.output<T>> | z.ZodSafeParseError<any>> {
   const contentType = req.header("Content-Type")?.toLowerCase();
   if (
     contentType === "application/json" ||

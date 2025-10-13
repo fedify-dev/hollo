@@ -66,7 +66,7 @@ app.get(
     z.object({
       response_type: z.enum(["code"]),
       client_id: z.string(),
-      redirect_uri: z.string().url().optional(),
+      redirect_uri: z.url().optional(),
       scope: scopesSchema.optional(),
       state: z.string().optional(),
       // PKCE: we only support S256 code challenges
@@ -128,7 +128,7 @@ app.post(
     z.object({
       account_id: uuid,
       application_id: uuid,
-      redirect_uri: z.string().url().optional(),
+      redirect_uri: z.url().optional(),
       scopes: scopesSchema,
       state: z.string().optional(),
       // we only support S256:
@@ -235,7 +235,7 @@ const tokenRequestSchema = z.discriminatedUnion("grant_type", [
   // See also <https://github.com/fedify-dev/hollo/issues/163>:
   z.object({
     grant_type: z.literal("authorization_code"),
-    redirect_uri: z.string().url(),
+    redirect_uri: z.url(),
     code: z.string(),
     code_verifier: z.string().optional(),
     // client_id and client_secret are present but consumed by the
@@ -251,8 +251,8 @@ app.post("/token", clientAuthentication, async (c) => {
 
   if (!result.success) {
     if (
-      result.error.errors.length === 1 &&
-      result.error.errors[0].code === "invalid_union_discriminator"
+      result.error.issues.length === 1 &&
+      result.error.issues[0].code === "invalid_union"
     ) {
       return c.json(
         {

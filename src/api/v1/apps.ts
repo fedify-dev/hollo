@@ -15,17 +15,17 @@ const logger = getLogger(["hollo", "api", "v1", "apps"]);
 
 const app = new Hono<{ Variables: Variables }>();
 
-const applicationSchema = z.strictObject({
+const applicationSchema = z.object({
   client_name: z.string().optional(),
   redirect_uris: z
     .union([z.string().trim(), z.array(z.string().trim())])
     .transform((v, ctx) => {
       const uris = Array.isArray(v) ? v : v.split(/\s+/g);
       for (const uri of uris) {
-        const parsed = z.string().url().safeParse(uri);
+        const parsed = z.url().safeParse(uri);
         if (parsed.error != null) {
-          for (const error of parsed.error.errors) {
-            ctx.addIssue(error);
+          for (const issue of parsed.error.issues) {
+            ctx.addIssue({ ...issue });
           }
           return z.NEVER;
         }
@@ -41,8 +41,8 @@ const applicationSchema = z.strictObject({
       for (const scope of v.split(/\s+/g)) {
         if (!scopeEnum.enumValues.includes(scope as Scope)) {
           ctx.addIssue({
-            code: z.ZodIssueCode.invalid_enum_value,
-            options: scopeEnum.enumValues,
+            code: z.ZodIssueCode.invalid_value,
+            values: scopeEnum.enumValues,
             received: scope,
           });
           return z.NEVER;
@@ -52,14 +52,14 @@ const applicationSchema = z.strictObject({
       return scopes;
     })
     .optional(),
-  website: z.string().url().optional(),
-});
+  website: z.url().optional(),
+}).strict();
 
 app.post("/", async (c) => {
   const result = await requestBody(c.req, applicationSchema);
 
   if (!result.success) {
-    logger.debug("Invalid request: {error}", { error: result.error.errors });
+    logger.debug("Invalid request: {error}", { error: result.error.issues });
     return c.json({ error: "invalid_request", zod_error: result.error }, 422);
   }
 
