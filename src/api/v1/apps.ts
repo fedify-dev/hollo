@@ -15,45 +15,47 @@ const logger = getLogger(["hollo", "api", "v1", "apps"]);
 
 const app = new Hono<{ Variables: Variables }>();
 
-const applicationSchema = z.object({
-  client_name: z.string().optional(),
-  redirect_uris: z
-    .union([z.string().trim(), z.array(z.string().trim())])
-    .transform((v, ctx) => {
-      const uris = Array.isArray(v) ? v : v.split(/\s+/g);
-      for (const uri of uris) {
-        const parsed = z.url().safeParse(uri);
-        if (parsed.error != null) {
-          for (const issue of parsed.error.issues) {
-            ctx.addIssue({ ...issue });
+const applicationSchema = z
+  .object({
+    client_name: z.string().optional(),
+    redirect_uris: z
+      .union([z.string().trim(), z.array(z.string().trim())])
+      .transform((v, ctx) => {
+        const uris = Array.isArray(v) ? v : v.split(/\s+/g);
+        for (const uri of uris) {
+          const parsed = z.url().safeParse(uri);
+          if (parsed.error != null) {
+            for (const issue of parsed.error.issues) {
+              ctx.addIssue({ ...issue });
+            }
+            return z.NEVER;
           }
-          return z.NEVER;
         }
-      }
-      return uris;
-    })
-    .optional(),
-  scopes: z
-    .string()
-    .trim()
-    .transform((v, ctx) => {
-      const scopes: Scope[] = [];
-      for (const scope of v.split(/\s+/g)) {
-        if (!scopeEnum.enumValues.includes(scope as Scope)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.invalid_value,
-            values: scopeEnum.enumValues,
-            received: scope,
-          });
-          return z.NEVER;
+        return uris;
+      })
+      .optional(),
+    scopes: z
+      .string()
+      .trim()
+      .transform((v, ctx) => {
+        const scopes: Scope[] = [];
+        for (const scope of v.split(/\s+/g)) {
+          if (!scopeEnum.enumValues.includes(scope as Scope)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.invalid_value,
+              values: scopeEnum.enumValues,
+              received: scope,
+            });
+            return z.NEVER;
+          }
+          scopes.push(scope as Scope);
         }
-        scopes.push(scope as Scope);
-      }
-      return scopes;
-    })
-    .optional(),
-  website: z.url().optional(),
-}).strict();
+        return scopes;
+      })
+      .optional(),
+    website: z.url().optional(),
+  })
+  .strict();
 
 app.post("/", async (c) => {
   const result = await requestBody(c.req, applicationSchema);
