@@ -30,8 +30,8 @@ importers:
         specifier: ^1.19.0
         version: 1.19.5(hono@4.10.2)
       '@hono/zod-validator':
-        specifier: ^0.7.3
-        version: 0.7.3(hono@4.10.2)(zod@4.1.12)
+        specifier: ^0.7.4
+        version: 0.7.4(hono@4.10.2)(zod@4.1.12)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -893,8 +893,8 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-validator@0.7.3':
-    resolution: {integrity: sha512-uYGdgVib3RlGD698WR5dVM0zB3UuPY5vHKXffGUbUh7r4xY+mFIhF3/v4AcQVLrU5CQdBso8BJr4wuVoCrjTuQ==}
+  '@hono/zod-validator@0.7.4':
+    resolution: {integrity: sha512-biKGn3BRJVaftZlIPMyK+HCe/UHAjJ6sH0UyXe3+v0OcgVr9xfImDROTJFLtn9e3XEEAHGZIM9U6evu85abm8Q==}
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.25.0 || ^4.0.0
@@ -4493,7 +4493,7 @@ snapshots:
     dependencies:
       hono: 4.10.2
 
-  '@hono/zod-validator@0.7.3(hono@4.10.2)(zod@4.1.12)':
+  '@hono/zod-validator@0.7.4(hono@4.10.2)(zod@4.1.12)':
     dependencies:
       hono: 4.10.2
       zod: 4.1.12
