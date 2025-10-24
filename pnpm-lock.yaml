@@ -45,8 +45,8 @@ importers:
         specifier: ^1.1.0
         version: 1.1.1(@logtape/logtape@1.1.1)
       '@sentry/core':
-        specifier: ^10.12.0
-        version: 10.17.0
+        specifier: ^10.21.0
+        version: 10.21.0
       '@sentry/node':
         specifier: ^10.12.0
         version: 10.17.0
@@ -1432,6 +1432,10 @@ packages:
 
   '@sentry/core@10.17.0':
     resolution: {integrity: sha512-UVIvxSzS0n5QbIDPyFf0WX9I77Of1bcr6a0sCEKfjhJGmGQ8mFWoWgR2gF4wcPw60XUrzbryCr79eOsIHLQ5cw==}
+    engines: {node: '>=18'}
+
+  '@sentry/core@10.21.0':
+    resolution: {integrity: sha512-/+gpOOb2Wr1UbW59WKqNAVVIqFz9FjtUJuPtVh4UanxGCfavMPaKpFzSlaEKJSKDkiCQgANP4O2y8Y5Bh3tvEA==}
     engines: {node: '>=18'}
 
   '@sentry/core@9.46.0':
@@ -5003,6 +5007,8 @@ snapshots:
     optional: true
 
   '@sentry/core@10.17.0': {}
+
+  '@sentry/core@10.21.0': {}
 
   '@sentry/core@9.46.0': {}
 
