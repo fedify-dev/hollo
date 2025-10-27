@@ -67,7 +67,7 @@
     "@biomejs/biome": "^2.2.5",
     "@dotenvx/dotenvx": "^1.48.4",
     "@reporters/github": "^1.11.0",
-    "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/fluent-ffmpeg": "^2.1.28",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^24.9.1",
     "@types/qrcode": "^1.5.6",
