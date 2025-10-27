@@ -70,7 +70,7 @@
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^24.9.1",
-    "@types/qrcode": "^1.5.5",
+    "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.7.1",
     "@vitest/coverage-v8": "3.1.4",
     "dotenv": "^17.2.3",
