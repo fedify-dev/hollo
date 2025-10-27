@@ -37,13 +37,13 @@ importers:
         version: 0.5.1
       '@logtape/file':
         specifier: ~1.1.0
-        version: 1.1.1(@logtape/logtape@1.1.1)
+        version: 1.1.1(@logtape/logtape@1.1.2)
       '@logtape/logtape':
-        specifier: ~1.1.1
-        version: 1.1.1
+        specifier: ~1.1.2
+        version: 1.1.2
       '@logtape/sentry':
         specifier: ^1.1.0
-        version: 1.1.1(@logtape/logtape@1.1.1)
+        version: 1.1.1(@logtape/logtape@1.1.2)
       '@sentry/core':
         specifier: ^10.21.0
         version: 10.21.0
@@ -1078,8 +1078,8 @@ packages:
     peerDependencies:
       '@logtape/logtape': ^1.1.1
 
-  '@logtape/logtape@1.1.1':
-    resolution: {integrity: sha512-/zpMuB2BZnL3LnBsy6PfFJp/4qP/60U9hE5j6eFwk25wBVtLpd7/bF3B1j7cnMD37R02fFyDyyHEmRSOz6+Qfg==}
+  '@logtape/logtape@1.1.2':
+    resolution: {integrity: sha512-4QXa/5cwt3+cx01C1xm8iqvEXxNZMDTTbT5AFGZnwPkn2WDAyA6UP2khWBZ7FctMnvQqW3fnJ96kgBJ4ahorHw==}
 
   '@logtape/sentry@1.1.1':
     resolution: {integrity: sha512-tAKUC9DSJ4HDDD95ZOvnpLVoMFlwBW2spw6bC6+M3bJOqBL6krk5fI5X/4jeZDXUEEZQEERBxl/fUriLOu8AYw==}
@@ -4478,7 +4478,7 @@ snapshots:
       '@cfworker/json-schema': 4.1.1
       '@hugoalh/http-header-link': 1.0.3
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 1.1.1
+      '@logtape/logtape': 1.1.2
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.28.0
@@ -4509,7 +4509,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 1.8.12(web-streams-polyfill@3.3.3)
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 1.1.1
+      '@logtape/logtape': 1.1.2
       postgres: 3.4.7
 
   '@hexagon/base64@2.0.4': {}
@@ -4651,15 +4651,15 @@ snapshots:
     dependencies:
       jsbi: 4.3.0
 
-  '@logtape/file@1.1.1(@logtape/logtape@1.1.1)':
+  '@logtape/file@1.1.1(@logtape/logtape@1.1.2)':
     dependencies:
-      '@logtape/logtape': 1.1.1
+      '@logtape/logtape': 1.1.2
 
-  '@logtape/logtape@1.1.1': {}
+  '@logtape/logtape@1.1.2': {}
 
-  '@logtape/sentry@1.1.1(@logtape/logtape@1.1.1)':
+  '@logtape/sentry@1.1.1(@logtape/logtape@1.1.2)':
     dependencies:
-      '@logtape/logtape': 1.1.1
+      '@logtape/logtape': 1.1.2
       '@sentry/core': 9.46.0
 
   '@lukeed/ms@2.0.2': {}
