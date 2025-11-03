@@ -28,10 +28,10 @@ importers:
         version: 2.0.4
       '@hono/node-server':
         specifier: ^1.19.6
-        version: 1.19.6(hono@4.10.3)
+        version: 1.19.6(hono@4.10.4)
       '@hono/zod-validator':
         specifier: ^0.7.4
-        version: 0.7.4(hono@4.10.3)(zod@4.1.12)
+        version: 0.7.4(hono@4.10.4)(zod@4.1.12)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -84,8 +84,8 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0(@aws-sdk/client-s3@3.713.0)(@aws-sdk/s3-request-presigner@3.713.0)
       hono:
-        specifier: ^4.10.3
-        version: 4.10.3
+        specifier: ^4.10.4
+        version: 4.10.4
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.5
@@ -1905,11 +1905,11 @@ packages:
   '@types/node@20.12.14':
     resolution: {integrity: sha512-scnD59RpYD91xngrQQLGkE+6UrHUPzeKZWhhjBSa3HSkwjbQc38+q3RoIVEwxQGRw3M+j5hpNAM+lgV3cVormg==}
 
+  '@types/node@24.10.0':
+    resolution: {integrity: sha512-qzQZRBqkFsYyaSWXuEHc2WR9c0a0CXwiE5FWUvn7ZM+vdy1uZLfCunD38UzhuB7YN/J11ndbDBcTmOdxJo9Q7A==}
+
   '@types/node@24.9.1':
     resolution: {integrity: sha512-QoiaXANRkSXK6p0Duvt56W208du4P9Uye9hWLWgGMDTEoKPhuenzNcC4vGUmrNkiOKTlIrBoyNQYNpSwfEZXSg==}
-
-  '@types/node@24.9.2':
-    resolution: {integrity: sha512-uWN8YqxXxqFMX2RqGOrumsKeti4LlmIMIyV0lgut4jx7KQBcBiW6vkDtIBvHnHIquwNfJhk8v2OtmO8zXWHfPA==}
 
   '@types/pg-pool@2.0.6':
     resolution: {integrity: sha512-TaAUE5rq2VQYxab5Ts7WZhKNmuN78Q6PiFonTDdpbx8a1H0M1vhy3rhiMjl+e2iHmogyMw7jZF4FrE6eJUy5HQ==}
@@ -2478,8 +2478,8 @@ packages:
   hast-util-whitespace@3.0.0:
     resolution: {integrity: sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw==}
 
-  hono@4.10.3:
-    resolution: {integrity: sha512-2LOYWUbnhdxdL8MNbNg9XZig6k+cZXm5IjHn2Aviv7honhBMOHb+jxrKIeJRZJRmn+htUCKhaicxwXuUDlchRA==}
+  hono@4.10.4:
+    resolution: {integrity: sha512-YG/fo7zlU3KwrBL5vDpWKisLYiM+nVstBQqfr7gCPbSYURnNEP9BDxEMz8KfsDR9JX0lJWDRNc6nXX31v7ZEyg==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -4518,13 +4518,13 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@1.19.6(hono@4.10.3)':
+  '@hono/node-server@1.19.6(hono@4.10.4)':
     dependencies:
-      hono: 4.10.3
+      hono: 4.10.4
 
-  '@hono/zod-validator@0.7.4(hono@4.10.3)(zod@4.1.12)':
+  '@hono/zod-validator@0.7.4(hono@4.10.4)(zod@4.1.12)':
     dependencies:
-      hono: 4.10.3
+      hono: 4.10.4
       zod: 4.1.12
 
   '@hugoalh/http-header-link@1.0.3':
@@ -5830,14 +5830,14 @@ snapshots:
       undici-types: 5.26.5
     optional: true
 
-  '@types/node@24.9.1':
-    dependencies:
-      undici-types: 7.16.0
-
-  '@types/node@24.9.2':
+  '@types/node@24.10.0':
     dependencies:
       undici-types: 7.16.0
     optional: true
+
+  '@types/node@24.9.1':
+    dependencies:
+      undici-types: 7.16.0
 
   '@types/pg-pool@2.0.6':
     dependencies:
@@ -5867,7 +5867,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 24.9.2
+      '@types/node': 24.10.0
     optional: true
 
   '@ungap/structured-clone@1.3.0': {}
@@ -6366,7 +6366,7 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.4
 
-  hono@4.10.3: {}
+  hono@4.10.4: {}
 
   html-escaper@2.0.2: {}
 
