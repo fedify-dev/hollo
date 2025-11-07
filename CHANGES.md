@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.6.15
 --------------
 
-To be released.
+Released on November 7, 2025.
 
  -  Significantly improved `/nodeinfo/2.1` endpoint performance by optimizing
     database queries and adding appropriate indexes. The endpoint now responds
