@@ -458,6 +458,7 @@ export const posts = pgTable(
     index().on(table.accountId),
     index().on(table.accountId, table.sharingId),
     index().on(table.replyTargetId),
+    index().on(table.accountId, table.replyTargetId),
     index().on(table.visibility, table.accountId),
     index()
       .on(table.visibility, table.accountId, table.sharingId)

@@ -27,14 +27,14 @@ federation.setNodeInfoDispatcher("/nodeinfo/2.1", async (_ctx) => {
     .rightJoin(posts, eq(accountOwners.id, posts.accountId))
     .where(gt(posts.updated, sql`CURRENT_TIMESTAMP - INTERVAL '6 months'`));
   const [{ localPosts }] = await db
-    .select({ localPosts: countDistinct(posts.id) })
+    .select({ localPosts: count(posts.id) })
     .from(posts)
-    .rightJoin(accountOwners, eq(posts.accountId, accountOwners.id))
+    .innerJoin(accountOwners, eq(posts.accountId, accountOwners.id))
     .where(isNull(posts.replyTargetId));
   const [{ localComments }] = await db
-    .select({ localComments: countDistinct(posts.id) })
+    .select({ localComments: count(posts.id) })
     .from(posts)
-    .rightJoin(accountOwners, eq(posts.accountId, accountOwners.id))
+    .innerJoin(accountOwners, eq(posts.accountId, accountOwners.id))
     .where(isNotNull(posts.replyTargetId));
   return {
     software: {

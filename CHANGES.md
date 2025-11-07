@@ -32,6 +32,20 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.15
+--------------
+
+Released on November 7, 2025.
+
+ -  Significantly improved `/nodeinfo/2.1` endpoint performance by optimizing
+    database queries and adding appropriate indexes. The endpoint now responds
+    in under 1 second even with millions of federated posts, down from 5–15
+    seconds previously. This prevents load balancer health check failures and
+    external service timeouts.  [[#282]]
+
+[#282]: https://github.com/fedify-dev/hollo/issues/282
+
+
 Version 0.6.14
 --------------
 
