@@ -1,0 +1,1 @@
+CREATE INDEX "posts_actor_id_reply_target_id_index" ON "posts" USING btree ("actor_id","reply_target_id");
