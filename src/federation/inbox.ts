@@ -143,7 +143,7 @@ export async function onUnfollowed(
   ctx: InboxContext<void>,
   undo: Undo,
 ): Promise<void> {
-  const object = await undo.getObject();
+  const object = await undo.getObject({ crossOrigin: "trust" });
   if (!(object instanceof Follow)) return;
   if (object.actorId?.href !== undo.actorId?.href || object.id == null) return;
   const actor = await undo.getActor();
@@ -191,7 +191,7 @@ export async function onFollowAccepted(
       return;
     }
   }
-  const object = await accept.getObject();
+  const object = await accept.getObject({ crossOrigin: "trust" });
   if (object instanceof Follow) {
     if (object.actorId == null) return;
     await db
@@ -239,7 +239,7 @@ export async function onFollowRejected(
       return;
     }
   }
-  const object = await reject.getObject();
+  const object = await reject.getObject({ crossOrigin: "trust" });
   if (object instanceof Follow) {
     if (object.actorId == null) return;
     await db
@@ -302,7 +302,7 @@ export async function onUnblocked(
   ctx: InboxContext<void>,
   undo: Undo,
 ): Promise<void> {
-  const object = await undo.getObject();
+  const object = await undo.getObject({ crossOrigin: "trust" });
   if (
     !(object instanceof Block) ||
     undo.actorId?.href !== object.actorId?.href
@@ -445,7 +445,7 @@ export async function onPostUnshared(
   ctx: InboxContext<void>,
   undo: Undo,
 ): Promise<void> {
-  const object = await undo.getObject();
+  const object = await undo.getObject({ crossOrigin: "trust" });
   if (!(object instanceof Announce)) return;
   if (object.actorId?.href !== undo.actorId?.href) return;
   const sharer = object.actorId;
@@ -585,7 +585,7 @@ export async function onUnliked(
   ctx: InboxContext<void>,
   undo: Undo,
 ): Promise<void> {
-  const object = await undo.getObject();
+  const object = await undo.getObject({ crossOrigin: "trust" });
   if (
     !(object instanceof Like) ||
     object.actorId?.href !== undo.actorId?.href
@@ -694,7 +694,7 @@ export async function onEmojiReactionRemoved(
   ctx: InboxContext<void>,
   undo: Undo,
 ): Promise<void> {
-  const object = await undo.getObject();
+  const object = await undo.getObject({ crossOrigin: "trust" });
   if (
     !(object instanceof Like || object instanceof EmojiReact) ||
     object.actorId?.href !== undo.actorId?.href ||

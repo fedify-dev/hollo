@@ -12,8 +12,8 @@ importers:
         specifier: ^3.927.0
         version: 3.927.0
       '@fedify/fedify':
-        specifier: ~1.8.12
-        version: 1.8.12(web-streams-polyfill@3.3.3)
+        specifier: ~1.9.1
+        version: 1.9.1(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -21,8 +21,8 @@ importers:
         specifier: ~0.3.0
         version: 0.3.0
       '@fedify/postgres':
-        specifier: ~1.8.12
-        version: 1.8.12(@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3))(postgres@3.4.7)
+        specifier: ~1.9.1
+        version: 1.9.1(@fedify/fedify@1.9.1(web-streams-polyfill@3.3.3))(postgres@3.4.7)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -874,8 +874,8 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@fedify/fedify@1.8.12':
-    resolution: {integrity: sha512-bdQIfXDtfzvuiftNarOxpd1VPa09lLzDj0bGXktBFEKKM/C5D0DQTSUr+1NHTP8PFgfIqhcCb93csywP9CsaOA==}
+  '@fedify/fedify@1.9.1':
+    resolution: {integrity: sha512-MvR8E4hQGxkWPOhQfQeGVPPPJ3jC+crIin7WOA4O6HjAk1rPT8H/9rALuMEhoyDbly3xKVBi11Qo9XLHHGiUiA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -884,10 +884,10 @@ packages:
   '@fedify/markdown-it-mention@0.3.0':
     resolution: {integrity: sha512-4uVELsxh9AW0hzC6BVFqN59YWj6M/p6AZpwb/CQDjvcinfHyQp2yYtGDV4fBgsE5WC/ukpvU1pBNH20ts8TK4w==}
 
-  '@fedify/postgres@1.8.12':
-    resolution: {integrity: sha512-TFKNbPDWecV4n3h39G7TXKFfBt+Zbr/dOd0pYjwXfEBLlgc7cTIcsVLyHYZ8g6KonKJj/MPvCWWJJ7VeOx5ttw==}
+  '@fedify/postgres@1.9.1':
+    resolution: {integrity: sha512-3XVZElM9uJLW33IgD1cKD6pHOHRc5nxhDKER3ElR1fX2D5cWvegtkGsI4M91W9Ym5Aey5uogssvSHvH1e4sp3g==}
     peerDependencies:
-      '@fedify/fedify': ^1.8.12
+      '@fedify/fedify': ^1.9.1
       postgres: ^3.4.7
 
   '@hexagon/base64@2.0.4':
@@ -904,14 +904,6 @@ packages:
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.25.0 || ^4.0.0
-
-  '@hugoalh/http-header-link@1.0.3':
-    resolution: {integrity: sha512-x4jzzKSzZQY115H/GxUWaAHzT5eqLXt99uSKY7+0O/h3XrV248+CkZA7cA274QahXzWkGQYYug/AF6QUkTnLEw==}
-    engines: {node: '>=16.13.0'}
-
-  '@hugoalh/is-string-singleline@1.0.4':
-    resolution: {integrity: sha512-yXIwBXb97DEw1zENgEv8OjVsgXx7kcrXzoFVa4VM9y1H29SaOwD1C0OursnZGqCEw0K2IrmY/CMcoRdehG+Hkg==}
-    engines: {node: '>=16.13.0'}
 
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
@@ -1294,10 +1286,6 @@ packages:
     engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': '>=1.3.0 <1.10.0'
-
-  '@opentelemetry/semantic-conventions@1.28.0':
-    resolution: {integrity: sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA==}
-    engines: {node: '>=14'}
 
   '@opentelemetry/semantic-conventions@1.37.0':
     resolution: {integrity: sha512-JD6DerIKdJGmRp4jQyX5FlrQjA4tjOw1cvfsPAZXfOOEErMUHjPcPSICS+6WnM0nB0efSFARh0KAZss+bvExOA==}
@@ -3108,8 +3096,8 @@ packages:
   unist-util-visit@5.0.0:
     resolution: {integrity: sha512-MR04uvD+07cwl/yhVuVWAtw+3GOR/knlL55Nd/wAdblk27GCVt3lqpTivy/tkJcZoNPzTwS1Y+KMojlLDhoTzg==}
 
-  uri-template-router@0.0.17:
-    resolution: {integrity: sha512-5h2I/eSN+XFRAFaSR72KTFWg5rf8GB6Ur5+yWHjtwEqmn6cfZqoWsoWTh6NhxW8pIlFq144G2J23OCg3CeAaSg==}
+  uri-template-router@1.0.0:
+    resolution: {integrity: sha512-WKcL9ZSIEhHE3f5P4Z47Tf0nWbcgV1ISb/OBuF8YKEYi0SQOyTLCzM6B/gAKFWZhRhqA+C/Ks8UXe2qU5W0FVg==}
 
   url-template@3.1.1:
     resolution: {integrity: sha512-4oszoaEKE/mQOtAmdMWqIRHmkxWkUZMnXFnjQ5i01CuRSK3uluxcH1MRVVVWmhlnzT1SCDfKxxficm2G37qzCA==}
@@ -4474,15 +4462,14 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3)':
+  '@fedify/fedify@1.9.1(web-streams-polyfill@3.3.3)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
-      '@hugoalh/http-header-link': 1.0.3
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 1.2.0
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/semantic-conventions': 1.28.0
+      '@opentelemetry/semantic-conventions': 1.37.0
       '@phensley/language-tag': 1.9.2
       asn1js: 3.0.5
       byte-encodings: 1.0.11
@@ -4492,7 +4479,7 @@ snapshots:
       multicodec: 3.2.1
       pkijs: 3.2.4
       structured-field-values: 2.0.4
-      uri-template-router: 0.0.17
+      uri-template-router: 1.0.0
       url-template: 3.1.1
       urlpattern-polyfill: 10.1.0
     transitivePeerDependencies:
@@ -4506,9 +4493,9 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/postgres@1.8.12(@fedify/fedify@1.8.12(web-streams-polyfill@3.3.3))(postgres@3.4.7)':
+  '@fedify/postgres@1.9.1(@fedify/fedify@1.9.1(web-streams-polyfill@3.3.3))(postgres@3.4.7)':
     dependencies:
-      '@fedify/fedify': 1.8.12(web-streams-polyfill@3.3.3)
+      '@fedify/fedify': 1.9.1(web-streams-polyfill@3.3.3)
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 1.2.0
       postgres: 3.4.7
@@ -4523,12 +4510,6 @@ snapshots:
     dependencies:
       hono: 4.10.4
       zod: 4.1.12
-
-  '@hugoalh/http-header-link@1.0.3':
-    dependencies:
-      '@hugoalh/is-string-singleline': 1.0.4
-
-  '@hugoalh/is-string-singleline@1.0.4': {}
 
   '@humanwhocodes/retry@0.4.3': {}
 
@@ -4924,8 +4905,6 @@ snapshots:
       '@opentelemetry/core': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.37.0
-
-  '@opentelemetry/semantic-conventions@1.28.0': {}
 
   '@opentelemetry/semantic-conventions@1.37.0': {}
 
@@ -7003,7 +6982,7 @@ snapshots:
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
 
-  uri-template-router@0.0.17: {}
+  uri-template-router@1.0.0: {}
 
   url-template@3.1.1: {}
 

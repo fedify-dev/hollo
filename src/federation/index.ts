@@ -112,7 +112,7 @@ federation
   .on(Block, onBlocked)
   .on(Move, onAccountMoved)
   .on(Undo, async (ctx, undo) => {
-    const object = await undo.getObject();
+    const object = await undo.getObject({ crossOrigin: "trust" });
     if (
       object instanceof Activity &&
       object.actorId?.href !== undo.actorId?.href

@@ -23,7 +23,7 @@ To be released.
     `in_reply_to_id`, and other optional parameters, improving
     compatibility with Mastodon clients.  [[#177], [#179] by Lee ByeongJun]
 
- -  Upgraded Fedify to 1.8.11.
+ -  Upgraded Fedify to 1.9.1.
 
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
