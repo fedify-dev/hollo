@@ -32,6 +32,18 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.16
+--------------
+
+Released on November 12, 2025.
+
+ -  Fixed search functionality not returning any results when searching for
+    post content.
+
+ -  Fixed search results including shared posts (reposts/reblogs). Search now
+    shows only original posts and replies, excluding shares.
+
+
 Version 0.6.15
 --------------
 
