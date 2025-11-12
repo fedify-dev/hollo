@@ -6,6 +6,12 @@ Version 0.6.16
 
 To be released.
 
+ -  Fixed search functionality not returning any results when searching for
+    post content.
+
+ -  Fixed search results including shared posts (reposts/reblogs). Search now
+    shows only original posts and replies, excluding shares.
+
 
 Version 0.6.15
 --------------

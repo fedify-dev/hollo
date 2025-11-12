@@ -7,7 +7,17 @@ import {
 } from "@fedify/fedify";
 import { zValidator } from "@hono/zod-validator";
 import { getLogger } from "@logtape/logtape";
-import { and, desc, eq, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db } from "../../db";
@@ -79,6 +89,7 @@ app.get(
         ? await db.query.posts.findMany({
             where: and(
               or(eq(posts.iri, q), eq(posts.url, q)),
+              isNull(posts.sharingId),
               lte(posts.published, sql`NOW() + INTERVAL '5 minutes'`),
             ),
             with: getPostRelations(owner.id),
@@ -135,7 +146,10 @@ app.get(
       }
     }
     if (query.type == null || query.type === "statuses") {
-      let filter = ilike(posts.content, `%${q}%`);
+      let filter = and(
+        ilike(posts.contentHtml, `%${q}%`),
+        isNull(posts.sharingId),
+      )!;
       if (query.account_id != null) {
         filter = and(filter, eq(posts.accountId, query.account_id))!;
       }
