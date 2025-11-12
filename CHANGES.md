@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.6.16
 --------------
 
-To be released.
+Released on November 12, 2025.
 
  -  Fixed search functionality not returning any results when searching for
     post content.
