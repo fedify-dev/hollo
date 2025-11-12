@@ -60,7 +60,6 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
   const authorNameHtml = renderCustomEmojis(account.name, account.emojis);
   const authorUrl = account.url ?? account.iri;
   const authorName = (
-    // biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected
     <a dangerouslySetInnerHTML={{ __html: authorNameHtml }} href={authorUrl} />
   );
   return (
@@ -229,7 +228,6 @@ function PostContent({ post }: PostContentProps) {
     <>
       {post.contentHtml && (
         <div
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: xss
           dangerouslySetInnerHTML={{ __html: contentHtml ?? "" }}
           lang={post.language ?? undefined}
         />

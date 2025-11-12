@@ -33,13 +33,11 @@ function AccountItem({ accountOwner: { account } }: AccountItemProps) {
       <header>
         <hgroup>
           <h2>
-            {/* biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected */}
             <a dangerouslySetInnerHTML={{ __html: nameHtml }} href={href} />
           </h2>
           <p style="user-select: all;">{account.handle}</p>
         </hgroup>
       </header>
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected */}
       <div dangerouslySetInnerHTML={{ __html: bioHtml }} />
       <p>
         {account.published ? (

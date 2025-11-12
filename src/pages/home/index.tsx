@@ -55,15 +55,11 @@ homePage.get("/", async (c) => {
                 </a>
               )}
               <h3>
-                {/* biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected */}
                 <a dangerouslySetInnerHTML={{ __html: nameHtml }} href={url} />
               </h3>
               <p style="user-select: all;">{owner.account.handle}</p>
             </hgroup>
-            <div
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: safely escaped
-              dangerouslySetInnerHTML={{ __html: bioHtml }}
-            />
+            <div dangerouslySetInnerHTML={{ __html: bioHtml }} />
           </article>
         );
       })}

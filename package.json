@@ -64,7 +64,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.2",
+    "@biomejs/biome": "^2.3.5",
     "@dotenvx/dotenvx": "^1.48.4",
     "@reporters/github": "^1.11.0",
     "@types/fluent-ffmpeg": "^2.1.28",

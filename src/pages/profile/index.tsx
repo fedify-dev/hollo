@@ -361,7 +361,6 @@ profile.get("/atom.xml", async (c) => {
         return (
           <entry>
             <id>urn:uuid:{post.id}</id>
-            {/* biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected */}
             <title dangerouslySetInnerHTML={{ __html: title }} />
             <link
               rel="alternate"

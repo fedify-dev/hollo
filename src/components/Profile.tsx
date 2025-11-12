@@ -31,7 +31,6 @@ export function Profile({ accountOwner }: ProfileProps) {
           />
         )}
         <h1>
-          {/* biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected */}
           <a dangerouslySetInnerHTML={{ __html: nameHtml }} href={url} />
         </h1>
         <p>
@@ -49,7 +48,6 @@ export function Profile({ accountOwner }: ProfileProps) {
             : `${account.followersCount} followers`}
         </p>
       </hgroup>
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: no xss */}
       <div dangerouslySetInnerHTML={{ __html: bioHtml }} />
       {account.fieldHtmls && (
         <div class="overflow-auto">
@@ -64,10 +62,7 @@ export function Profile({ accountOwner }: ProfileProps) {
             <tbody>
               <tr>
                 {Object.values(account.fieldHtmls).map((value) => (
-                  <td
-                    // biome-ignore lint/security/noDangerouslySetInnerHtml: no xss
-                    dangerouslySetInnerHTML={{ __html: value }}
-                  />
+                  <td dangerouslySetInnerHTML={{ __html: value }} />
                 ))}
               </tr>
             </tbody>

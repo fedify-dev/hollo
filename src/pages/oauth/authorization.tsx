@@ -43,7 +43,6 @@ export function AuthorizationPage(props: AuthorizationPageProps) {
                 value={accountOwner.id}
                 checked={i === 0}
               />
-              {/* biome-ignore lint/security/noDangerouslySetInnerHtml: xss protected */}
               <strong dangerouslySetInnerHTML={{ __html: accountName }} />
               <p style="margin-left: 1.75em; margin-top: 0.25em;">
                 <small>{accountOwner.account.handle}</small>
