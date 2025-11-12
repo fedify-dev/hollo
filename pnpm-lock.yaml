@@ -36,14 +36,14 @@ importers:
         specifier: ^0.5.0
         version: 0.5.1
       '@logtape/file':
-        specifier: ~1.1.2
-        version: 1.1.2(@logtape/logtape@1.1.2)
+        specifier: ~1.2.0
+        version: 1.2.0(@logtape/logtape@1.2.0)
       '@logtape/logtape':
-        specifier: ~1.1.2
-        version: 1.1.2
+        specifier: ~1.2.0
+        version: 1.2.0
       '@logtape/sentry':
-        specifier: ^1.1.2
-        version: 1.1.2(@logtape/logtape@1.1.2)
+        specifier: ^1.2.0
+        version: 1.2.0(@logtape/logtape@1.2.0)
       '@sentry/core':
         specifier: ^10.22.0
         version: 10.22.0
@@ -1073,18 +1073,18 @@ packages:
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
 
-  '@logtape/file@1.1.2':
-    resolution: {integrity: sha512-8+uyG0H03zJm5vm26dZvQnEYa6XZOpqvZH59vlwPh+a1Qqe8XuvR5nzRjh8ZcjJwiO6PNuCCPcSRbUclg1tgIg==}
+  '@logtape/file@1.2.0':
+    resolution: {integrity: sha512-pqPQxE1V3oNOLEAfK+yhgOnHAKCFY77zwKlOTuGlbbck+MXj2osk0WFGpE0PHlSU8xvcQMwrz5VjS156l2DeuA==}
     peerDependencies:
-      '@logtape/logtape': ^1.1.2
+      '@logtape/logtape': ^1.2.0
 
-  '@logtape/logtape@1.1.2':
-    resolution: {integrity: sha512-4QXa/5cwt3+cx01C1xm8iqvEXxNZMDTTbT5AFGZnwPkn2WDAyA6UP2khWBZ7FctMnvQqW3fnJ96kgBJ4ahorHw==}
+  '@logtape/logtape@1.2.0':
+    resolution: {integrity: sha512-L7aXBYrxpSUQcsZm/hCuh5REN+dckxmPmH7x7eCROiLAHUSPzc7AhbsxsZLDsXMM4ggtbmS3sUQVa+blfF4sZA==}
 
-  '@logtape/sentry@1.1.2':
-    resolution: {integrity: sha512-Hmt1traui55R6BvDh8Ug4yXUJVJst9guW3TyA5CyFjGUIvgxmV9uukN6q0rMVfjB1YGxMUPrRYI8ddtYu5RJDg==}
+  '@logtape/sentry@1.2.0':
+    resolution: {integrity: sha512-mSzInOz+2islcUuqmnVVk1pjXRpNGP58v6H012s44GBkJeyaEYAEF8IqZ5d2UgeZ25Tne8nc0HZkhYAAStQqdw==}
     peerDependencies:
-      '@logtape/logtape': ^1.1.2
+      '@logtape/logtape': ^1.2.0
 
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
@@ -4479,7 +4479,7 @@ snapshots:
       '@cfworker/json-schema': 4.1.1
       '@hugoalh/http-header-link': 1.0.3
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 1.1.2
+      '@logtape/logtape': 1.2.0
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.28.0
@@ -4510,7 +4510,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 1.8.12(web-streams-polyfill@3.3.3)
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 1.1.2
+      '@logtape/logtape': 1.2.0
       postgres: 3.4.7
 
   '@hexagon/base64@2.0.4': {}
@@ -4652,15 +4652,15 @@ snapshots:
     dependencies:
       jsbi: 4.3.0
 
-  '@logtape/file@1.1.2(@logtape/logtape@1.1.2)':
+  '@logtape/file@1.2.0(@logtape/logtape@1.2.0)':
     dependencies:
-      '@logtape/logtape': 1.1.2
+      '@logtape/logtape': 1.2.0
 
-  '@logtape/logtape@1.1.2': {}
+  '@logtape/logtape@1.2.0': {}
 
-  '@logtape/sentry@1.1.2(@logtape/logtape@1.1.2)':
+  '@logtape/sentry@1.2.0(@logtape/logtape@1.2.0)':
     dependencies:
-      '@logtape/logtape': 1.1.2
+      '@logtape/logtape': 1.2.0
       '@sentry/core': 9.46.0
 
   '@lukeed/ms@2.0.2': {}
