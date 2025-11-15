@@ -6,6 +6,19 @@ Version 0.6.17
 
 To be released.
 
+ -  Significantly improved `/api/v1/notifications` endpoint performance by
+    optimizing database queries and restructuring data loading strategy.
+    The endpoint now responds in under 1.6 seconds, down from over 2.5 seconds
+    previously (approximately 40% improvement). Key optimizations include:
+
+     -  Pre-fetching muted and blocked account IDs to eliminate correlated
+        subqueries in notification type queries.
+     -  Separating post data loading into multiple targeted queries instead of
+        using deeply nested lateral joins, reducing query complexity and
+        execution time.
+     -  Adding strategic database indexes on `follows`, `mutes`, `likes`, and
+        `reactions` tables to improve query performance.
+
 
 Version 0.6.16
 --------------
