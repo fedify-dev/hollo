@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.6.18
 --------------
 
-To be released.
+Released on November 15, 2025.
 
  -  Reverted the `/api/v1/notifications` endpoint query optimization from 0.6.17
     due to a regression that caused server errors when serializing reactions
