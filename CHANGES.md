@@ -23,6 +23,12 @@ To be released.
      -  Poll expiry notifications are queried dynamically on-demand since they
         cannot be pre-generated without background job scheduling.
 
+ -  Enabled gzip/deflate compression for all API responses, reducing response
+    sizes by 70-92% and improving overall API performance. For example,
+    `/api/v1/notifications` responses are now compressed from 767KB to 58KB,
+    `/api/v1/timelines/home` from 91KB to 14KB, resulting in faster load times
+    and reduced bandwidth usage.
+
  -  Fixed `POST /api/v1/statuses` and `PUT /api/v1/statuses/:id` endpoints
     rejecting FormData requests.  These endpoints now properly accept both
     JSON and FormData content types, improving compatibility with Mastodon
