@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.6.17
 --------------
 
-To be released.
+Released on November 15, 2025.
 
  -  Significantly improved `/api/v1/notifications` endpoint performance by
     optimizing database queries and restructuring data loading strategy.
