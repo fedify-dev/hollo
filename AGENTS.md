@@ -77,6 +77,65 @@ Hollo is a federated single-user microblogging software powered by [Fedify](http
 - **Testing**: `pnpm test` - Runs automated tests using Vitest
 - **Formatting**: `pnpm biome format --fix` - Formats code using Biome
 
+### Database Migrations
+
+Hollo uses Drizzle ORM for database schema management. Migration files are stored in the `drizzle/` directory and are automatically numbered sequentially.
+
+#### Creating a New Migration
+
+When you modify the database schema in `src/schema.ts`, generate a migration file:
+
+```bash
+pnpm migrate:generate
+```
+
+This command:
+- Compares the current schema (`src/schema.ts`) with the database state
+- Generates a new SQL migration file in `drizzle/` directory with auto-incremented number
+- Uses PostgreSQL dialect (configured in `drizzle.config.ts`)
+
+**Optional flags:**
+- `--name <migration_name>` - Specify a custom migration file name
+- `--custom` - Create an empty migration file for custom SQL
+- `--config <path>` - Use a different Drizzle config file (default: `drizzle.config.ts`)
+
+**Example:**
+```bash
+# Generate migration with custom name
+pnpm migrate:generate -- --name add_user_preferences
+
+# Create empty migration for custom SQL
+pnpm migrate:generate -- --custom --name custom_indexes
+```
+
+#### Applying Migrations
+
+To apply pending migrations to the database:
+
+```bash
+pnpm migrate
+```
+
+This command:
+- Reads migration files from `drizzle/` directory
+- Applies any pending migrations to the database specified in `DATABASE_URL` environment variable
+- Tracks applied migrations in the database
+
+**For testing environment:**
+```bash
+pnpm migrate:test
+```
+
+This applies migrations using the test database configuration from `.env.test` file.
+
+**Important Notes:**
+- Always run `pnpm migrate` before starting the development server or running tests
+- The `pnpm dev` and `pnpm prod` commands automatically run migrations before starting the server
+- The `pnpm test` command automatically runs `pnpm migrate:test` before running tests
+- Ensure `DATABASE_URL` environment variable is properly set in `.env` file
+- Never edit existing migration files after they've been applied to production
+- Migration files are numbered sequentially (e.g., `0000_init.sql`, `0001_accounts.sql`)
+
 ## Important Notes
 
 1. **Single-User Focus**: Hollo is designed as a single-user platform, so multi-user logic is not needed
