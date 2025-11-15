@@ -165,6 +165,148 @@ export function getPostRelations(ownerId: Uuid | undefined | null) {
   } as const;
 }
 
+// Simplified version for notifications - avoids deep nesting to prevent N+1 queries
+export function getNotificationPostRelations(ownerId: Uuid | undefined | null) {
+  return {
+    account: { with: { successor: true } },
+    application: true,
+    replyTarget: true,
+    // Simplified sharing - only load basic info without deep nesting
+    sharing: {
+      with: {
+        account: { with: { successor: true } },
+        application: true,
+        replyTarget: true,
+        quoteTarget: {
+          with: {
+            account: { with: { successor: true } },
+            application: true,
+            replyTarget: true,
+            media: true,
+            poll: {
+              with: {
+                options: { orderBy: pollOptions.index },
+                votes: {
+                  where:
+                    ownerId == null
+                      ? sql`false`
+                      : eq(pollVotes.accountId, ownerId),
+                },
+              },
+            },
+            mentions: {
+              with: { account: { with: { owner: true, successor: true } } },
+            },
+            likes: {
+              where:
+                ownerId == null ? sql`false` : eq(likes.accountId, ownerId),
+            },
+            reactions: { with: { account: { with: { successor: true } } } },
+            shares: {
+              where:
+                ownerId == null ? sql`false` : eq(posts.accountId, ownerId),
+            },
+            bookmarks: {
+              where:
+                ownerId == null
+                  ? sql`false`
+                  : eq(bookmarks.accountOwnerId, ownerId),
+            },
+            pin: true,
+          },
+        },
+        media: true,
+        poll: {
+          with: {
+            options: { orderBy: pollOptions.index },
+            votes: {
+              where:
+                ownerId == null ? sql`false` : eq(pollVotes.accountId, ownerId),
+            },
+          },
+        },
+        mentions: {
+          with: { account: { with: { owner: true, successor: true } } },
+        },
+        likes: {
+          where: ownerId == null ? sql`false` : eq(likes.accountId, ownerId),
+        },
+        reactions: { with: { account: { with: { successor: true } } } },
+        shares: {
+          where: ownerId == null ? sql`false` : eq(posts.accountId, ownerId),
+        },
+        bookmarks: {
+          where:
+            ownerId == null
+              ? sql`false`
+              : eq(bookmarks.accountOwnerId, ownerId),
+        },
+        pin: true,
+      },
+    },
+    // Simplified quoteTarget - only load basic info
+    quoteTarget: {
+      with: {
+        account: { with: { successor: true } },
+        application: true,
+        replyTarget: true,
+        media: true,
+        poll: {
+          with: {
+            options: { orderBy: pollOptions.index },
+            votes: {
+              where:
+                ownerId == null ? sql`false` : eq(pollVotes.accountId, ownerId),
+            },
+          },
+        },
+        mentions: {
+          with: { account: { with: { owner: true, successor: true } } },
+        },
+        likes: {
+          where: ownerId == null ? sql`false` : eq(likes.accountId, ownerId),
+        },
+        reactions: { with: { account: { with: { successor: true } } } },
+        shares: {
+          where: ownerId == null ? sql`false` : eq(posts.accountId, ownerId),
+        },
+        bookmarks: {
+          where:
+            ownerId == null
+              ? sql`false`
+              : eq(bookmarks.accountOwnerId, ownerId),
+        },
+        pin: true,
+      },
+    },
+    media: true,
+    poll: {
+      with: {
+        options: { orderBy: pollOptions.index },
+        votes: {
+          where:
+            ownerId == null ? sql`false` : eq(pollVotes.accountId, ownerId),
+        },
+      },
+    },
+    mentions: {
+      with: { account: { with: { owner: true, successor: true } } },
+    },
+    likes: {
+      where: ownerId == null ? sql`false` : eq(likes.accountId, ownerId),
+    },
+    reactions: { with: { account: { with: { successor: true } } } },
+    shares: {
+      where: ownerId == null ? sql`false` : eq(posts.accountId, ownerId),
+    },
+    bookmarks: {
+      where:
+        ownerId == null ? sql`false` : eq(bookmarks.accountOwnerId, ownerId),
+    },
+    pin: true,
+  } as const;
+}
+
 export function serializePost(
   post: Post & {
     account: Account & { successor: Account | null };

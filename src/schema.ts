@@ -242,6 +242,10 @@ export const follows = pgTable(
   (table) => [
     primaryKey({ columns: [table.followingId, table.followerId] }),
     check("ck_follows_self", sql`${table.followingId} != ${table.followerId}`),
+    index()
+      .on(table.followingId, table.approved)
+      .where(isNotNull(table.approved)),
+    index().on(table.followingId, table.created),
   ],
 );
 
@@ -727,6 +731,7 @@ export const likes = pgTable(
   (table) => [
     primaryKey({ columns: [table.postId, table.accountId] }),
     index().on(table.accountId, table.postId),
+    index().on(table.created),
   ],
 );
 
@@ -766,6 +771,7 @@ export const reactions = pgTable(
     primaryKey({ columns: [table.postId, table.accountId, table.emoji] }),
     index().on(table.postId),
     index().on(table.postId, table.accountId),
+    index().on(table.created),
   ],
 );
 
@@ -964,6 +970,7 @@ export const mutes = pgTable(
       table.accountId,
       table.mutedAccountId,
     ),
+    index().on(table.accountId),
   ],
 );
 
