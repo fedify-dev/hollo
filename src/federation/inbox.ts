@@ -24,8 +24,16 @@ import {
   type Update,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
+import {
+  createEmojiReactionNotification,
+  createFavouriteNotification,
+  createFollowNotification,
+  createFollowRequestNotification,
+  createMentionNotifications,
+  createReblogNotification,
+} from "../notification";
 import {
   accountOwners,
   accounts,
@@ -136,6 +144,11 @@ export async function onFollowed(
       { excludeBaseUris: [new URL(ctx.origin)] },
     );
     await updateAccountStats(db, { id: following.id });
+    // Create follow notification
+    await createFollowNotification(follower, following.owner);
+  } else {
+    // Create follow request notification for protected accounts
+    await createFollowRequestNotification(follower, following.owner);
   }
 }
 
@@ -344,6 +357,19 @@ export async function onPostCreated(
     }
     return post;
   });
+
+  // Create mention notifications for local users
+  if (post != null && post.mentions.length > 0) {
+    const mentionedAccountsWithOwners = await db.query.accounts.findMany({
+      where: inArray(
+        accounts.id,
+        post.mentions.map((m) => m.accountId),
+      ),
+      with: { owner: true },
+    });
+    await createMentionNotifications(post, mentionedAccountsWithOwners);
+  }
+
   if (
     post?.replyTargetId != null &&
     (post.visibility === "public" || post.visibility === "unlisted")
@@ -438,6 +464,10 @@ export async function onPostShared(
       "followers",
       { skipIfUnsigned: true },
     );
+  }
+  // Create reblog notification
+  if (post?.sharing != null && post.account != null) {
+    await createReblogNotification(post.account, post.sharing);
   }
 }
 
@@ -562,6 +592,11 @@ export async function onLiked(
     // biome-ignore lint/complexity/useLiteralKeys: tsc complains about this (TS4111)
     const postId = parsed.values["id"];
     if (!isUuid(postId)) return;
+    const post = await db.query.posts.findFirst({
+      where: eq(posts.id, postId),
+      with: { account: { with: { owner: true } } },
+    });
+    if (post == null) return;
     await db.transaction(async (tx) => {
       await tx
         .insert(likes)
@@ -574,6 +609,8 @@ export async function onLiked(
       "followers",
       { skipIfUnsigned: true },
     );
+    // Create favourite notification
+    await createFavouriteNotification(account, post);
   } else {
     inboxLogger.debug("Unsupported object on Like: {objectId}", {
       objectId: like.objectId?.href,
@@ -678,6 +715,11 @@ export async function onEmojiReactionAdded(
       if (customEmoji != null) break;
     }
   }
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, id),
+    with: { account: { with: { owner: true } } },
+  });
+  if (post == null) return;
   await db.insert(reactions).values({
     postId: id,
     accountId: account.id,
@@ -688,6 +730,8 @@ export async function onEmojiReactionAdded(
   await ctx.forwardActivity({ username }, "followers", {
     skipIfUnsigned: true,
   });
+  // Create emoji reaction notification
+  await createEmojiReactionNotification(account, post);
 }
 
 export async function onEmojiReactionRemoved(

@@ -1,20 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import {
-  and,
-  desc,
-  eq,
-  gt,
-  inArray,
-  isNotNull,
-  isNull,
-  lt,
-  lte,
-  ne,
-  notInArray,
-  or,
-  sql,
-} from "drizzle-orm";
-import { alias, union } from "drizzle-orm/pg-core";
+import { and, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../../db";
 import {
@@ -29,18 +14,12 @@ import {
   type Variables,
 } from "../../oauth/middleware";
 import {
-  accounts,
-  blocks,
-  follows,
-  likes,
-  mentions,
-  mutes,
+  accountOwners,
+  notifications,
   polls,
   pollVotes,
   posts,
-  reactions,
 } from "../../schema";
-import type { Uuid } from "../../uuid";
 
 const logger = getLogger(["hollo", "notifications"]);
 
@@ -92,530 +71,188 @@ app.get(
       ];
     }
     types = types.filter((t) => !excludeTypes?.includes(t));
-    const sharingPosts = alias(posts, "sharingPosts");
-    const queries = {
-      mention: db
-        .select({
-          id: sql`${posts.id}::text`,
-          type: sql<NotificationType>`'mention'`,
-          created: sql<Date>`coalesce(${posts.published}, ${posts.updated})`,
-          accountId: posts.accountId,
-          postId: sql<Uuid | null>`${posts.id}`,
-          emoji: sql<string | null>`null`,
-          customEmoji: sql<string | null>`null`,
-        })
-        .from(posts)
-        .where(
-          and(
-            or(
-              inArray(
-                posts.replyTargetId,
-                db
-                  .select({ postId: posts.id })
-                  .from(posts)
-                  .where(eq(posts.accountId, owner.id)),
-              ),
-              inArray(
-                posts.id,
-                db
-                  .select({ postId: mentions.postId })
-                  .from(mentions)
-                  .where(eq(mentions.accountId, owner.id)),
-              ),
-            ),
-            olderThan == null ? undefined : lt(posts.published, olderThan),
-            ne(posts.accountId, owner.id),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
-          ),
-        )
-        .orderBy(desc(posts.published))
-        .limit(limit),
-      reblog: db
-        .select({
-          id: sql`${posts.id}::text`,
-          type: sql<NotificationType>`'reblog'`,
-          created: sql<Date>`coalesce(${posts.published}, ${posts.updated})`,
-          accountId: posts.accountId,
-          postId: sql<Uuid | null>`${sharingPosts.id}`,
-          emoji: sql<string | null>`null`,
-          customEmoji: sql<string | null>`null`,
-        })
-        .from(posts)
-        .leftJoin(sharingPosts, eq(posts.sharingId, sharingPosts.id))
-        .where(
-          and(
-            eq(sharingPosts.accountId, owner.id),
-            olderThan == null ? undefined : lt(posts.published, olderThan),
-            ne(posts.accountId, owner.id),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
-          ),
-        )
-        .orderBy(desc(posts.published))
-        .limit(limit),
-      follow: db
-        .select({
-          id: sql<string>`${follows.followerId}::text`,
-          type: sql<NotificationType>`'follow'`,
-          created: sql<Date>`${follows.approved}`,
-          accountId: follows.followerId,
-          postId: sql<Uuid | null>`null::uuid`,
-          emoji: sql<string | null>`null`,
-          customEmoji: sql<string | null>`null`,
-        })
-        .from(follows)
-        .where(
-          and(
-            eq(follows.followingId, owner.id),
-            isNotNull(follows.approved),
-            olderThan == null ? undefined : lt(follows.approved, olderThan),
-            notInArray(
-              follows.followerId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              follows.followerId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              follows.followerId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
-          ),
-        )
-        .orderBy(desc(follows.approved))
-        .limit(limit),
-      follow_request: db
-        .select({
-          id: sql<string>`${follows.followerId}::text`,
-          type: sql<NotificationType>`'follow_request'`,
-          created: follows.created,
-          accountId: follows.followerId,
-          postId: sql<Uuid | null>`null::uuid`,
-          emoji: sql<string | null>`null`,
-          customEmoji: sql<string | null>`null`,
-        })
-        .from(follows)
-        .where(
-          and(
-            eq(follows.followingId, owner.id),
-            isNull(follows.approved),
-            olderThan == null ? undefined : lt(follows.created, olderThan),
-            notInArray(
-              follows.followerId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              follows.followerId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              follows.followerId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
-          ),
-        )
-        .orderBy(desc(follows.created))
-        .limit(limit),
-      favourite: db
-        .select({
-          id: sql<string>`${likes.postId} || ':' || ${likes.accountId}`,
-          type: sql<NotificationType>`'favourite'`,
-          created: likes.created,
-          accountId: likes.accountId,
-          postId: sql<Uuid | null>`${likes.postId}`,
-          emoji: sql<string | null>`null`,
-          customEmoji: sql<string | null>`null`,
-        })
-        .from(likes)
-        .leftJoin(posts, eq(likes.postId, posts.id))
-        .where(
-          and(
-            eq(posts.accountId, owner.id),
-            olderThan == null ? undefined : lt(likes.created, olderThan),
-            ne(likes.accountId, owner.id),
-            notInArray(
-              likes.accountId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              likes.accountId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              likes.accountId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
-          ),
-        )
-        .orderBy(desc(likes.created))
-        .limit(limit),
-      emoji_reaction: db
-        .select({
-          id: sql<string>`${reactions.postId} || ':' || ${reactions.accountId} || ':' || ${reactions.emoji}`,
-          type: sql<NotificationType>`'emoji_reaction'`,
-          created: reactions.created,
-          accountId: reactions.accountId,
-          postId: sql<Uuid | null>`${reactions.postId}`,
-          emoji: sql<string | null>`${reactions.emoji}`,
-          customEmoji: sql<string | null>`${reactions.customEmoji}`,
-        })
-        .from(reactions)
-        .leftJoin(posts, eq(reactions.postId, posts.id))
-        .where(
-          and(
-            eq(posts.accountId, owner.id),
-            olderThan == null ? undefined : lt(reactions.created, olderThan),
-            ne(reactions.accountId, owner.id),
-            notInArray(
-              reactions.accountId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              reactions.accountId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              reactions.accountId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
-          ),
-        )
-        .orderBy(desc(reactions.created))
-        .limit(limit),
-      poll: db
-        .select({
-          id: sql<string>`${polls.id}::text`,
-          type: sql<NotificationType>`'poll'`,
-          created: polls.expires,
-          accountId: posts.accountId,
-          postId: posts.id,
-          emoji: sql<string | null>`null`,
-          customEmoji: sql<string | null>`null`,
-        })
+
+    const startTime = performance.now();
+
+    // Use new notifications table for much better performance
+    const notificationsData = await db.query.notifications.findMany({
+      where: and(
+        eq(notifications.accountOwnerId, owner.id),
+        inArray(notifications.type, types),
+        olderThan == null ? undefined : lt(notifications.created, olderThan),
+      ),
+      orderBy: desc(notifications.created),
+      limit,
+      with: {
+        actorAccount: { with: { owner: true, successor: true } },
+        targetPost: { with: getPostRelations(owner.id) },
+        targetAccount: { with: { owner: true, successor: true } },
+      },
+    });
+
+    const afterQuery = performance.now();
+    logger.info("Notifications query took {ms}ms, returned {count} results", {
+      ms: Math.round(afterQuery - startTime),
+      count: notificationsData.length,
+    });
+
+    // Query poll expiry notifications dynamically (not stored in DB)
+    type StoredNotification = (typeof notificationsData)[number];
+    type PollNotification = {
+      id: string;
+      type: "poll";
+      created: Date;
+      targetPost: NonNullable<StoredNotification["targetPost"]>;
+      actorAccount: null;
+      targetAccount: null;
+      targetPollId: null;
+      groupKey: string;
+      readAt: null;
+    };
+    const pollNotificationsData: PollNotification[] = [];
+
+    if (types.includes("poll")) {
+      const now = new Date();
+
+      // Find expired polls where user is the author or has voted
+      const expiredPollIds = await db
+        .selectDistinct({ pollId: polls.id, expires: polls.expires })
         .from(polls)
-        .leftJoin(posts, eq(polls.id, posts.pollId))
+        .innerJoin(posts, eq(posts.pollId, polls.id))
+        .innerJoin(accountOwners, eq(posts.accountId, accountOwners.id))
         .where(
           and(
+            lte(polls.expires, now),
             or(
-              inArray(
-                polls.id,
-                db
-                  .select({ id: posts.pollId })
-                  .from(posts)
-                  .where(eq(posts.accountId, owner.id)),
-              ),
-              inArray(
-                polls.id,
-                db
-                  .select({ id: pollVotes.pollId })
-                  .from(pollVotes)
-                  .where(eq(pollVotes.accountId, owner.id)),
-              ),
+              // User is the post author
+              eq(accountOwners.id, owner.id),
+              // User has voted in the poll
+              sql`EXISTS (
+                SELECT 1 FROM ${pollVotes}
+                INNER JOIN ${accountOwners} AS voter_owner ON ${pollVotes.accountId} = voter_owner.id
+                WHERE ${pollVotes.pollId} = ${polls.id}
+                  AND voter_owner.id = ${owner.id}
+              )`,
             ),
-            lte(polls.expires, sql`current_timestamp`),
             olderThan == null ? undefined : lt(polls.expires, olderThan),
-            ne(posts.accountId, owner.id),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: mutes.mutedAccountId })
-                .from(mutes)
-                .where(
-                  and(
-                    eq(mutes.accountId, owner.id),
-                    or(
-                      isNull(mutes.duration),
-                      gt(
-                        sql`${mutes.created} + ${mutes.duration}`,
-                        sql`CURRENT_TIMESTAMP`,
-                      ),
-                    ),
-                  ),
-                ),
-            ),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: blocks.blockedAccountId })
-                .from(blocks)
-                .where(eq(blocks.accountId, owner.id)),
-            ),
-            notInArray(
-              posts.accountId,
-              db
-                .select({ accountId: blocks.accountId })
-                .from(blocks)
-                .where(eq(blocks.blockedAccountId, owner.id)),
-            ),
           ),
         )
         .orderBy(desc(polls.expires))
-        .limit(limit),
-    };
-    const qs = Object.entries(queries)
-      .filter(([t]) => types.includes(t as NotificationType))
-      .map(([, q]) => q);
-    if (qs.length < 1) return c.json([]);
-    // biome-ignore lint/suspicious/noExplicitAny: ...
-    let q: any = qs[0];
-    for (let i = 1; i < qs.length; i++) {
-      // biome-ignore lint/suspicious/noExplicitAny: ...
-      q = union(q, qs[i] as any);
-    }
-    const notifications = (await db
-      .select({
-        id: sql<string>`q.id`,
-        type: sql<NotificationType>`q."type"`,
-        created: sql<Date>`q.created`,
-        accountId: sql<Uuid>`q.accountId`,
-        postId: sql<Uuid | null>`q.postId`,
-        emoji: sql<string | null>`q.emoji`,
-        customEmoji: sql<string | null>`q.customEmoji`,
-      })
-      .from(
-        sql`${q} AS q (id, "type", created, accountId, postId, emoji, customEmoji)`,
-      )
-      .orderBy(desc(sql`q.created`))
-      .limit(limit)) as {
-      id: Uuid;
-      type: NotificationType;
-      created: Date | string;
-      accountId: Uuid;
-      postId: Uuid | null;
-      emoji: string | null;
-      customEmoji: string | null;
-    }[];
-    let nextLink: URL | null = null;
-    if (notifications.length >= limit) {
-      const oldest = notifications[notifications.length - 1].created;
-      nextLink = new URL(c.req.url);
-      nextLink.searchParams.set(
-        "older_than",
-        oldest instanceof Date ? oldest.toISOString() : oldest,
-      );
-    }
-    const accountIds = notifications.map((n) => n.accountId);
-    const postIds = notifications
-      .filter((n) => n.postId != null)
-      .map((n) => n.postId!);
-    const accountMap = Object.fromEntries(
-      (accountIds.length > 0
-        ? await db.query.accounts.findMany({
-            where: inArray(accounts.id, accountIds),
-            with: { owner: true, successor: true },
-          })
-        : []
-      ).map((a) => [a.id, a]),
-    );
-    const postMap = Object.fromEntries(
-      (postIds.length > 0
-        ? await db.query.posts.findMany({
-            where: inArray(posts.id, postIds),
-            with: getPostRelations(owner.id),
-          })
-        : []
-      ).map((p) => [p.id, p]),
-    );
-    return c.json(
-      notifications
-        .map((n) => {
-          const created_at =
-            n.created instanceof Date
-              ? n.created.toISOString()
-              : new Date(n.created).toISOString();
-          const account = accountMap[n.accountId];
-          if (account == null) {
-            logger.error(
-              "Notification {id} references non-existent account {accountId}; " +
-                "available accounts: {accountIds}",
-              { ...n, accountIds: Object.keys(accountMap) },
-            );
-            return null;
+        .limit(limit);
+
+      if (expiredPollIds.length > 0) {
+        // Load all posts with relations in one query
+        const expiredPosts = await db.query.posts.findMany({
+          where: inArray(
+            posts.pollId,
+            expiredPollIds.map((p) => p.pollId),
+          ),
+          with: getPostRelations(owner.id),
+        });
+
+        // Create poll notifications
+        for (const pollInfo of expiredPollIds) {
+          const post = expiredPosts.find((p) => p.pollId === pollInfo.pollId);
+          if (post) {
+            pollNotificationsData.push({
+              id: `poll-${pollInfo.pollId}`,
+              type: "poll",
+              created: pollInfo.expires,
+              targetPost: post,
+              actorAccount: null,
+              targetAccount: null,
+              targetPollId: null,
+              groupKey: `ungrouped:poll-${pollInfo.pollId}`,
+              readAt: null,
+            });
           }
-          return {
-            id: `${created_at}/${n.type}/${n.id}`,
+        }
+      }
+    }
+
+    // Merge stored notifications and poll notifications, then sort and limit
+    const allNotifications = [...notificationsData, ...pollNotificationsData]
+      .sort((a, b) => b.created.getTime() - a.created.getTime())
+      .slice(0, limit);
+
+    let nextLink: URL | null = null;
+    if (allNotifications.length >= limit) {
+      const oldest = allNotifications[allNotifications.length - 1].created;
+      nextLink = new URL(c.req.url);
+      nextLink.searchParams.set("older_than", oldest.toISOString());
+    }
+
+    const serialized = allNotifications
+      .map((n) => {
+        const created_at = n.created.toISOString();
+        const account = n.actorAccount;
+
+        // Poll notifications don't have actor accounts
+        if (n.type !== "poll" && account == null) {
+          logger.error("Notification {id} missing actor account", {
+            id: n.id,
             type: n.type,
-            created_at,
-            account:
-              account.owner == null
-                ? serializeAccount(account, c.req.url)
-                : serializeAccountOwner(
-                    {
-                      ...account.owner,
-                      account: account,
-                    },
-                    c.req.url,
-                  ),
-            status:
-              n.postId == null
-                ? null
-                : serializePost(postMap[n.postId], owner, c.req.url),
-            ...(n.emoji == null || n.postId == null
-              ? {}
-              : {
-                  emoji_reaction: serializeReaction(
-                    {
-                      postId: n.postId,
-                      accountId: n.accountId,
-                      account,
-                      emoji: n.emoji,
-                      customEmoji: n.customEmoji,
-                      emojiIri: null,
-                      created: new Date(created_at),
-                    },
-                    owner,
-                  ),
-                }),
-          };
-        })
-        .filter((n) => n != null),
-      {
-        headers:
-          nextLink == null ? {} : { Link: `<${nextLink.href}>; rel="next"` },
-      },
-    );
+          });
+          return null;
+        }
+
+        // Poll notifications use post author as account
+        const displayAccount =
+          n.type === "poll" && n.targetPost ? n.targetPost.account : account;
+
+        if (displayAccount == null) {
+          logger.error("Notification {id} missing display account", {
+            id: n.id,
+            type: n.type,
+          });
+          return null;
+        }
+        return {
+          id: `${created_at}/${n.type}/${n.id}`,
+          type: n.type,
+          created_at,
+          account:
+            displayAccount.owner == null
+              ? serializeAccount(displayAccount, c.req.url)
+              : serializeAccountOwner(
+                  {
+                    ...displayAccount.owner,
+                    account: displayAccount,
+                  },
+                  c.req.url,
+                ),
+          status: n.targetPost
+            ? serializePost(n.targetPost, owner, c.req.url)
+            : null,
+          ...(n.type === "emoji_reaction" && n.targetPost && account
+            ? {
+                emoji_reaction: serializeReaction(
+                  {
+                    postId: n.targetPost.id,
+                    accountId: account.id,
+                    account,
+                    emoji: "", // Will be fetched from reactions table if needed
+                    customEmoji: null,
+                    emojiIri: null,
+                    created: n.created,
+                  },
+                  owner,
+                ),
+              }
+            : {}),
+        };
+      })
+      .filter((n) => n != null);
+
+    const afterSerialization = performance.now();
+    logger.info("Serialization took {ms}ms", {
+      ms: Math.round(afterSerialization - afterQuery),
+    });
+
+    return c.json(serialized, {
+      headers:
+        nextLink == null ? {} : { Link: `<${nextLink.href}>; rel="next"` },
+    });
   },
 );
 

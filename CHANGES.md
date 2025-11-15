@@ -6,6 +6,23 @@ Version 0.7.0
 
 To be released.
 
+ -  Significantly improved `/api/v1/notifications` endpoint performance by
+    implementing a materialized notifications system. The endpoint now uses
+    dedicated `notifications` and `notification_groups` tables instead of
+    generating notifications on-demand via complex SQL queries, resulting in
+    approximately 24% improvement (2.5s → 1.9s). Key changes include:
+
+     -  Added `notifications` table to store notification events as they occur
+        during federation activities (follows, likes, mentions, shares, etc).
+     -  Added `notification_groups` table for Mastodon-compatible notification
+        grouping and aggregation metadata.
+     -  Implemented automatic notification creation in federation inbox handlers
+        for all notification types.
+     -  Backfilled recent notifications (100 per type) during migration to
+        prevent empty notification lists after upgrade.
+     -  Poll expiry notifications are queried dynamically on-demand since they
+        cannot be pre-generated without background job scheduling.
+
  -  Fixed `POST /api/v1/statuses` and `PUT /api/v1/statuses/:id` endpoints
     rejecting FormData requests.  These endpoints now properly accept both
     JSON and FormData content types, improving compatibility with Mastodon

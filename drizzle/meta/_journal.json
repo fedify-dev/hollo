@@ -505,6 +505,20 @@
       "when": 1763189315335,
       "tag": "0071_add_notification_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1763197014422,
+      "tag": "0072_add_notifications_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1763197100000,
+      "tag": "0073_backfill_notifications",
+      "breakpoints": true
     }
   ]
 }
