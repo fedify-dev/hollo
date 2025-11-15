@@ -6,6 +6,13 @@ Version 0.6.18
 
 To be released.
 
+ -  Reverted the `/api/v1/notifications` endpoint query optimization from 0.6.17
+    due to a regression that caused server errors when serializing reactions
+    without account information. The optimization attempted to reduce query
+    complexity by separating post data loading, but inadvertently broke reaction
+    serialization for nested posts (shares and quotes). Database indexes added
+    in 0.6.17 are retained.
+
 
 Version 0.6.17
 --------------
