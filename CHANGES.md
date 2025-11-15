@@ -29,6 +29,21 @@ To be released.
     `/api/v1/timelines/home` from 91KB to 14KB, resulting in faster load times
     and reduced bandwidth usage.
 
+ -  Implemented Mastodon v2 grouped notifications API (`/api/v2/notifications`),
+    which provides server-side notification grouping to reduce client complexity
+    and improve performance. The API groups notifications of types `favourite`,
+    `follow`, `reblog`, `admin.sign_up`, and `emoji_reaction` together when they
+    target the same post or account. New endpoints include:
+
+     -  `GET /api/v2/notifications` - Get paginated grouped notifications with
+        deduplicated accounts and statuses
+     -  `GET /api/v2/notifications/:group_key` - Get a specific notification group
+     -  `GET /api/v2/notifications/:group_key/accounts` - Get all accounts in a
+        notification group
+     -  `POST /api/v2/notifications/:group_key/dismiss` - Dismiss a notification
+        group
+     -  `GET /api/v2/notifications/unread_count` - Get unread notification count
+
  -  Fixed `POST /api/v1/statuses` and `PUT /api/v1/statuses/:id` endpoints
     rejecting FormData requests.  These endpoints now properly accept both
     JSON and FormData content types, improving compatibility with Mastodon
