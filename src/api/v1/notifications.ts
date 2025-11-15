@@ -22,7 +22,7 @@ import {
   serializeAccountOwner,
 } from "../../entities/account";
 import { serializeReaction } from "../../entities/emoji";
-import { serializePost } from "../../entities/status";
+import { getPostRelations, serializePost } from "../../entities/status";
 import {
   scopeRequired,
   tokenRequired,
@@ -31,12 +31,10 @@ import {
 import {
   accounts,
   blocks,
-  bookmarks,
   follows,
   likes,
   mentions,
   mutes,
-  pollOptions,
   polls,
   pollVotes,
   posts,
@@ -94,46 +92,6 @@ app.get(
       ];
     }
     types = types.filter((t) => !excludeTypes?.includes(t));
-
-    // Pre-fetch muted and blocked account IDs to avoid correlated subqueries
-    const mutedAccountIds = (
-      await db
-        .select({ id: mutes.mutedAccountId })
-        .from(mutes)
-        .where(
-          and(
-            eq(mutes.accountId, owner.id),
-            or(
-              isNull(mutes.duration),
-              gt(
-                sql`${mutes.created} + ${mutes.duration}`,
-                sql`CURRENT_TIMESTAMP`,
-              ),
-            ),
-          ),
-        )
-    ).map((m) => m.id);
-
-    const blockedByMeIds = (
-      await db
-        .select({ id: blocks.blockedAccountId })
-        .from(blocks)
-        .where(eq(blocks.accountId, owner.id))
-    ).map((b) => b.id);
-
-    const blockedMeIds = (
-      await db
-        .select({ id: blocks.accountId })
-        .from(blocks)
-        .where(eq(blocks.blockedAccountId, owner.id))
-    ).map((b) => b.id);
-
-    const excludedAccountIds = [
-      ...mutedAccountIds,
-      ...blockedByMeIds,
-      ...blockedMeIds,
-    ];
-
     const sharingPosts = alias(posts, "sharingPosts");
     const queries = {
       mention: db
@@ -167,9 +125,38 @@ app.get(
             ),
             olderThan == null ? undefined : lt(posts.published, olderThan),
             ne(posts.accountId, owner.id),
-            excludedAccountIds.length > 0
-              ? notInArray(posts.accountId, excludedAccountIds)
-              : undefined,
+            notInArray(
+              posts.accountId,
+              db
+                .select({ accountId: mutes.mutedAccountId })
+                .from(mutes)
+                .where(
+                  and(
+                    eq(mutes.accountId, owner.id),
+                    or(
+                      isNull(mutes.duration),
+                      gt(
+                        sql`${mutes.created} + ${mutes.duration}`,
+                        sql`CURRENT_TIMESTAMP`,
+                      ),
+                    ),
+                  ),
+                ),
+            ),
+            notInArray(
+              posts.accountId,
+              db
+                .select({ accountId: blocks.blockedAccountId })
+                .from(blocks)
+                .where(eq(blocks.accountId, owner.id)),
+            ),
+            notInArray(
+              posts.accountId,
+              db
+                .select({ accountId: blocks.accountId })
+                .from(blocks)
+                .where(eq(blocks.blockedAccountId, owner.id)),
+            ),
           ),
         )
         .orderBy(desc(posts.published))
@@ -191,9 +178,38 @@ app.get(
             eq(sharingPosts.accountId, owner.id),
             olderThan == null ? undefined : lt(posts.published, olderThan),
             ne(posts.accountId, owner.id),
-            excludedAccountIds.length > 0
-              ? notInArray(posts.accountId, excludedAccountIds)
-              : undefined,
+            notInArray(
+              posts.accountId,
+              db
+                .select({ accountId: mutes.mutedAccountId })
+                .from(mutes)
+                .where(
+                  and(
+                    eq(mutes.accountId, owner.id),
+                    or(
+                      isNull(mutes.duration),
+                      gt(
+                        sql`${mutes.created} + ${mutes.duration}`,
+                        sql`CURRENT_TIMESTAMP`,
+                      ),
+                    ),
+                  ),
+                ),
+            ),
+            notInArray(
+              posts.accountId,
+              db
+                .select({ accountId: blocks.blockedAccountId })
+                .from(blocks)
+                .where(eq(blocks.accountId, owner.id)),
+            ),
+            notInArray(
+              posts.accountId,
+              db
+                .select({ accountId: blocks.accountId })
+                .from(blocks)
+                .where(eq(blocks.blockedAccountId, owner.id)),
+            ),
           ),
         )
         .orderBy(desc(posts.published))
@@ -214,9 +230,38 @@ app.get(
             eq(follows.followingId, owner.id),
             isNotNull(follows.approved),
             olderThan == null ? undefined : lt(follows.approved, olderThan),
-            excludedAccountIds.length > 0
-              ? notInArray(follows.followerId, excludedAccountIds)
-              : undefined,
+            notInArray(
+              follows.followerId,
+              db
+                .select({ accountId: mutes.mutedAccountId })
+                .from(mutes)
+                .where(
+                  and(
+                    eq(mutes.accountId, owner.id),
+                    or(
+                      isNull(mutes.duration),
+                      gt(
+                        sql`${mutes.created} + ${mutes.duration}`,
+                        sql`CURRENT_TIMESTAMP`,
+                      ),
+                    ),
+                  ),
+                ),
+            ),
+            notInArray(
+              follows.followerId,
+              db
+                .select({ accountId: blocks.blockedAccountId })
+                .from(blocks)
+                .where(eq(blocks.accountId, owner.id)),
+            ),
+            notInArray(
+              follows.followerId,
+              db
+                .select({ accountId: blocks.accountId })
+                .from(blocks)
+                .where(eq(blocks.blockedAccountId, owner.id)),
+            ),
           ),
         )
         .orderBy(desc(follows.approved))
@@ -237,9 +282,38 @@ app.get(
             eq(follows.followingId, owner.id),
             isNull(follows.approved),
             olderThan == null ? undefined : lt(follows.created, olderThan),
-            excludedAccountIds.length > 0
-              ? notInArray(follows.followerId, excludedAccountIds)
-              : undefined,
+            notInArray(
+              follows.followerId,
+              db
+                .select({ accountId: mutes.mutedAccountId })
+                .from(mutes)
+                .where(
+                  and(
+                    eq(mutes.accountId, owner.id),
+                    or(
+                      isNull(mutes.duration),
+                      gt(
+                        sql`${mutes.created} + ${mutes.duration}`,
+                        sql`CURRENT_TIMESTAMP`,
+                      ),
+                    ),
+                  ),
+                ),
+            ),
+            notInArray(
+              follows.followerId,
+              db
+                .select({ accountId: blocks.blockedAccountId })
+                .from(blocks)
+                .where(eq(blocks.accountId, owner.id)),
+            ),
+            notInArray(
+              follows.followerId,
+              db
+                .select({ accountId: blocks.accountId })
+                .from(blocks)
+                .where(eq(blocks.blockedAccountId, owner.id)),
+            ),
           ),
         )
         .orderBy(desc(follows.created))
@@ -475,182 +549,15 @@ app.get(
         : []
       ).map((a) => [a.id, a]),
     );
-
-    // Load posts with minimal relations first
     const postMap = Object.fromEntries(
       (postIds.length > 0
         ? await db.query.posts.findMany({
             where: inArray(posts.id, postIds),
-            with: {
-              account: { with: { successor: true } },
-              application: true,
-              replyTarget: true,
-              media: true,
-              poll: {
-                with: {
-                  options: { orderBy: pollOptions.index },
-                  votes: {
-                    where:
-                      owner == null
-                        ? sql`false`
-                        : eq(pollVotes.accountId, owner.id),
-                  },
-                },
-              },
-              mentions: {
-                with: { account: { with: { owner: true, successor: true } } },
-              },
-              likes: {
-                where:
-                  owner == null ? sql`false` : eq(likes.accountId, owner.id),
-              },
-              reactions: true,
-              shares: {
-                where:
-                  owner == null ? sql`false` : eq(posts.accountId, owner.id),
-              },
-              bookmarks: {
-                where:
-                  owner == null
-                    ? sql`false`
-                    : eq(bookmarks.accountOwnerId, owner.id),
-              },
-              pin: true,
-            },
+            with: getPostRelations(owner.id),
           })
         : []
       ).map((p) => [p.id, p]),
     );
-
-    // Collect sharing and quote IDs to load separately
-    const sharingIds = new Set<Uuid>();
-    const quoteIds = new Set<Uuid>();
-    for (const post of Object.values(postMap)) {
-      if (post.sharingId) sharingIds.add(post.sharingId);
-      if (post.quoteTargetId) quoteIds.add(post.quoteTargetId);
-    }
-
-    // Load sharing posts with minimal relations (no mentions/reactions for performance)
-    const sharingMap = Object.fromEntries(
-      (sharingIds.size > 0
-        ? await db.query.posts.findMany({
-            where: inArray(posts.id, Array.from(sharingIds)),
-            with: {
-              account: { with: { successor: true } },
-              application: true,
-              replyTarget: true,
-              media: true,
-              poll: {
-                with: {
-                  options: { orderBy: pollOptions.index },
-                  votes: {
-                    where:
-                      owner == null
-                        ? sql`false`
-                        : eq(pollVotes.accountId, owner.id),
-                  },
-                },
-              },
-              likes: {
-                where:
-                  owner == null ? sql`false` : eq(likes.accountId, owner.id),
-              },
-              shares: {
-                where:
-                  owner == null ? sql`false` : eq(posts.accountId, owner.id),
-              },
-              bookmarks: {
-                where:
-                  owner == null
-                    ? sql`false`
-                    : eq(bookmarks.accountOwnerId, owner.id),
-              },
-              pin: true,
-            },
-          })
-        : []
-      ).map((p) => [p.id, p]),
-    );
-
-    // Load quote posts with minimal relations (no mentions/reactions for performance)
-    const quoteMap = Object.fromEntries(
-      (quoteIds.size > 0
-        ? await db.query.posts.findMany({
-            where: inArray(posts.id, Array.from(quoteIds)),
-            with: {
-              account: { with: { successor: true } },
-              application: true,
-              replyTarget: true,
-              media: true,
-              poll: {
-                with: {
-                  options: { orderBy: pollOptions.index },
-                  votes: {
-                    where:
-                      owner == null
-                        ? sql`false`
-                        : eq(pollVotes.accountId, owner.id),
-                  },
-                },
-              },
-              likes: {
-                where:
-                  owner == null ? sql`false` : eq(likes.accountId, owner.id),
-              },
-              shares: {
-                where:
-                  owner == null ? sql`false` : eq(posts.accountId, owner.id),
-              },
-              bookmarks: {
-                where:
-                  owner == null
-                    ? sql`false`
-                    : eq(bookmarks.accountOwnerId, owner.id),
-              },
-              pin: true,
-            },
-          })
-        : []
-      ).map((p) => [p.id, p]),
-    );
-
-    // Attach sharing and quote to posts with proper null values for missing relations
-    for (const post of Object.values(postMap)) {
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (post as any).sharing = post.sharingId
-        ? (sharingMap[post.sharingId] ?? null)
-        : null;
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (post as any).quoteTarget = post.quoteTargetId
-        ? (quoteMap[post.quoteTargetId] ?? null)
-        : null;
-    }
-
-    // Also attach to sharing posts with empty arrays for missing relations
-    for (const sharing of Object.values(sharingMap)) {
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (sharing as any).sharing = null;
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (sharing as any).quoteTarget = sharing.quoteTargetId
-        ? (quoteMap[sharing.quoteTargetId] ?? null)
-        : null;
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (sharing as any).mentions = [];
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (sharing as any).reactions = [];
-    }
-
-    // Quote posts don't need sharing/quoteTarget as they're leaf nodes
-    for (const quote of Object.values(quoteMap)) {
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (quote as any).sharing = null;
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (quote as any).quoteTarget = null;
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (quote as any).mentions = [];
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic property assignment for type compatibility
-      (quote as any).reactions = [];
-    }
     return c.json(
       notifications
         .map((n) => {
@@ -684,8 +591,7 @@ app.get(
             status:
               n.postId == null
                 ? null
-                : // biome-ignore lint/suspicious/noExplicitAny: Type assertion needed for dynamically attached properties
-                  serializePost(postMap[n.postId] as any, owner, c.req.url),
+                : serializePost(postMap[n.postId], owner, c.req.url),
             ...(n.emoji == null || n.postId == null
               ? {}
               : {

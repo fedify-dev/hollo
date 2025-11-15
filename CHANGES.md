@@ -32,6 +32,19 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 
 
+Version 0.6.18
+--------------
+
+Released on November 15, 2025.
+
+ -  Reverted the `/api/v1/notifications` endpoint query optimization from 0.6.17
+    due to a regression that caused server errors when serializing reactions
+    without account information. The optimization attempted to reduce query
+    complexity by separating post data loading, but inadvertently broke reaction
+    serialization for nested posts (shares and quotes). Database indexes added
+    in 0.6.17 are retained.
+
+
 Version 0.6.17
 --------------
 
