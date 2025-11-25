@@ -142,8 +142,8 @@ importers:
         specifier: ^2.3.7
         version: 2.3.7
       '@dotenvx/dotenvx':
-        specifier: ^1.48.4
-        version: 1.51.0
+        specifier: ^1.51.1
+        version: 1.51.1
       '@reporters/github':
         specifier: ^1.11.0
         version: 1.11.0
@@ -165,9 +165,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 3.1.4
         version: 3.1.4(vitest@3.1.4(@types/debug@4.1.12)(@types/node@24.10.0)(tsx@4.20.6)(yaml@2.8.1))
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
       linkedom:
         specifier: ^0.18.12
         version: 0.18.12
@@ -665,8 +662,8 @@ packages:
     resolution: {integrity: sha512-Ahk1N+s7urkgj7WvvUND5f8GiWEPfUw0D41hdElaqLgu8wZScI8gdI0q+qWw5N1d35x7GCRH2uk9mi+Uzo9M3g==}
     engines: {node: '>=14.0'}
 
-  '@dotenvx/dotenvx@1.51.0':
-    resolution: {integrity: sha512-CbMGzyOYSyFF7d4uaeYwO9gpSBzLTnMmSmTVpCZjvpJFV69qYbjYPpzNnCz1mb2wIvEhjWjRwQWuBzTO0jITww==}
+  '@dotenvx/dotenvx@1.51.1':
+    resolution: {integrity: sha512-fqcQxcxC4LOaUlW8IkyWw8x0yirlLUkbxohz9OnWvVWjf73J5yyw7jxWnkOJaUKXZotcGEScDox9MU6rSkcDgg==}
     hasBin: true
 
   '@drizzle-team/brocli@0.10.2':
@@ -6029,16 +6026,16 @@ snapshots:
     transitivePeerDependencies:
       - web-streams-polyfill
 
-  '@dotenvx/dotenvx@1.51.0':
+  '@dotenvx/dotenvx@1.51.1':
     dependencies:
       commander: 11.1.0
       dotenv: 17.2.3
       eciesjs: 0.4.14
       execa: 5.1.1
-      fdir: 6.4.4(picomatch@4.0.2)
+      fdir: 6.5.0(picomatch@4.0.3)
       ignore: 5.3.2
       object-treeify: 1.1.33
-      picomatch: 4.0.2
+      picomatch: 4.0.3
       which: 4.0.0
 
   '@drizzle-team/brocli@0.10.2': {}

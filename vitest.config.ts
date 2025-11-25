@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parse } from "dotenv";
+import { parse } from "@dotenvx/dotenvx";
 import { defineConfig } from "vitest/config";
 
 const env = parse(

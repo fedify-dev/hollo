@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
-    "@dotenvx/dotenvx": "^1.48.4",
+    "@dotenvx/dotenvx": "^1.51.1",
     "@reporters/github": "^1.11.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/markdown-it": "^14.1.2",
@@ -73,7 +73,6 @@
     "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.7.1",
     "@vitest/coverage-v8": "3.1.4",
-    "dotenv": "^17.2.3",
     "linkedom": "^0.18.12",
     "timekeeper": "^2.3.1",
     "typescript": "^5.9.2",
