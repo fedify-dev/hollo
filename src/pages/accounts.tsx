@@ -1,5 +1,4 @@
 import {
-  type Actor,
   Delete,
   exportJwk,
   generateCryptoKeyPair,
@@ -12,7 +11,6 @@ import {
   Update,
 } from "@fedify/fedify";
 import { getLogger } from "@logtape/logtape";
-import { PromisePool } from "@supercharge/promise-pool";
 import { createObjectCsvStringifier } from "csv-writer-portable";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { uniq } from "es-toolkit";
@@ -29,14 +27,12 @@ import {
 import db from "../db.ts";
 import federation from "../federation";
 import {
-  blockAccount,
   followAccount,
   persistAccount,
   persistAccountPosts,
   REMOTE_ACTOR_FETCH_POSTS,
   unfollowAccount,
 } from "../federation/account.ts";
-import { isPost, persistPost } from "../federation/post.ts";
 import { loginRequired } from "../login.ts";
 import {
   type Account,
@@ -46,16 +42,18 @@ import {
   blocks,
   bookmarks,
   follows,
+  type ImportJobCategory,
+  importJobItems,
+  importJobs,
   instances,
   listMembers,
   lists,
   mutes,
-  type Post,
   type PostVisibility,
   type ThemeColor,
 } from "../schema.ts";
 import { extractCustomEmojis, formatText } from "../text.ts";
-import { isUuid, type Uuid } from "../uuid.ts";
+import { isUuid, uuidv7 } from "../uuid.ts";
 
 const HOLLO_OFFICIAL_ACCOUNT = "@hollo@hollo.social";
 
@@ -490,6 +488,28 @@ accounts.get("/:id/migrate", async (c) => {
   const aliasesError = c.req.query("error");
   const aliasesHandle = c.req.query("handle");
   const importDataResult = c.req.query("import-data-result");
+
+  // Check for active import job (from query param or database)
+  const importJobId = c.req.query("import-job");
+  const activeJob =
+    importJobId && isUuid(importJobId)
+      ? await db.query.importJobs.findFirst({
+          where: and(
+            eq(importJobs.id, importJobId),
+            eq(importJobs.accountOwnerId, accountOwner.id),
+          ),
+        })
+      : await db.query.importJobs.findFirst({
+          where: and(
+            eq(importJobs.accountOwnerId, accountOwner.id),
+            inArray(importJobs.status, ["pending", "processing"]),
+          ),
+          orderBy: (importJobs, { desc }) => [desc(importJobs.created)],
+        });
+
+  // Check if we need to auto-refresh (job in progress)
+  const shouldAutoRefresh =
+    activeJob?.status === "pending" || activeJob?.status === "processing";
   return c.html(
     <DashboardLayout
       title={`Hollo: Migrate ${username} from/to`}
@@ -650,6 +670,103 @@ accounts.get("/:id/migrate", async (c) => {
         </table>
       </article>
 
+      {/* Import Progress Section */}
+      {activeJob && (
+        <article id="import-progress">
+          <header>
+            <hgroup>
+              <h2>
+                {activeJob.status === "pending"
+                  ? "Import Queued"
+                  : activeJob.status === "processing"
+                    ? "Import in Progress"
+                    : activeJob.status === "completed"
+                      ? "Import Completed"
+                      : activeJob.status === "cancelled"
+                        ? "Import Cancelled"
+                        : "Import Failed"}
+              </h2>
+              <p>
+                Importing {activeJob.category.replace(/_/g, " ")}
+                {activeJob.status === "pending" && " (waiting to start)"}
+                {activeJob.status === "processing" && "..."}
+              </p>
+            </hgroup>
+          </header>
+
+          <progress
+            value={activeJob.processedItems}
+            max={activeJob.totalItems}
+          />
+
+          <p>
+            <strong>{activeJob.processedItems.toLocaleString("en-US")}</strong>{" "}
+            / {activeJob.totalItems.toLocaleString("en-US")} items processed
+            {activeJob.processedItems > 0 && (
+              <>
+                {" "}
+                (
+                <strong style={{ color: "var(--pico-ins-color)" }}>
+                  {activeJob.successfulItems.toLocaleString("en-US")}
+                </strong>{" "}
+                successful
+                {activeJob.failedItems > 0 && (
+                  <>
+                    ,{" "}
+                    <strong style={{ color: "var(--pico-del-color)" }}>
+                      {activeJob.failedItems.toLocaleString("en-US")}
+                    </strong>{" "}
+                    failed
+                  </>
+                )}
+                )
+              </>
+            )}
+          </p>
+
+          {shouldAutoRefresh && (
+            <>
+              <form
+                method="post"
+                action={`migrate/import/${activeJob.id}/cancel`}
+              >
+                <button type="submit" class="secondary">
+                  Cancel Import
+                </button>
+              </form>
+              <small>
+                This page refreshes automatically every 5 seconds. You can
+                navigate away safely &mdash; the import will continue in the
+                background.
+              </small>
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: "setTimeout(() => location.reload(), 5000);",
+                }}
+              />
+            </>
+          )}
+
+          {activeJob.status === "completed" && (
+            <p style={{ color: "var(--pico-ins-color)" }}>
+              Import completed successfully!
+            </p>
+          )}
+
+          {activeJob.status === "cancelled" && (
+            <p style={{ color: "var(--pico-del-color)" }}>
+              Import was cancelled.
+            </p>
+          )}
+
+          {activeJob.status === "failed" && activeJob.errorMessage && (
+            <p style={{ color: "var(--pico-del-color)" }}>
+              Error: {activeJob.errorMessage}
+            </p>
+          )}
+        </article>
+      )}
+
       <article id="import-data">
         <header>
           <hgroup>
@@ -670,13 +787,11 @@ accounts.get("/:id/migrate", async (c) => {
           method="post"
           action="migrate/import"
           encType="multipart/form-data"
-          onsubmit={`
-            const [submit] = this.getElementsByTagName('button');
-            submit.disabled = true;
-            submit.textContent = 'Importing… it may take a while…';
-          `}
         >
-          <fieldset class="grid">
+          <fieldset
+            class="grid"
+            {...(shouldAutoRefresh ? { disabled: true } : {})}
+          >
             <label>
               Category
               <select name="category">
@@ -690,13 +805,18 @@ accounts.get("/:id/migrate", async (c) => {
             </label>
             <label>
               CSV file
-              <input type="file" name="file" accept=".csv" />
+              <input type="file" name="file" accept=".csv" required />
               <small>
                 A CSV file exported from other Hollo or Mastodon instances.
               </small>
             </label>
           </fieldset>
-          <button type="submit">Import</button>
+          <button
+            type="submit"
+            {...(shouldAutoRefresh ? { disabled: true } : {})}
+          >
+            {shouldAutoRefresh ? "Import in progress..." : "Import"}
+          </button>
         </form>
       </article>
     </DashboardLayout>,
@@ -968,12 +1088,27 @@ accounts.post("/:id/migrate/import", async (c) => {
     with: { account: true },
   });
   if (accountOwner == null) return c.notFound();
+
   const formData = await c.req.formData();
-  const category = formData.get("category");
+  const category = formData.get("category") as string;
   const file = formData.get("file");
+
   if (!(file instanceof File)) {
     return new Response("Invalid file", { status: 400 });
   }
+
+  // Validate category
+  const validCategories: ImportJobCategory[] = [
+    "following_accounts",
+    "lists",
+    "muted_accounts",
+    "blocked_accounts",
+    "bookmarks",
+  ];
+  if (!validCategories.includes(category as ImportJobCategory)) {
+    return new Response("Invalid category", { status: 400 });
+  }
+
   let csvText = await file.text();
   if (
     category === "following_accounts" &&
@@ -981,276 +1116,153 @@ accounts.post("/:id/migrate/import", async (c) => {
   ) {
     csvText = `Account address,Show boosts,Notify on new posts,Languages\n${csvText}`;
   }
+
   const csv = await neatCsv(csvText, {
     headers:
       category === "following_accounts" || category === "muted_accounts"
         ? undefined
         : false,
   });
-  const fedCtx = federation.createContext(c.req.raw, undefined);
-  const documentLoader = await fedCtx.getDocumentLoader({
-    username: accountOwner.handle,
-  });
-  let message = "Failed to import data.";
+
+  if (csv.length === 0) {
+    return c.redirect(
+      `/accounts/${accountOwner.id}/migrate?import-data-result=${encodeURIComponent("No items to import")}#import-data`,
+    );
+  }
+
+  // Parse items based on category
+  let parsedItems: Record<string, unknown>[];
+
   if (category === "following_accounts") {
-    const accounts: Record<
-      string,
-      { shares: boolean; notify: boolean; languages?: string[] }
-    > = {};
-    for (const row of csv) {
-      const handle = row["Account address"].trim();
-      const shares =
+    parsedItems = csv.map((row) => ({
+      handle: row["Account address"]?.trim(),
+      shares:
         row["Show boosts"] == null
           ? true
-          : row["Show boosts"].toLowerCase().trim() === "true";
-      const notify =
+          : row["Show boosts"].toLowerCase().trim() !== "false",
+      notify:
         row["Notify on new posts"] == null
           ? false
-          : row["Notify on new posts"].toLowerCase().trim() === "true";
-      // biome-ignore lint/complexity/useLiteralKeys: tsc complains about this
-      const languages = row["Languages"]?.toLowerCase()?.trim() ?? "";
-      accounts[handle] = {
-        shares,
-        notify,
-        languages: languages === "" ? undefined : languages.split(/,\s+/g),
-      };
-    }
-    const { results } = await PromisePool.for(
-      globalThis.Object.keys(accounts),
-    ).process(
-      async (handle) =>
-        [
-          handle,
-          await fedCtx.lookupObject(handle, { documentLoader }),
-        ] as const,
-    );
-    let imported = 0;
-    await db.transaction(async (tx) => {
-      for (const [handle, actor] of results) {
-        if (!isActor(actor)) continue;
-        const { shares, notify, languages } = accounts[handle];
-        let target: (Account & { owner: AccountOwner | null }) | null;
-        try {
-          target = await persistAccount(tx, actor, c.req.url, fedCtx);
-        } catch (error) {
-          logger.error("Failed to persist account: {error}", { error });
-          continue;
-        }
-        if (target == null) continue;
-        await followAccount(
-          tx,
-          fedCtx,
-          { ...accountOwner.account, owner: accountOwner },
-          target,
-          { shares, notify, languages },
-        );
-        imported++;
-      }
-    });
-    message = `Followed ${imported} accounts out of ${csv.length} entries.`;
-  } else if (category === "lists") {
-    const accounts: Record<
-      string,
-      (Account & { owner: AccountOwner | null }) | null
-    > = {};
-    for (const row of csv) accounts[row[1].trim()] = null;
-    const existingAccounts = await db.query.accounts.findMany({
-      with: { owner: true },
-      where: inArray(
-        accountsTable.handle,
-        globalThis.Object.keys(accounts).map((handle) =>
-          handle.replace(/^@?/, "@"),
-        ),
-      ),
-    });
-    for (const account of existingAccounts) {
-      accounts[account.handle.replace(/^@/, "")] = account;
-    }
-    const handlesToFetch: string[] = [];
-    for (const handle in accounts) {
-      if (accounts[handle] != null) continue;
-      handlesToFetch.push(handle);
-    }
-    const { results } = await PromisePool.for(handlesToFetch).process(
-      async (handle) =>
-        [
-          handle,
-          await fedCtx.lookupObject(handle, { documentLoader }),
-        ] as const,
-    );
-    for (const [handle, actor] of results) {
-      if (!isActor(actor)) continue;
-      let account: (Account & { owner: AccountOwner | null }) | null;
-      try {
-        account = await persistAccount(db, actor, c.req.url, fedCtx);
-      } catch (error) {
-        logger.error("Failed to persist account: {error}", { error });
-        continue;
-      }
-      if (account == null) continue;
-      accounts[handle] = account;
-    }
-    const listNames = new Set(csv.map((row) => row[0].trim()));
-    const listIds: Record<string, Uuid> = {};
-    for (const listName of listNames) {
-      let list = await db.query.lists.findFirst({
-        where: and(
-          eq(lists.accountOwnerId, accountOwner.id),
-          eq(lists.title, listName),
-        ),
-      });
-      if (list == null) {
-        const result = await db
-          .insert(lists)
-          .values({
-            id: crypto.randomUUID(),
-            title: listName,
-            accountOwnerId: accountOwner.id,
-          })
-          .onConflictDoNothing()
-          .returning();
-        if (result.length < 1) continue;
-        list = result[0];
-      }
-      if (list == null) continue;
-      listIds[listName] = list.id;
-    }
-    let imported = 0;
-    const followed = new Set<string>();
-    await db.transaction(async (tx) => {
-      for (const row of csv) {
-        const listId = listIds[row[0].trim()];
-        if (listId == null) continue;
-        const handle = row[1].trim();
-        const account = accounts[handle];
-        if (account == null) continue;
-        if (!followed.has(handle)) {
-          try {
-            await followAccount(
-              tx,
-              fedCtx,
-              { ...accountOwner.account, owner: accountOwner },
-              account,
-            );
-          } catch (error) {
-            logger.error("Failed to follow account: {error}", { error });
-            continue;
-          }
-        }
-        followed.add(handle);
-        await tx
-          .insert(listMembers)
-          .values({
-            listId,
-            accountId: account.id,
-          })
-          .onConflictDoNothing();
-        imported++;
-      }
-    });
-    message = `Imported ${imported} list members out of ${csv.length} entries.`;
+          : row["Notify on new posts"].toLowerCase().trim() === "true",
+      languages:
+        row.Languages?.toLowerCase()?.trim() === ""
+          ? undefined
+          : row.Languages?.toLowerCase()?.trim()?.split(/,\s+/g),
+    }));
   } else if (category === "muted_accounts") {
-    const accounts = csv
-      .map((row) => row["Account address"].trim())
-      .filter((addr) => addr != null);
-    const notifications = globalThis.Object.fromEntries(
-      csv.map(
-        (row) =>
-          [
-            row["Account address"].trim(),
-            row["Hide notifications"].toLowerCase().trim() === "true",
-          ] as const,
-      ),
-    );
-    const { results } = await PromisePool.for(accounts).process(
-      async (handle) =>
-        [
-          handle,
-          await fedCtx.lookupObject(handle, { documentLoader }),
-        ] as const,
-    );
-    const actors: Record<string, [Actor, boolean]> = {};
-    for (const [handle, actor] of results) {
-      if (isActor(actor)) actors[handle] = [actor, notifications[handle]];
-    }
-    let imported = 0;
-    await db.transaction(async (tx) => {
-      for (const handle in actors) {
-        const [actor, notifications] = actors[handle];
-        let target: Account | null;
-        try {
-          target = await persistAccount(tx, actor, c.req.url, fedCtx);
-        } catch (error) {
-          logger.error("Failed to persist account: {error}", { error });
-          continue;
-        }
-        if (target == null) continue;
-        await tx
-          .insert(mutes)
-          .values({
-            id: crypto.randomUUID(),
-            accountId: accountOwner.id,
-            mutedAccountId: target.id,
-            notifications,
-          })
-          .onConflictDoNothing();
-        imported++;
-      }
-    });
-    message = `Imported ${imported} muted accounts out of ${csv.length} entries.`;
+    parsedItems = csv.map((row) => ({
+      handle: row["Account address"]?.trim(),
+      notifications:
+        row["Hide notifications"]?.toLowerCase()?.trim() === "true",
+    }));
   } else if (category === "blocked_accounts") {
-    const accounts = csv
-      .map((row) => row[0].trim())
-      .filter((addr) => addr != null);
-    const { results } = await PromisePool.for(accounts).process((handle) =>
-      fedCtx.lookupObject(handle, { documentLoader }),
-    );
-    let blocked = 0;
-    for (const actor of results) {
-      if (!isActor(actor)) continue;
-      await db.transaction(async (tx) => {
-        const target = await persistAccount(tx, actor, c.req.url, fedCtx);
-        if (target == null) return;
-        await blockAccount(tx, fedCtx, accountOwner, target);
-        blocked++;
-      });
-    }
-    message = `Blocked ${blocked} accounts out of ${csv.length} entries.`;
+    parsedItems = csv.map((row) => ({
+      handle: row[0]?.trim(),
+    }));
   } else if (category === "bookmarks") {
-    const iris = csv.map((row) => row[0].trim()).filter((iri) => iri != null);
-    const { results } = await PromisePool.for(iris).process(async (iri) => {
-      try {
-        return await fedCtx.lookupObject(iri, { documentLoader });
-      } catch (error) {
-        logger.error("Failed to lookup object: {error}", { error });
-        return null;
-      }
-    });
-    let imported = 0;
-    await db.transaction(async (tx) => {
-      for (const obj of results) {
-        if (!isPost(obj)) continue;
-        let post: Post | null;
-        try {
-          post = await persistPost(tx, obj, c.req.url, fedCtx);
-        } catch (error) {
-          logger.error("Failed to persist post: {error}", { error });
-          continue;
-        }
-        if (post == null) continue;
-        await tx
-          .insert(bookmarks)
-          .values({ postId: post.id, accountOwnerId: accountOwner.id })
-          .onConflictDoNothing();
-        imported++;
-      }
-    });
-    message = `Imported ${imported} bookmarks out of ${csv.length} entries.`;
+    parsedItems = csv.map((row) => ({
+      iri: row[0]?.trim(),
+    }));
+  } else if (category === "lists") {
+    parsedItems = csv.map((row) => ({
+      listName: row[0]?.trim(),
+      handle: row[1]?.trim(),
+    }));
   } else {
     return new Response("Invalid category", { status: 400 });
   }
+
+  // Filter out invalid items
+  parsedItems = parsedItems.filter((item) => {
+    if (category === "bookmarks") {
+      return (item as { iri?: string }).iri != null;
+    }
+    if (category === "lists") {
+      return (
+        (item as { listName?: string; handle?: string }).listName != null &&
+        (item as { listName?: string; handle?: string }).handle != null
+      );
+    }
+    return (item as { handle?: string }).handle != null;
+  });
+
+  if (parsedItems.length === 0) {
+    return c.redirect(
+      `/accounts/${accountOwner.id}/migrate?import-data-result=${encodeURIComponent("No valid items to import")}#import-data`,
+    );
+  }
+
+  // Create the import job
+  const jobId = uuidv7();
+  await db.insert(importJobs).values({
+    id: jobId,
+    accountOwnerId: accountOwner.id,
+    category: category as ImportJobCategory,
+    totalItems: parsedItems.length,
+  });
+
+  // Create import job items in batches
+  const itemValues = parsedItems.map((data) => ({
+    id: uuidv7(),
+    jobId,
+    data,
+  }));
+
+  // Insert in batches of 1000 to avoid hitting query size limits
+  for (let i = 0; i < itemValues.length; i += 1000) {
+    await db.insert(importJobItems).values(itemValues.slice(i, i + 1000));
+  }
+
+  logger.info(
+    "Created import job {jobId} with {count} items for category {category}",
+    { jobId, count: parsedItems.length, category },
+  );
+
+  // Redirect to migrate page with job ID
   return c.redirect(
-    `/accounts/${accountOwner.id}/migrate?import-data-result=${encodeURIComponent(message)}#import-data`,
+    `/accounts/${accountOwner.id}/migrate?import-job=${jobId}#import-data`,
+  );
+});
+
+// Cancel import job endpoint
+accounts.post("/:id/migrate/import/:jobId/cancel", async (c) => {
+  const accountId = c.req.param("id");
+  const jobId = c.req.param("jobId");
+
+  if (!isUuid(accountId) || !isUuid(jobId)) return c.notFound();
+
+  const accountOwner = await db.query.accountOwners.findFirst({
+    where: eq(accountOwners.id, accountId),
+  });
+  if (accountOwner == null) return c.notFound();
+
+  // Verify job belongs to this account owner
+  const job = await db.query.importJobs.findFirst({
+    where: and(
+      eq(importJobs.id, jobId),
+      eq(importJobs.accountOwnerId, accountId),
+    ),
+  });
+
+  if (!job) return c.notFound();
+
+  // Only allow cancellation of pending or processing jobs
+  if (job.status !== "pending" && job.status !== "processing") {
+    return c.redirect(
+      `/accounts/${accountOwner.id}/migrate?import-data-result=${encodeURIComponent("Job cannot be cancelled")}#import-data`,
+    );
+  }
+
+  // Mark job as cancelled
+  await db
+    .update(importJobs)
+    .set({ status: "cancelled", completedAt: new Date() })
+    .where(eq(importJobs.id, jobId));
+
+  logger.info("Import job {jobId} cancelled by user", { jobId });
+
+  return c.redirect(
+    `/accounts/${accountOwner.id}/migrate?import-data-result=${encodeURIComponent("Import cancelled")}#import-data`,
   );
 });
 

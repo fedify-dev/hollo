@@ -61,8 +61,16 @@ To be released.
     `in_reply_to_id`, and other optional parameters, improving
     compatibility with Mastodon clients.  [[#177], [#179] by Lee ByeongJun]
 
+ -  Implemented asynchronous import job processing with a background worker
+    to improve the reliability and performance of account data imports
+    (following accounts, lists, muted/blocked accounts, bookmarks).
+    Large imports no longer block the HTTP request, and users can see
+    real-time progress of their imports.  [[#94], [#295] by Juyoung Jung]
+
  -  Upgraded Fedify to 1.9.1.
 
+[#94]: https://github.com/fedify-dev/hollo/issues/94
+[#295]: https://github.com/fedify-dev/hollo/pull/295
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
