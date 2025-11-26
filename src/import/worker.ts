@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { type Transaction } from "../db";
 import federation from "../federation/federation";
 import * as schema from "../schema";
@@ -173,7 +173,7 @@ async function processJobItems(
     .where(
       and(
         eq(schema.importJobItems.jobId, job.id),
-        sql`${schema.importJobItems.id} = ANY(${itemIds})`,
+        inArray(schema.importJobItems.id, itemIds),
       ),
     );
 
