@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import { and, eq, sql } from "drizzle-orm";
-import db from "../db";
+import db, { type Transaction } from "../db";
 import federation from "../federation/federation";
 import * as schema from "../schema";
 import {
@@ -54,37 +54,47 @@ export function stopImportWorker(): void {
 
 async function pollAndProcess(): Promise<void> {
   try {
-    // Find pending jobs and start them (only process one job at a time)
-    const pendingJob = await db.query.importJobs.findFirst({
-      where: eq(schema.importJobs.status, "pending"),
-      orderBy: schema.importJobs.created,
+    // Use a transaction with FOR UPDATE SKIP LOCKED to prevent
+    // multiple workers from processing the same job
+    await db.transaction(async (tx) => {
+      // Find pending jobs and start them (only process one job at a time)
+      const [pendingJob] = await tx
+        .select()
+        .from(schema.importJobs)
+        .where(eq(schema.importJobs.status, "pending"))
+        .orderBy(schema.importJobs.created)
+        .limit(1)
+        .for("update", { skipLocked: true });
+
+      if (pendingJob) {
+        await startJob(tx, pendingJob);
+        return; // Process one job per poll cycle
+      }
+
+      // Continue processing jobs that are already "processing"
+      const [processingJob] = await tx
+        .select()
+        .from(schema.importJobs)
+        .where(eq(schema.importJobs.status, "processing"))
+        .limit(1)
+        .for("update", { skipLocked: true });
+
+      if (processingJob) {
+        await processJobItems(tx, processingJob);
+      }
     });
-
-    if (pendingJob) {
-      await startJob(pendingJob);
-      return; // Process one job per poll cycle
-    }
-
-    // Continue processing jobs that are already "processing"
-    const processingJob = await db.query.importJobs.findFirst({
-      where: eq(schema.importJobs.status, "processing"),
-    });
-
-    if (processingJob) {
-      await processJobItems(processingJob);
-    }
   } catch (error) {
     logger.error("Error in import worker poll: {error}", { error });
   }
 }
 
-async function startJob(job: schema.ImportJob): Promise<void> {
+async function startJob(tx: Transaction, job: schema.ImportJob): Promise<void> {
   logger.info("Starting import job {jobId} for category {category}", {
     jobId: job.id,
     category: job.category,
   });
 
-  await db
+  await tx
     .update(schema.importJobs)
     .set({
       status: "processing",
@@ -92,49 +102,57 @@ async function startJob(job: schema.ImportJob): Promise<void> {
     })
     .where(eq(schema.importJobs.id, job.id));
 
-  await processJobItems({
+  await processJobItems(tx, {
     ...job,
     status: "processing",
     startedAt: new Date(),
   });
 }
 
-async function processJobItems(job: schema.ImportJob): Promise<void> {
-  // Check if job has been cancelled
-  const currentJob = await db.query.importJobs.findFirst({
-    where: eq(schema.importJobs.id, job.id),
-  });
+async function processJobItems(
+  tx: Transaction,
+  job: schema.ImportJob,
+): Promise<void> {
+  // Check if job has been cancelled (use tx to see latest state within transaction)
+  const [currentJob] = await tx
+    .select()
+    .from(schema.importJobs)
+    .where(eq(schema.importJobs.id, job.id));
 
   if (!currentJob || currentJob.status === "cancelled") {
     logger.info("Import job {jobId} was cancelled", { jobId: job.id });
-    await finalizeJob(job, "cancelled");
+    await finalizeJob(tx, job, "cancelled");
     return;
   }
 
-  // Get pending items for this job
-  const pendingItems = await db.query.importJobItems.findMany({
-    where: and(
-      eq(schema.importJobItems.jobId, job.id),
-      eq(schema.importJobItems.status, "pending"),
-    ),
-    limit: BATCH_SIZE,
-  });
+  // Get pending items for this job with lock
+  const pendingItems = await tx
+    .select()
+    .from(schema.importJobItems)
+    .where(
+      and(
+        eq(schema.importJobItems.jobId, job.id),
+        eq(schema.importJobItems.status, "pending"),
+      ),
+    )
+    .limit(BATCH_SIZE)
+    .for("update", { skipLocked: true });
 
   if (pendingItems.length === 0) {
     // No more items - mark job as completed
-    await finalizeJob(job, "completed");
+    await finalizeJob(tx, job, "completed");
     return;
   }
 
   // Get account owner for this job
-  const accountOwner = await db.query.accountOwners.findFirst({
+  const accountOwner = await tx.query.accountOwners.findFirst({
     where: eq(schema.accountOwners.id, job.accountOwnerId),
     with: { account: true },
   });
 
   if (!accountOwner) {
     logger.error("Account owner not found for job {jobId}", { jobId: job.id });
-    await db
+    await tx
       .update(schema.importJobs)
       .set({
         status: "failed",
@@ -145,27 +163,45 @@ async function processJobItems(job: schema.ImportJob): Promise<void> {
     return;
   }
 
-  // Process items with limited concurrency
+  // Mark items as processing within the transaction
   const itemsToProcess = pendingItems.slice(0, CONCURRENT_ITEMS);
+  const itemIds = itemsToProcess.map((item) => item.id);
 
-  await Promise.allSettled(
-    itemsToProcess.map((item) => processItem(job, item, accountOwner)),
-  );
+  await tx
+    .update(schema.importJobItems)
+    .set({ status: "processing" })
+    .where(
+      and(
+        eq(schema.importJobItems.jobId, job.id),
+        sql`${schema.importJobItems.id} = ANY(${itemIds})`,
+      ),
+    );
 
-  // Update processed count
-  await db
+  // Update processed count within transaction
+  await tx
     .update(schema.importJobs)
     .set({
       processedItems: sql`${schema.importJobs.processedItems} + ${itemsToProcess.length}`,
     })
     .where(eq(schema.importJobs.id, job.id));
+
+  // Process items outside the transaction (federation calls are external)
+  // We schedule this to run after the transaction commits
+  setTimeout(() => {
+    Promise.allSettled(
+      itemsToProcess.map((item) => processItem(job, item, accountOwner)),
+    ).catch((error) => {
+      logger.error("Error processing import items: {error}", { error });
+    });
+  }, 0);
 }
 
 async function finalizeJob(
+  tx: Transaction,
   job: schema.ImportJob,
   status: "completed" | "cancelled" | "failed",
 ): Promise<void> {
-  const [stats] = await db
+  const [stats] = await tx
     .select({
       successful:
         sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`.mapWith(
@@ -178,7 +214,7 @@ async function finalizeJob(
     .from(schema.importJobItems)
     .where(eq(schema.importJobItems.jobId, job.id));
 
-  await db
+  await tx
     .update(schema.importJobs)
     .set({
       status,
@@ -204,12 +240,7 @@ async function processItem(
   item: schema.ImportJobItem,
   accountOwner: schema.AccountOwner & { account: schema.Account },
 ): Promise<void> {
-  // Mark as processing
-  await db
-    .update(schema.importJobItems)
-    .set({ status: "processing" })
-    .where(eq(schema.importJobItems.id, item.id));
-
+  // Item is already marked as "processing" in the transaction
   try {
     // Create a mock request to get federation context
     // We need the origin from the account's IRI
