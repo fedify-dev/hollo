@@ -23,6 +23,12 @@ const logger = getLogger(["hollo", "api", "v2", "notifications"]);
 
 const app = new Hono<{ Variables: Variables }>();
 
+// Format notification ID to match v1 API format for consistency
+// This ensures markers work correctly across v1 and v2 APIs
+function formatNotificationId(created: Date, type: string, id: string): string {
+  return `${created.toISOString()}/${type}/${id}`;
+}
+
 // GET /api/v2/notifications - Get grouped notifications
 app.get(
   "/",
@@ -174,16 +180,20 @@ app.get(
         accountsMap.has(id),
       );
 
+      const latestAt = group.latestPageNotificationAt ?? group.created;
+      const notificationId = group.mostRecentNotificationId;
+
       return {
         group_key: group.groupKey,
         notifications_count: group.notificationsCount,
         type: group.type,
-        most_recent_notification_id: group.mostRecentNotificationId,
+        most_recent_notification_id:
+          notificationId != null
+            ? formatNotificationId(latestAt, group.type, notificationId)
+            : null,
         page_min_id: group.pageMinId ?? group.mostRecentNotificationId,
         page_max_id: group.pageMaxId ?? group.mostRecentNotificationId,
-        latest_page_notification_at: (
-          group.latestPageNotificationAt ?? group.created
-        ).toISOString(),
+        latest_page_notification_at: latestAt.toISOString(),
         sample_account_ids: sampleAccountIds,
         status_id: targetPost?.id ?? null,
       };
@@ -344,6 +354,9 @@ app.get(
       ? serializePost(postData, owner, c.req.url)
       : null;
 
+    const latestAt = group.latestPageNotificationAt ?? group.created;
+    const notificationId = group.mostRecentNotificationId;
+
     return c.json({
       accounts: serializedAccounts,
       statuses: serializedStatus != null ? [serializedStatus] : [],
@@ -352,12 +365,13 @@ app.get(
           group_key: group.groupKey,
           notifications_count: group.notificationsCount,
           type: group.type,
-          most_recent_notification_id: group.mostRecentNotificationId,
+          most_recent_notification_id:
+            notificationId != null
+              ? formatNotificationId(latestAt, group.type, notificationId)
+              : null,
           page_min_id: group.pageMinId ?? group.mostRecentNotificationId,
           page_max_id: group.pageMaxId ?? group.mostRecentNotificationId,
-          latest_page_notification_at: (
-            group.latestPageNotificationAt ?? group.created
-          ).toISOString(),
+          latest_page_notification_at: latestAt.toISOString(),
           sample_account_ids: group.sampleAccountIds,
           status_id: group.targetPostId,
         },
