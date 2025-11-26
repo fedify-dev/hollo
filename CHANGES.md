@@ -67,15 +67,32 @@ To be released.
     Large imports no longer block the HTTP request, and users can see
     real-time progress of their imports.  [[#94], [#295] by Juyoung Jung]
 
+ -  Improved instance API responses for better third-party client compatibility.
+    [[#296] by Juyoung Jung]
+
+     -  `GET /api/v1/instance`: Added `configuration.accounts.max_featured_tags`
+        field, `thumbnail` field with Hollo logo, and implemented actual `stats`
+        values (`user_count`, `status_count`, `domain_count`) from the database.
+     -  `GET /api/v2/instance`: Added `thumbnail` object with `url`, `blurhash`,
+        and `versions` fields, `icon` array, and updated `max_featured_tags` and
+        `max_pinned_statuses` values from 0 to 10.
+
+ -  Fixed OAuth token endpoint rejecting requests from clients that send
+    credentials via both HTTP Basic authentication and request body
+    simultaneously.  The endpoint now accepts such requests if the credentials
+    are identical, improving compatibility with clients like tooot.
+    [[#296] by Juyoung Jung]
+
  -  Upgraded Fedify to 1.9.1.
 
 [#94]: https://github.com/fedify-dev/hollo/issues/94
-[#295]: https://github.com/fedify-dev/hollo/pull/295
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
 [#177]: https://github.com/fedify-dev/hollo/issues/177
 [#179]: https://github.com/fedify-dev/hollo/pull/179
+[#295]: https://github.com/fedify-dev/hollo/pull/295
+[#296]: https://github.com/fedify-dev/hollo/pull/296
 
 
 Version 0.6.18

@@ -40,20 +40,33 @@ app.get("/", async (c) => {
     description: `A Hollo instance at ${url.host}`,
     usage: {
       users: {
-        active_month: 0, // TODO
+        // TODO: Track active users in the past 4 weeks
+        active_month: 0,
       },
     },
-    // TODO: thumbnail
+    // TODO: Allow instance admins to customize the thumbnail image
+    thumbnail: {
+      url: `${url.origin}/public/favicon.png`,
+      blurhash: null,
+      versions: {},
+    },
+    // TODO: Allow instance admins to customize the icon
+    icon: [
+      {
+        src: `${url.origin}/public/favicon.png`,
+        size: "500x500",
+      },
+    ],
     languages: languages.map(({ language }) => language),
     configuration: {
-      // TODO: urls
+      // TODO: urls (streaming_api)
       accounts: {
-        // TODO
-        max_featured_tags: 0,
-        max_pinned_statuses: 0,
+        // TODO: Make these configurable
+        max_featured_tags: 10,
+        max_pinned_statuses: 10,
       },
       statuses: {
-        // TODO
+        // TODO: Make these configurable
         max_characters: 10000,
         max_media_attachments: 8,
         characters_reserved_per_url: 256,
@@ -67,14 +80,15 @@ app.get("/", async (c) => {
           "video/mp4",
           "video/webm",
         ],
+        // TODO: Make these configurable
         image_size_limit: 1024 * 1024 * 32, // 32MiB
         image_matrix_limit: 16_777_216,
-        // TODO
         video_size_limit: 1024 * 1024 * 128, // 128MiB
         video_frame_rate_limit: 120,
         video_matrix_limit: 16_777_216,
       },
       polls: {
+        // TODO: Make these configurable
         max_options: 10,
         max_characters_per_option: 100,
         min_expiration: 60 * 5,
@@ -83,7 +97,7 @@ app.get("/", async (c) => {
       translation: {
         enabled: false,
       },
-      // TODO: webpush
+      // TODO: Implement web push notifications and provide VAPID public key
       vapid: {
         public_key: "",
       },

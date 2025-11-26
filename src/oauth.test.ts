@@ -1090,15 +1090,42 @@ describe.sequential("OAuth", () => {
       expect(responseBody.error).toBe("invalid_client");
     });
 
-    it("cannot request an access token using multiple client authentication methods", async () => {
-      expect.assertions(3);
-      // Here we are using both client_secret_post and client_secret_basic
-      // together, which is not acceptable
+    it("allows multiple client authentication methods with same credentials", async () => {
+      expect.assertions(5);
+      // Some clients (like tooot) send credentials via both Basic auth and POST body.
+      // This should be allowed if the credentials are the same.
 
       const body = new FormData();
       body.set("grant_type", "client_credentials");
       body.set("client_id", application.clientId);
       body.set("client_secret", application.clientSecret);
+      body.set("scope", "read:accounts");
+
+      const response = await app.request("/oauth/token", {
+        method: "POST",
+        headers: {
+          authorization: basicAuthorization(application),
+        },
+        body,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+
+      const responseBody = await response.json();
+      expect(responseBody.access_token).toBeDefined();
+      expect(responseBody.token_type).toBe("Bearer");
+      expect(responseBody.scope).toBe("read:accounts");
+    });
+
+    it("cannot request an access token using multiple client authentication methods with different credentials", async () => {
+      expect.assertions(3);
+      // Using different credentials for Basic auth and POST body should fail
+
+      const body = new FormData();
+      body.set("grant_type", "client_credentials");
+      body.set("client_id", wrongApplication.clientId);
+      body.set("client_secret", wrongApplication.clientSecret);
       body.set("scope", "read:accounts");
 
       const response = await app.request("/oauth/token", {

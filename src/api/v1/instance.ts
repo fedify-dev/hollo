@@ -1,9 +1,9 @@
-import { and, inArray, isNotNull } from "drizzle-orm";
+import { and, count, inArray, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
 import metadata from "../../../package.json" with { type: "json" };
 import { db } from "../../db";
 import { serializeAccountOwner } from "../../entities/account";
-import { accountOwners, posts } from "../../schema";
+import { accountOwners, instances, posts } from "../../schema";
 
 const app = new Hono();
 
@@ -29,6 +29,15 @@ app.get("/", async (c) => {
       ),
     )
     .groupBy(posts.language);
+  const [{ userCount }] = await db
+    .select({ userCount: count() })
+    .from(accountOwners);
+  const [{ statusCount }] = await db
+    .select({ statusCount: count() })
+    .from(posts);
+  const [{ domainCount }] = await db
+    .select({ domainCount: count() })
+    .from(instances);
   return c.json({
     uri: url.host,
     title: url.host,
@@ -36,20 +45,25 @@ app.get("/", async (c) => {
     description: `A Hollo instance at ${url.host}`,
     email: credential.email,
     version: metadata.version,
-    urls: {}, // TODO
+    urls: {}, // TODO: streaming_api URL
     stats: {
-      user_count: 0, // TODO
-      status_count: 0, // TODO
-      domain_count: 0, // TODO
+      user_count: userCount,
+      status_count: statusCount,
+      domain_count: domainCount,
     },
-    thumbnail: null, // TODO
+    // TODO: Allow instance admins to customize the thumbnail image
+    thumbnail: `${url.origin}/public/favicon.png`,
     languages: languages.map(({ language }) => language),
     registrations: false,
     approval_required: true,
     invites_enabled: false,
     configuration: {
+      accounts: {
+        // TODO: Make this configurable
+        max_featured_tags: 10,
+      },
       statuses: {
-        // TODO
+        // TODO: Make these configurable
         max_characters: 10000,
         max_media_attachments: 8,
         characters_reserved_per_url: 256,
@@ -63,14 +77,15 @@ app.get("/", async (c) => {
           "video/mp4",
           "video/webm",
         ],
+        // TODO: Make these configurable
         image_size_limit: 1024 * 1024 * 32, // 32MiB
         image_matrix_limit: 16_777_216,
-        // TODO
         video_size_limit: 1024 * 1024 * 128, // 128MiB
         video_frame_rate_limit: 120,
         video_matrix_limit: 16_777_216,
       },
       polls: {
+        // TODO: Make these configurable
         max_options: 10,
         max_characters_per_option: 100,
         min_expiration: 60 * 5,
