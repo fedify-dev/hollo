@@ -200,6 +200,7 @@ export const accountOwnerRelations = relations(
     markers: many(markers),
     featuredTags: many(featuredTags),
     lists: many(lists),
+    importJobs: many(importJobs),
   }),
 );
 
@@ -1275,5 +1276,98 @@ export const listPostRelations = relations(listPosts, ({ one }) => ({
   post: one(posts, {
     fields: [listPosts.postId],
     references: [posts.id],
+  }),
+}));
+
+// Import Job Status Enum
+export const importJobStatusEnum = pgEnum("import_job_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+
+export type ImportJobStatus = (typeof importJobStatusEnum.enumValues)[number];
+
+// Import Job Category Enum
+export const importJobCategoryEnum = pgEnum("import_job_category", [
+  "following_accounts",
+  "lists",
+  "muted_accounts",
+  "blocked_accounts",
+  "bookmarks",
+]);
+
+export type ImportJobCategory =
+  (typeof importJobCategoryEnum.enumValues)[number];
+
+// Import Jobs Table
+export const importJobs = pgTable(
+  "import_jobs",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    accountOwnerId: uuid("account_owner_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => accountOwners.id, { onDelete: "cascade" }),
+    category: importJobCategoryEnum("category").notNull(),
+    status: importJobStatusEnum("status").notNull().default("pending"),
+    totalItems: integer("total_items").notNull().default(0),
+    processedItems: integer("processed_items").notNull().default(0),
+    successfulItems: integer("successful_items").notNull().default(0),
+    failedItems: integer("failed_items").notNull().default(0),
+    errorMessage: text("error_message"),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index().on(table.accountOwnerId, table.status),
+    index().on(table.status, table.created),
+  ],
+);
+
+export type ImportJob = typeof importJobs.$inferSelect;
+export type NewImportJob = typeof importJobs.$inferInsert;
+
+// Import Job Items Table
+export const importJobItems = pgTable(
+  "import_job_items",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    jobId: uuid("job_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => importJobs.id, { onDelete: "cascade" }),
+    status: importJobStatusEnum("status").notNull().default("pending"),
+    data: jsonb("data").notNull().$type<Record<string, unknown>>(),
+    errorMessage: text("error_message"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+  },
+  (table) => [index().on(table.jobId, table.status)],
+);
+
+export type ImportJobItem = typeof importJobItems.$inferSelect;
+export type NewImportJobItem = typeof importJobItems.$inferInsert;
+
+// Import Job Relations
+export const importJobRelations = relations(importJobs, ({ one, many }) => ({
+  accountOwner: one(accountOwners, {
+    fields: [importJobs.accountOwnerId],
+    references: [accountOwners.id],
+  }),
+  items: many(importJobItems),
+}));
+
+export const importJobItemRelations = relations(importJobItems, ({ one }) => ({
+  job: one(importJobs, {
+    fields: [importJobItems.jobId],
+    references: [importJobs.id],
   }),
 }));
