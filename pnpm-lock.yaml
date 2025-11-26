@@ -14,6 +14,9 @@ importers:
       '@fedify/fedify':
         specifier: ~1.9.1
         version: 1.9.1(web-streams-polyfill@3.3.3)
+      '@fedify/hono':
+        specifier: ~1.9.1
+        version: 1.9.1(@fedify/fedify@1.9.1(web-streams-polyfill@3.3.3))(hono@4.10.4)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -681,8 +684,8 @@ packages:
   '@emmetio/css-abbreviation@2.1.8':
     resolution: {integrity: sha512-s9yjhJ6saOO/uk1V74eifykk2CBYi01STTK3WlXWGOepyKa23ymJ053+DNQjpFcy1ingpaO7AxCcwLvHFY9tuw==}
 
-  '@emmetio/css-parser@git+https://github.com/ramya-rao-a/css-parser.git#370c480ac103bd17c7bcfb34bf5d577dc40d3660':
-    resolution: {commit: 370c480ac103bd17c7bcfb34bf5d577dc40d3660, repo: https://github.com/ramya-rao-a/css-parser.git, type: git}
+  '@emmetio/css-parser@https://codeload.github.com/ramya-rao-a/css-parser/tar.gz/370c480ac103bd17c7bcfb34bf5d577dc40d3660':
+    resolution: {tarball: https://codeload.github.com/ramya-rao-a/css-parser/tar.gz/370c480ac103bd17c7bcfb34bf5d577dc40d3660}
     version: 0.4.0
 
   '@emmetio/html-matcher@1.3.0':
@@ -1012,6 +1015,12 @@ packages:
   '@fedify/fedify@1.9.1':
     resolution: {integrity: sha512-MvR8E4hQGxkWPOhQfQeGVPPPJ3jC+crIin7WOA4O6HjAk1rPT8H/9rALuMEhoyDbly3xKVBi11Qo9XLHHGiUiA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
+
+  '@fedify/hono@1.9.1':
+    resolution: {integrity: sha512-kBuO+mNWcc9z8iiiWiIfvOUe7/VCNrjPogjMcq51jdjb6HbJdy77gdTN26dcUq6JASoxMjMFnZqjT/YixL7sTA==}
+    peerDependencies:
+      '@fedify/fedify': ^1.9.1
+      hono: ^4.0.0
 
   '@fedify/markdown-it-hashtag@0.3.0':
     resolution: {integrity: sha512-DCtfQ1OlFstob382d2iwEi77ezNqDQkUjS664q2r7ZOQQkBExvgvKDkL851tf1XRYp4A425/HO2yGRLZ1u1pSg==}
@@ -6055,7 +6064,7 @@ snapshots:
     dependencies:
       '@emmetio/scanner': 1.0.4
 
-  '@emmetio/css-parser@git+https://github.com/ramya-rao-a/css-parser.git#370c480ac103bd17c7bcfb34bf5d577dc40d3660':
+  '@emmetio/css-parser@https://codeload.github.com/ramya-rao-a/css-parser/tar.gz/370c480ac103bd17c7bcfb34bf5d577dc40d3660':
     dependencies:
       '@emmetio/stream-reader': 2.2.0
       '@emmetio/stream-reader-utils': 0.1.0
@@ -6277,6 +6286,11 @@ snapshots:
       urlpattern-polyfill: 10.1.0
     transitivePeerDependencies:
       - web-streams-polyfill
+
+  '@fedify/hono@1.9.1(@fedify/fedify@1.9.1(web-streams-polyfill@3.3.3))(hono@4.10.4)':
+    dependencies:
+      '@fedify/fedify': 1.9.1(web-streams-polyfill@3.3.3)
+      hono: 4.10.4
 
   '@fedify/markdown-it-hashtag@0.3.0':
     dependencies:
@@ -10719,7 +10733,7 @@ snapshots:
 
   volar-service-emmet@0.0.66(@volar/language-service@2.4.23):
     dependencies:
-      '@emmetio/css-parser': git+https://github.com/ramya-rao-a/css-parser.git#370c480ac103bd17c7bcfb34bf5d577dc40d3660
+      '@emmetio/css-parser': https://codeload.github.com/ramya-rao-a/css-parser/tar.gz/370c480ac103bd17c7bcfb34bf5d577dc40d3660
       '@emmetio/html-matcher': 1.3.0
       '@vscode/emmet-helper': 2.11.0
       vscode-uri: 3.1.0
