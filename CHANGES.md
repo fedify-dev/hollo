@@ -24,7 +24,7 @@ To be released.
         cannot be pre-generated without background job scheduling.
 
  -  Enabled gzip/deflate compression for all API responses, reducing response
-    sizes by 70-92% and improving overall API performance. For example,
+    sizes by 70–92% and improving overall API performance. For example,
     `/api/v1/notifications` responses are now compressed from 767KB to 58KB,
     `/api/v1/timelines/home` from 91KB to 14KB, resulting in faster load times
     and reduced bandwidth usage.
@@ -35,14 +35,14 @@ To be released.
     `follow`, `reblog`, `admin.sign_up`, and `emoji_reaction` together when they
     target the same post or account. New endpoints include:
 
-     -  `GET /api/v2/notifications` - Get paginated grouped notifications with
+     -  `GET /api/v2/notifications`: Get paginated grouped notifications with
         deduplicated accounts and statuses
-     -  `GET /api/v2/notifications/:group_key` - Get a specific notification group
-     -  `GET /api/v2/notifications/:group_key/accounts` - Get all accounts in a
+     -  `GET /api/v2/notifications/:group_key`: Get a specific notification group
+     -  `GET /api/v2/notifications/:group_key/accounts`: Get all accounts in a
         notification group
-     -  `POST /api/v2/notifications/:group_key/dismiss` - Dismiss a notification
+     -  `POST /api/v2/notifications/:group_key/dismiss`: Dismiss a notification
         group
-     -  `GET /api/v2/notifications/unread_count` - Get unread notification count
+     -  `GET /api/v2/notifications/unread_count`: Get unread notification count
 
  -  Fixed `POST /api/v1/statuses` and `PUT /api/v1/statuses/:id` endpoints
     rejecting FormData requests.  These endpoints now properly accept both
