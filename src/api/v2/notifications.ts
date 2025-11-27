@@ -108,9 +108,10 @@ app.get(
       },
     );
 
-    // Collect all account IDs and post IDs to fetch
+    // Collect all account IDs, post IDs, and notification IDs to fetch
     const accountIds = new Set<string>();
     const postIds = new Set<string>();
+    const notificationIds = new Set<string>();
 
     for (const group of groups) {
       for (const accountId of group.sampleAccountIds) {
@@ -119,10 +120,13 @@ app.get(
       if (group.targetPostId != null) {
         postIds.add(group.targetPostId);
       }
+      if (group.mostRecentNotificationId != null) {
+        notificationIds.add(group.mostRecentNotificationId);
+      }
     }
 
-    // Fetch all accounts and posts in batch
-    const [accountsData, postsData] = await Promise.all([
+    // Fetch all accounts, posts, and notifications in batch
+    const [accountsData, postsData, notificationsData] = await Promise.all([
       accountIds.size > 0
         ? db.query.accounts.findMany({
             where: inArray(sql`id`, Array.from(accountIds)),
@@ -133,6 +137,14 @@ app.get(
         ? db.query.posts.findMany({
             where: inArray(sql`id`, Array.from(postIds)),
             with: getPostRelations(owner.id),
+          })
+        : [],
+      notificationIds.size > 0
+        ? db.query.notifications.findMany({
+            where: inArray(
+              notifications.id,
+              Array.from(notificationIds) as Uuid[],
+            ),
           })
         : [],
     ]);
@@ -150,6 +162,7 @@ app.get(
     // Create lookup maps
     const accountsMap = new Map(accountsData.map((a) => [a.id, a]));
     const postsMap = new Map(postsData.map((p) => [p.id, p]));
+    const notificationsMap = new Map(notificationsData.map((n) => [n.id, n]));
 
     // Serialize accounts for deduplication
     const serializedAccounts = accountsData.map((account) =>
@@ -180,8 +193,17 @@ app.get(
         accountsMap.has(id),
       );
 
-      const latestAt = group.latestPageNotificationAt ?? group.created;
       const notificationId = group.mostRecentNotificationId;
+      // Use the actual notification's created time for the composite ID
+      // This ensures consistency with v1 API's notification ID format
+      const mostRecentNotification = notificationId
+        ? notificationsMap.get(notificationId)
+        : null;
+      const notificationCreatedAt =
+        mostRecentNotification?.created ??
+        group.latestPageNotificationAt ??
+        group.created;
+      const latestAt = group.latestPageNotificationAt ?? group.created;
 
       return {
         group_key: group.groupKey,
@@ -189,7 +211,11 @@ app.get(
         type: group.type,
         most_recent_notification_id:
           notificationId != null
-            ? formatNotificationId(latestAt, group.type, notificationId)
+            ? formatNotificationId(
+                notificationCreatedAt,
+                group.type,
+                notificationId,
+              )
             : null,
         page_min_id: group.pageMinId ?? group.mostRecentNotificationId,
         page_max_id: group.pageMaxId ?? group.mostRecentNotificationId,
@@ -321,8 +347,10 @@ app.get(
       return c.json({ error: "Record not found" }, 404);
     }
 
-    // Fetch related accounts and posts
-    const [accountsData, postData] = await Promise.all([
+    const notificationId = group.mostRecentNotificationId;
+
+    // Fetch related accounts, posts, and the most recent notification
+    const [accountsData, postData, mostRecentNotification] = await Promise.all([
       group.sampleAccountIds.length > 0
         ? db.query.accounts.findMany({
             where: inArray(sql`id`, group.sampleAccountIds),
@@ -333,6 +361,11 @@ app.get(
         ? db.query.posts.findFirst({
             where: eq(sql`id`, group.targetPostId),
             with: getPostRelations(owner.id),
+          })
+        : null,
+      notificationId != null
+        ? db.query.notifications.findFirst({
+            where: eq(notifications.id, notificationId),
           })
         : null,
     ]);
@@ -354,8 +387,12 @@ app.get(
       ? serializePost(postData, owner, c.req.url)
       : null;
 
+    // Use the actual notification's created time for the composite ID
+    const notificationCreatedAt =
+      mostRecentNotification?.created ??
+      group.latestPageNotificationAt ??
+      group.created;
     const latestAt = group.latestPageNotificationAt ?? group.created;
-    const notificationId = group.mostRecentNotificationId;
 
     return c.json({
       accounts: serializedAccounts,
@@ -367,7 +404,11 @@ app.get(
           type: group.type,
           most_recent_notification_id:
             notificationId != null
-              ? formatNotificationId(latestAt, group.type, notificationId)
+              ? formatNotificationId(
+                  notificationCreatedAt,
+                  group.type,
+                  notificationId,
+                )
               : null,
           page_min_id: group.pageMinId ?? group.mostRecentNotificationId,
           page_max_id: group.pageMaxId ?? group.mostRecentNotificationId,

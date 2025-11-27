@@ -25,15 +25,42 @@ import type { Uuid } from "../../uuid";
 const logger = getLogger(["hollo", "notifications"]);
 
 // Parse composite notification ID format: "created_at/type/uuid"
-// Returns the actual notification UUID for database queries
-function parseNotificationId(compositeId: string): Uuid | null {
+// Returns the actual notification UUID and timestamp for database queries
+interface ParsedNotificationId {
+  uuid: Uuid;
+  timestamp: Date | null;
+}
+
+function parseNotificationId(compositeId: string): ParsedNotificationId {
   const parts = compositeId.split("/");
   if (parts.length >= 3) {
     // Format: "2025-11-15T10:00:00.000Z/follow/uuid"
-    return parts[parts.length - 1] as Uuid;
+    const timestampStr = parts.slice(0, -2).join("/"); // Handle ISO timestamp with colons
+    const uuid = parts[parts.length - 1] as Uuid;
+    const timestamp = new Date(timestampStr);
+    const isValidTimestamp = !Number.isNaN(timestamp.getTime());
+    logger.debug(
+      "Parsed composite notification ID: {compositeId} -> {uuid}, {timestamp}",
+      {
+        compositeId,
+        uuid,
+        timestamp: isValidTimestamp ? timestamp.toISOString() : "invalid",
+        isValidTimestamp,
+      },
+    );
+    return {
+      uuid,
+      timestamp: Number.isNaN(timestamp.getTime()) ? null : timestamp,
+    };
   }
   // Fallback: assume it's already a plain UUID
-  return compositeId as Uuid;
+  logger.debug(
+    "Notification ID is not composite, using as UUID: {compositeId}",
+    {
+      compositeId,
+    },
+  );
+  return { uuid: compositeId as Uuid, timestamp: null };
 }
 
 const app = new Hono<{ Variables: Variables }>();
@@ -74,10 +101,12 @@ app.get(
     const sinceIdParam = c.req.query("since_id");
     const minIdParam = c.req.query("min_id");
 
-    // Parse composite IDs to get actual UUIDs
-    const maxId = maxIdParam ? parseNotificationId(maxIdParam) : null;
-    const sinceId = sinceIdParam ? parseNotificationId(sinceIdParam) : null;
-    const minId = minIdParam ? parseNotificationId(minIdParam) : null;
+    // Parse composite IDs to get actual UUIDs and timestamps
+    const maxIdParsed = maxIdParam ? parseNotificationId(maxIdParam) : null;
+    const sinceIdParsed = sinceIdParam
+      ? parseNotificationId(sinceIdParam)
+      : null;
+    const minIdParsed = minIdParam ? parseNotificationId(minIdParam) : null;
 
     if (types == null || types.length < 1) {
       types = [
@@ -98,22 +127,29 @@ app.get(
 
     const startTime = performance.now();
 
-    // Build pagination conditions
+    // Build pagination conditions using timestamps for reliable ordering
+    // UUIDv7 comparison may not work correctly across all PostgreSQL versions
     const paginationConditions = [];
     if (olderThan != null) {
       paginationConditions.push(lt(notifications.created, olderThan));
     }
     // max_id: Return results older than this ID (exclusive)
-    if (maxId != null) {
-      paginationConditions.push(lt(notifications.id, maxId));
+    if (maxIdParsed?.timestamp != null) {
+      paginationConditions.push(
+        lt(notifications.created, maxIdParsed.timestamp),
+      );
     }
     // since_id: Return results newer than this ID (exclusive)
-    if (sinceId != null) {
-      paginationConditions.push(gt(notifications.id, sinceId));
+    if (sinceIdParsed?.timestamp != null) {
+      paginationConditions.push(
+        gt(notifications.created, sinceIdParsed.timestamp),
+      );
     }
     // min_id: Return results immediately newer than this ID (exclusive)
-    if (minId != null) {
-      paginationConditions.push(gt(notifications.id, minId));
+    if (minIdParsed?.timestamp != null) {
+      paginationConditions.push(
+        gt(notifications.created, minIdParsed.timestamp),
+      );
     }
 
     // Use new notifications table for much better performance
@@ -156,6 +192,23 @@ app.get(
     if (types.includes("poll")) {
       const now = new Date();
 
+      // Build poll pagination conditions using timestamps from parsed IDs
+      const pollPaginationConditions = [];
+      if (olderThan != null) {
+        pollPaginationConditions.push(lt(polls.expires, olderThan));
+      }
+      if (maxIdParsed?.timestamp != null) {
+        pollPaginationConditions.push(lt(polls.expires, maxIdParsed.timestamp));
+      }
+      if (sinceIdParsed?.timestamp != null) {
+        pollPaginationConditions.push(
+          gt(polls.expires, sinceIdParsed.timestamp),
+        );
+      }
+      if (minIdParsed?.timestamp != null) {
+        pollPaginationConditions.push(gt(polls.expires, minIdParsed.timestamp));
+      }
+
       // Find expired polls where user is the author or has voted
       const expiredPollIds = await db
         .selectDistinct({ pollId: polls.id, expires: polls.expires })
@@ -176,7 +229,7 @@ app.get(
                   AND voter_owner.id = ${owner.id}
               )`,
             ),
-            olderThan == null ? undefined : lt(polls.expires, olderThan),
+            ...pollPaginationConditions,
           ),
         )
         .orderBy(desc(polls.expires))
