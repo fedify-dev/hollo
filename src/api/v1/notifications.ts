@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { and, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../../db";
 import {
@@ -20,8 +20,21 @@ import {
   pollVotes,
   posts,
 } from "../../schema";
+import type { Uuid } from "../../uuid";
 
 const logger = getLogger(["hollo", "notifications"]);
+
+// Parse composite notification ID format: "created_at/type/uuid"
+// Returns the actual notification UUID for database queries
+function parseNotificationId(compositeId: string): Uuid | null {
+  const parts = compositeId.split("/");
+  if (parts.length >= 3) {
+    // Format: "2025-11-15T10:00:00.000Z/follow/uuid"
+    return parts[parts.length - 1] as Uuid;
+  }
+  // Fallback: assume it's already a plain UUID
+  return compositeId as Uuid;
+}
 
 const app = new Hono<{ Variables: Variables }>();
 
@@ -55,6 +68,17 @@ app.get(
     const olderThanStr = c.req.query("older_than");
     const olderThan = olderThanStr == null ? null : new Date(olderThanStr);
     const limit = Number.parseInt(c.req.query("limit") ?? "40", 10);
+
+    // Mastodon-compatible pagination parameters
+    const maxIdParam = c.req.query("max_id");
+    const sinceIdParam = c.req.query("since_id");
+    const minIdParam = c.req.query("min_id");
+
+    // Parse composite IDs to get actual UUIDs
+    const maxId = maxIdParam ? parseNotificationId(maxIdParam) : null;
+    const sinceId = sinceIdParam ? parseNotificationId(sinceIdParam) : null;
+    const minId = minIdParam ? parseNotificationId(minIdParam) : null;
+
     if (types == null || types.length < 1) {
       types = [
         "mention",
@@ -74,12 +98,30 @@ app.get(
 
     const startTime = performance.now();
 
+    // Build pagination conditions
+    const paginationConditions = [];
+    if (olderThan != null) {
+      paginationConditions.push(lt(notifications.created, olderThan));
+    }
+    // max_id: Return results older than this ID (exclusive)
+    if (maxId != null) {
+      paginationConditions.push(lt(notifications.id, maxId));
+    }
+    // since_id: Return results newer than this ID (exclusive)
+    if (sinceId != null) {
+      paginationConditions.push(gt(notifications.id, sinceId));
+    }
+    // min_id: Return results immediately newer than this ID (exclusive)
+    if (minId != null) {
+      paginationConditions.push(gt(notifications.id, minId));
+    }
+
     // Use new notifications table for much better performance
     const notificationsData = await db.query.notifications.findMany({
       where: and(
         eq(notifications.accountOwnerId, owner.id),
         inArray(notifications.type, types),
-        olderThan == null ? undefined : lt(notifications.created, olderThan),
+        ...paginationConditions,
       ),
       orderBy: desc(notifications.created),
       limit,
