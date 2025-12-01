@@ -55,18 +55,16 @@ export const timelineQuerySchema = z.object({
     .transform((v) => Number.parseInt(v, 10)),
 });
 
-export const publicTimelineQuerySchema = timelineQuerySchema.merge(
-  z.object({
-    local: z
-      .enum(["true", "false"])
-      .default("false")
-      .transform((v) => v === "true"),
-    remote: z
-      .enum(["true", "false"])
-      .default("false")
-      .transform((v) => v === "true"),
-  }),
-);
+export const publicTimelineQuerySchema = timelineQuerySchema.extend({
+  local: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  remote: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+});
 
 app.get(
   "/public",

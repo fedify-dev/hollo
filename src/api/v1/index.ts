@@ -92,7 +92,7 @@ app.get(
   zValidator(
     "query",
     z.object({
-      before: z.string().datetime().optional(),
+      before: z.iso.datetime().optional(),
       limit: z
         .string()
         .default("20")
@@ -147,7 +147,7 @@ app.get(
   zValidator(
     "query",
     z.object({
-      before: z.string().datetime().optional(),
+      before: z.iso.datetime().optional(),
       limit: z
         .string()
         .default("20")
@@ -275,7 +275,7 @@ app.get(
   zValidator(
     "query",
     z.object({
-      until: z.string().datetime().optional(),
+      until: z.iso.datetime().optional(),
       limit: z
         .string()
         .default("40")

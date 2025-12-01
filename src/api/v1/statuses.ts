@@ -202,17 +202,15 @@ const statusSchema = z.object({
   language: z.string().min(2).optional().nullable(),
 });
 
-const createStatusSchema = statusSchema.merge(
-  z.object({
-    in_reply_to_id: uuid.optional().nullable(),
-    quote_id: uuid.optional().nullable(),
-    visibility: z
-      .enum(["public", "unlisted", "private", "direct"])
-      .optional()
-      .nullable(),
-    scheduled_at: z.string().datetime().optional().nullable(),
-  }),
-);
+const createStatusSchema = statusSchema.extend({
+  in_reply_to_id: uuid.optional().nullable(),
+  quote_id: uuid.optional().nullable(),
+  visibility: z
+    .enum(["public", "unlisted", "private", "direct"])
+    .optional()
+    .nullable(),
+  scheduled_at: z.iso.datetime().optional().nullable(),
+});
 
 app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   const token = c.get("token");

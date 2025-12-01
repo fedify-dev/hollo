@@ -513,15 +513,13 @@ app.get(
   scopeRequired(["read:statuses"]),
   zValidator(
     "query",
-    timelineQuerySchema.merge(
-      z.object({
-        only_media: z.enum(["true", "false"]).optional(),
-        exclude_replies: z.enum(["true", "false"]).optional(),
-        exclude_reblogs: z.enum(["true", "false"]).optional(),
-        pinned: z.enum(["true", "false"]).optional(),
-        tagged: z.string().optional(),
-      }),
-    ),
+    timelineQuerySchema.extend({
+      only_media: z.enum(["true", "false"]).optional(),
+      exclude_replies: z.enum(["true", "false"]).optional(),
+      exclude_reblogs: z.enum(["true", "false"]).optional(),
+      pinned: z.enum(["true", "false"]).optional(),
+      tagged: z.string().optional(),
+    }),
   ),
   async (c) => {
     const id = c.req.param("id");
