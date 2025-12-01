@@ -376,11 +376,16 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
     with: getPostRelations(owner.id),
   }))!;
   const activity = toCreate(post, fedCtx);
-  await fedCtx.sendActivity({ handle }, getRecipients(post), activity, {
-    excludeBaseUris: [new URL(c.req.url)],
-  });
+  await fedCtx.sendActivity(
+    { username: handle },
+    getRecipients(post),
+    activity,
+    {
+      excludeBaseUris: [new URL(c.req.url)],
+    },
+  );
   if (post.visibility !== "direct") {
-    await fedCtx.sendActivity({ handle }, "followers", activity, {
+    await fedCtx.sendActivity({ username: handle }, "followers", activity, {
       preferSharedInbox: true,
       excludeBaseUris: [new URL(c.req.url)],
     });
@@ -470,10 +475,15 @@ app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
     with: getPostRelations(owner.id),
   });
   const activity = toUpdate(post!, fedCtx);
-  await fedCtx.sendActivity(owner, getRecipients(post!), activity, {
-    excludeBaseUris: [new URL(c.req.url)],
-  });
-  await fedCtx.sendActivity(owner, "followers", activity, {
+  await fedCtx.sendActivity(
+    { username: owner.handle },
+    getRecipients(post!),
+    activity,
+    {
+      excludeBaseUris: [new URL(c.req.url)],
+    },
+  );
+  await fedCtx.sendActivity({ username: owner.handle }, "followers", activity, {
     preferSharedInbox: true,
     excludeBaseUris: [new URL(c.req.url)],
   });
@@ -1058,7 +1068,7 @@ app.post(
       .returning();
     const fedCtx = federation.createContext(c.req.raw, undefined);
     await fedCtx.sendActivity(
-      owner,
+      { username: owner.handle },
       "followers",
       new Add({
         id: new URL(
@@ -1114,7 +1124,7 @@ app.post(
     });
     const fedCtx = federation.createContext(c.req.raw, undefined);
     await fedCtx.sendActivity(
-      owner,
+      { username: owner.handle },
       "followers",
       new Remove({
         id: new URL(

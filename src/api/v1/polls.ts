@@ -158,7 +158,7 @@ app.post(
     if (post.account.owner == null) {
       for (const choice of choices) {
         await fedCtx.sendActivity(
-          owner,
+          { username: owner.handle },
           [
             {
               id: new URL(post.account.iri),
@@ -187,7 +187,7 @@ app.post(
       }
     } else {
       await fedCtx.sendActivity(
-        post.account.owner,
+        { username: post.account.owner.handle },
         poll.votes.map((v) => ({
           id: new URL(v.account.iri),
           inboxId: new URL(v.account.inboxUrl),
