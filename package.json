@@ -19,7 +19,7 @@
     "rebuild-timelines": "tsx --env-file-if-exists=.env scripts/rebuild-timelines.ts"
   },
   "dependencies": {
-    "@aws-sdk/credential-providers": "^3.940.0",
+    "@aws-sdk/credential-providers": "^3.946.0",
     "@fedify/fedify": "~1.9.1",
     "@fedify/hono": "~1.9.1",
     "@fedify/markdown-it-hashtag": "~0.3.0",
