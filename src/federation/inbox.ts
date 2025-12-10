@@ -33,6 +33,7 @@ import {
   createFollowRequestNotification,
   createMentionNotifications,
   createReblogNotification,
+  createStatusNotification,
 } from "../notification";
 import {
   accountOwners,
@@ -358,16 +359,45 @@ export async function onPostCreated(
     return post;
   });
 
-  // Create mention notifications for local users
-  if (post != null && post.mentions.length > 0) {
-    const mentionedAccountsWithOwners = await db.query.accounts.findMany({
-      where: inArray(
-        accounts.id,
-        post.mentions.map((m) => m.accountId),
-      ),
-      with: { owner: true },
-    });
-    await createMentionNotifications(post, mentionedAccountsWithOwners);
+  // Create status notification for reply target author (if this is a reply)
+  // and mention notifications for other mentioned local users
+  if (post != null) {
+    let replyTargetAuthorId: typeof post.accountId | null = null;
+
+    // If this is a reply, create a "status" notification for the original post author
+    if (post.replyTargetId != null) {
+      const replyTarget = await db.query.posts.findFirst({
+        where: eq(posts.id, post.replyTargetId),
+        with: {
+          account: { with: { owner: true } },
+        },
+      });
+
+      if (replyTarget != null) {
+        replyTargetAuthorId = replyTarget.accountId;
+
+        // Create status notification for the reply target author
+        await createStatusNotification(post.account, post, replyTarget);
+      }
+    }
+
+    // Create mention notifications for mentioned local users
+    // Skip the reply target author since they already got a "status" notification
+    if (post.mentions.length > 0) {
+      const mentionedAccountsWithOwners = await db.query.accounts.findMany({
+        where: inArray(
+          accounts.id,
+          post.mentions.map((m) => m.accountId),
+        ),
+        with: { owner: true },
+      });
+
+      await createMentionNotifications(
+        post,
+        mentionedAccountsWithOwners,
+        replyTargetAuthorId,
+      );
+    }
   }
 
   if (

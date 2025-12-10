@@ -226,17 +226,65 @@ export async function createReblogNotification(
 }
 
 /**
+ * Creates a status notification when someone posts a reply to a user's post.
+ * This is different from mention - it specifically means "someone replied to your post".
+ */
+export async function createStatusNotification(
+  replier: Account,
+  replyPost: Post,
+  originalPost: Post & { account: Account & { owner: AccountOwner | null } },
+): Promise<Uuid | null> {
+  if (originalPost.account.owner == null) {
+    // Original post author is not a local user, no notification needed
+    return null;
+  }
+
+  // Don't notify if the replier is the same as the original author
+  if (replier.id === originalPost.account.id) {
+    return null;
+  }
+
+  return await createNotification({
+    accountOwnerId: originalPost.account.owner.id,
+    type: "status",
+    actorAccountId: replier.id,
+    targetPostId: replyPost.id,
+  });
+}
+
+/**
  * Creates mention notifications for all mentioned local users in a post.
+ * @param post The post containing the mentions
+ * @param mentionedAccounts Array of mentioned accounts with owner info
+ * @param replyTargetAuthorId If this post is a reply, the account ID of the
+ *   original post author. Mention notifications for this account will be
+ *   skipped to avoid duplicate notifications (reply + mention for the same post).
  */
 export async function createMentionNotifications(
   post: Post,
   mentionedAccounts: Array<Account & { owner: AccountOwner | null }>,
+  replyTargetAuthorId?: Uuid | null,
 ): Promise<Uuid[]> {
   const notificationIds: Uuid[] = [];
 
   for (const mentioned of mentionedAccounts) {
     if (mentioned.owner == null) {
       // Mentioned account is not a local user, no notification needed
+      continue;
+    }
+
+    // Skip mention notification for the reply target author to avoid duplicates.
+    // When someone replies to a post and mentions the original author,
+    // they will receive a "status" notification for the reply, so we don't
+    // need to send a separate "mention" notification for the same post.
+    if (replyTargetAuthorId != null && mentioned.id === replyTargetAuthorId) {
+      logger.debug(
+        "Skipping mention notification for reply target author {accountId} on post {postId}",
+        {
+          accountId: mentioned.id,
+          postId: post.id,
+        },
+      );
       continue;
     }
 
