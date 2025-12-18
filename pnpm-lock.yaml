@@ -33,8 +33,8 @@ importers:
         specifier: ^1.19.6
         version: 1.19.6(hono@4.11.1)
       '@hono/zod-validator':
-        specifier: ^0.7.4
-        version: 0.7.4(hono@4.11.1)(zod@4.1.13)
+        specifier: ^0.7.6
+        version: 0.7.6(hono@4.11.1)(zod@4.1.13)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -525,6 +525,10 @@ packages:
 
   '@aws-sdk/util-locate-window@3.893.0':
     resolution: {integrity: sha512-T89pFfgat6c8nMmpI8eKjBcDcgJq36+m9oiXbcUzeU55MP9ZuGgBomGjGnHaEyF36jenW9gmg3NfZDm0AO2XPg==}
+    engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/util-locate-window@3.953.0':
+    resolution: {integrity: sha512-mPxK+I1LcrgC/RSa3G5AMAn8eN2Ay0VOgw8lSRmV1jCtO+iYvNeCqOdxoJUjOW6I5BA4niIRWqVORuRP07776Q==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/util-user-agent-browser@3.713.0':
@@ -1202,8 +1206,8 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-validator@0.7.4':
-    resolution: {integrity: sha512-biKGn3BRJVaftZlIPMyK+HCe/UHAjJ6sH0UyXe3+v0OcgVr9xfImDROTJFLtn9e3XEEAHGZIM9U6evu85abm8Q==}
+  '@hono/zod-validator@0.7.6':
+    resolution: {integrity: sha512-Io1B6d011Gj1KknV4rXYz4le5+5EubcWEU/speUjuw9XMMIaP3n78yXLhjd2A3PXaXaUwEAluOiAyLqhBEJgsw==}
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.25.0 || ^4.0.0
@@ -1283,6 +1287,12 @@ packages:
     resolution: {integrity: sha512-Xyam4mlqM0KkTHYVSuc6wXRmM7LGN0P12li03jAnZ3EJWZqj83+hi8Y9UxZUbxsgsK1qOEwg7O0Bc0LjqQVtxA==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
     cpu: [arm]
+    os: [linux]
+
+  '@img/sharp-linux-ppc64@0.34.4':
+    resolution: {integrity: sha512-F4PDtF4Cy8L8hXA2p3TO6s4aDt93v+LKmpcYFLAVdkkD3hSxZzee0rh6/+94FpAynsuMpLX5h+LRsSG3rIciUQ==}
+    engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
+    cpu: [ppc64]
     os: [linux]
 
   '@img/sharp-linux-s390x@0.34.4':
@@ -5245,7 +5255,7 @@ snapshots:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
       '@aws-sdk/types': 3.936.0
-      '@aws-sdk/util-locate-window': 3.893.0
+      '@aws-sdk/util-locate-window': 3.953.0
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
     optional: true
@@ -6113,6 +6123,11 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@aws-sdk/util-locate-window@3.953.0':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
   '@aws-sdk/util-user-agent-browser@3.713.0':
     dependencies:
       '@aws-sdk/types': 3.713.0
@@ -6591,7 +6606,7 @@ snapshots:
     dependencies:
       hono: 4.11.1
 
-  '@hono/zod-validator@0.7.4(hono@4.11.1)(zod@4.1.13)':
+  '@hono/zod-validator@0.7.6(hono@4.11.1)(zod@4.1.13)':
     dependencies:
       hono: 4.11.1
       zod: 4.1.13
@@ -6645,6 +6660,11 @@ snapshots:
   '@img/sharp-linux-arm@0.34.4':
     optionalDependencies:
       '@img/sharp-libvips-linux-arm': 1.2.3
+    optional: true
+
+  '@img/sharp-linux-ppc64@0.34.4':
+    optionalDependencies:
+      '@img/sharp-libvips-linux-ppc64': 1.2.3
     optional: true
 
   '@img/sharp-linux-s390x@0.34.4':
@@ -10577,6 +10597,7 @@ snapshots:
       '@img/sharp-libvips-linuxmusl-x64': 1.2.3
       '@img/sharp-linux-arm': 0.34.4
       '@img/sharp-linux-arm64': 0.34.4
+      '@img/sharp-linux-ppc64': 0.34.4
       '@img/sharp-linux-s390x': 0.34.4
       '@img/sharp-linux-x64': 0.34.4
       '@img/sharp-linuxmusl-arm64': 0.34.4
