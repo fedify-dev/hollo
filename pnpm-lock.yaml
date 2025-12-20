@@ -12,8 +12,8 @@ importers:
         specifier: ^3.716.0
         version: 3.716.0(@aws-sdk/client-sso-oidc@3.716.0(@aws-sdk/client-sts@3.716.0))
       '@fedify/fedify':
-        specifier: ~1.5.9
-        version: 1.5.9(web-streams-polyfill@3.3.3)
+        specifier: ~1.6.15
+        version: 1.6.15(web-streams-polyfill@3.3.3)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.2.0
         version: 0.2.0
@@ -555,6 +555,9 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@cfworker/json-schema@4.1.1':
+    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
   '@deno/shim-crypto@0.3.1':
     resolution: {integrity: sha512-ed4pNnfur6UbASEgF34gVxR9p7Mc3qF+Ygbmjiil8ws5IhNFhPDFy5vE5hQAUA9JmVsSxXPcVLM5Rf8LOZqQ5Q==}
@@ -1165,9 +1168,9 @@ packages:
     resolution: {integrity: sha512-gGD8+mwkLsavBoj/qyfhMD8Tnv9+hid59NrQ6ZrD5Zn5rWvq4LleU09GF78OqPWdSLY03ihxb6+EArcsb5VZCA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=20.0.0'}
 
-  '@fedify/fedify@1.5.9':
-    resolution: {integrity: sha512-nwT3a9I2jyDMM1sS+3Qa7ehWY87n35/jqbaqPsSS61WHZOfu6K12/ktDNnVyAHEA5ZagvY3eVKzCDNubDGhtzw==}
-    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=20.0.0'}
+  '@fedify/fedify@1.6.15':
+    resolution: {integrity: sha512-ZBMlibQhu9CjbIr3ifC3sYCtXfEkvN8DxzelIevK42Mdm5ZKBEWngpNOMWc55JIb/HYWRKNhR6P51SA610ztRA==}
+    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/markdown-it-hashtag@0.2.0':
     resolution: {integrity: sha512-kg8LKcSzemcG356ZBjfV2WyRAIqUbZ1t1XTRgYOlmjv1HNrMaKQiQc6I2zYtZIb+8LKAJbDld7ZScVLCE/RSWQ==}
@@ -1345,6 +1348,9 @@ packages:
 
   '@logtape/logtape@0.10.0':
     resolution: {integrity: sha512-zk8YILUU7TACEDPaI7sPO6Jyxj6+gwXeS82/ANAtIs3oyLqbUp1kzi5RWUjRj7yu8R7Hd0C4cX4fmfOo9S7COA==}
+
+  '@logtape/logtape@0.11.1':
+    resolution: {integrity: sha512-VsPgJ8QfTMeehDApdP8qLzay1YMSthGDdWDkK8efBmWYIPdKOID4gXqScWSxdEYP6h/rr445xjEpfzZeyCi5jg==}
 
   '@logtape/logtape@0.8.2':
     resolution: {integrity: sha512-KikaMHi64p0BHYrYOE2Lom4dOE3R8PGT+21QJ5Ql/SWy0CNOp69dkAlG9RXzENQ6PAMWtiU+4kelJYNvfUvHOQ==}
@@ -2174,6 +2180,9 @@ packages:
   bun-types@1.1.37:
     resolution: {integrity: sha512-C65lv6eBr3LPJWFZ2gswyrGZ82ljnH8flVE03xeXxKhi2ZGtFiO4isRKTKnitbSqtRAcaqYSR6djt1whI66AbA==}
 
+  byte-encodings@1.0.11:
+    resolution: {integrity: sha512-+/xR2+ySc2yKGtud3DGkGSH1DNwHfRVK0KTnMhoeH36/KwG+tHQ4d9B3jxJFq7dW27YcfudkywaYJRPA2dmxzg==}
+
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
@@ -2459,6 +2468,9 @@ packages:
 
   es-toolkit@1.30.1:
     resolution: {integrity: sha512-ZXflqanzH8BpHkDhFa10bBf6ONDCe84EPUm7SSICGzuuROSluT2ynTPtwn9PcRelMtorCRozSknI/U0MNYp0Uw==}
+
+  es-toolkit@1.43.0:
+    resolution: {integrity: sha512-SKCT8AsWvYzBBuUqMk4NPwFlSdqLpJwmy6AP322ERn8W2YLIB6JBXnwMI2Qsh2gfphT3q7EKAxKb23cvFHFwKA==}
 
   esbuild-register@3.6.0:
     resolution: {integrity: sha512-H2/S7Pm8a9CL1uhp9OvjwrBh5Pvx0H8qVOxNu8Wed9Y7qv56MPtq+GGM8RJpq6glYJn9Wspr8uw7l55uyinNeg==}
@@ -3131,6 +3143,9 @@ packages:
   strnum@1.0.5:
     resolution: {integrity: sha512-J8bbNyKKXl5qYcR36TIO8W3mVGVHrmmxsd5PAItGkmyzwJvybiw2IVq5nqd0i4LSNSkB/sx9VHllbfFdr9k1JA==}
 
+  structured-field-values@2.0.4:
+    resolution: {integrity: sha512-5zpJXYLPwW3WYUD/D58tQjIBs10l3Yx64jZfcKGs/RH79E2t9Xm/b9+ydwdMNVSksnsIY+HR/2IlQmgo0AcTAg==}
+
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
     engines: {node: '>=8'}
@@ -3238,6 +3253,9 @@ packages:
 
   urlpattern-polyfill@10.0.0:
     resolution: {integrity: sha512-H/A06tKD7sS1O1X2SshBVeA5FLycRpjqiBeqGKmBwBDBy28EnRjORxTNe269KSSr5un5qyWi1iL61wLxpd+ZOg==}
+
+  urlpattern-polyfill@10.1.0:
+    resolution: {integrity: sha512-IGjKp/o0NL3Bso1PymYURCJxMPNAf/ILOpendP9f5B6e1rTJgdgiOvgfoT8VxCAdY+Wisb9uhGaJJf3yZ2V9nw==}
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
@@ -4437,6 +4455,8 @@ snapshots:
   '@biomejs/cli-win32-x64@1.9.4':
     optional: true
 
+  '@cfworker/json-schema@4.1.1': {}
+
   '@deno/shim-crypto@0.3.1': {}
 
   '@deno/shim-deno-test@0.5.0': {}
@@ -4793,25 +4813,27 @@ snapshots:
     transitivePeerDependencies:
       - web-streams-polyfill
 
-  '@fedify/fedify@1.5.9(web-streams-polyfill@3.3.3)':
+  '@fedify/fedify@1.6.15(web-streams-polyfill@3.3.3)':
     dependencies:
-      '@deno/shim-crypto': 0.3.1
-      '@deno/shim-deno': 0.18.2
+      '@cfworker/json-schema': 4.1.1
+      '@es-toolkit/es-toolkit': es-toolkit@1.43.0
       '@hugoalh/http-header-link': 1.0.3
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 0.8.2
+      '@logtape/logtape': 0.11.1
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.28.0
       '@phensley/language-tag': 1.9.2
       asn1js: 3.0.5
+      byte-encodings: 1.0.11
       json-canon: 1.0.1
       jsonld: 8.3.3(web-streams-polyfill@3.3.3)
       multicodec: 3.2.1
       pkijs: 3.2.4
+      structured-field-values: 2.0.4
       uri-template-router: 0.0.17
       url-template: 3.1.1
-      urlpattern-polyfill: 10.0.0
+      urlpattern-polyfill: 10.1.0
     transitivePeerDependencies:
       - web-streams-polyfill
 
@@ -4964,6 +4986,8 @@ snapshots:
       '@logtape/logtape': 0.10.0
 
   '@logtape/logtape@0.10.0': {}
+
+  '@logtape/logtape@0.11.1': {}
 
   '@logtape/logtape@0.8.2': {}
 
@@ -6081,6 +6105,8 @@ snapshots:
       '@types/ws': 8.5.14
     optional: true
 
+  byte-encodings@1.0.11: {}
+
   bytes@3.1.2: {}
 
   bytestreamjs@2.0.1: {}
@@ -6271,6 +6297,8 @@ snapshots:
   es-module-lexer@1.7.0: {}
 
   es-toolkit@1.30.1: {}
+
+  es-toolkit@1.43.0: {}
 
   esbuild-register@3.6.0(esbuild@0.19.12):
     dependencies:
@@ -7063,6 +7091,8 @@ snapshots:
 
   strnum@1.0.5: {}
 
+  structured-field-values@2.0.4: {}
+
   supports-color@7.2.0:
     dependencies:
       has-flag: 4.0.0
@@ -7156,6 +7186,8 @@ snapshots:
   url-template@3.1.1: {}
 
   urlpattern-polyfill@10.0.0: {}
+
+  urlpattern-polyfill@10.1.0: {}
 
   uuid@9.0.1: {}
 

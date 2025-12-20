@@ -6,6 +6,13 @@ Version 0.6.19
 
 To be released.
 
+ -  Upgraded Fedify to 1.6.15 to fix a ReDoS (Regular Expression Denial of
+    Service) vulnerability in Fedify's HTML parsing code.  An attacker could
+    exploit this vulnerability to cause denial of service by sending malicious
+    HTML responses during federation operations.  [[CVE-2025-68475]]
+
+[CVE-2025-68475]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-rchf-xwx2-hm93
+
 
 Version 0.6.18
 --------------
