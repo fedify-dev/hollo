@@ -83,7 +83,7 @@ To be released.
     are identical, improving compatibility with clients like tooot.
     [[#296] by Juyoung Jung]
 
- -  Upgraded Fedify to 1.9.1.
+ -  Upgraded Fedify to 1.9.2.
 
 [#94]: https://github.com/fedify-dev/hollo/issues/94
 [#170]: https://github.com/fedify-dev/hollo/issues/170
@@ -93,6 +93,19 @@ To be released.
 [#179]: https://github.com/fedify-dev/hollo/pull/179
 [#295]: https://github.com/fedify-dev/hollo/pull/295
 [#296]: https://github.com/fedify-dev/hollo/pull/296
+
+
+Version 0.6.19
+--------------
+
+Released on December 20, 2025.
+
+ -  Upgraded Fedify to 1.6.15 to fix a ReDoS (Regular Expression Denial of
+    Service) vulnerability in Fedify's HTML parsing code.  An attacker could
+    exploit this vulnerability to cause denial of service by sending malicious
+    HTML responses during federation operations.  [[CVE-2025-68475]]
+
+[CVE-2025-68475]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-rchf-xwx2-hm93
 
 
 Version 0.6.18
