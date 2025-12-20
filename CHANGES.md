@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.6.19
 --------------
 
-To be released.
+Released on December 20, 2025.
 
  -  Upgraded Fedify to 1.6.15 to fix a ReDoS (Regular Expression Denial of
     Service) vulnerability in Fedify's HTML parsing code.  An attacker could
