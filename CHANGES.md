@@ -83,7 +83,7 @@ To be released.
     are identical, improving compatibility with clients like tooot.
     [[#296] by Juyoung Jung]
 
- -  Upgraded Fedify to 1.9.2.
+ -  Upgraded Fedify to 1.10.0.
 
 [#94]: https://github.com/fedify-dev/hollo/issues/94
 [#170]: https://github.com/fedify-dev/hollo/issues/170
