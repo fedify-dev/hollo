@@ -265,10 +265,30 @@ app.get(
       .slice(0, limit);
 
     let nextLink: URL | null = null;
+    let prevLink: URL | null = null;
+
+    // Next link: for fetching notifications older than the oldest one
     if (allNotifications.length >= limit) {
-      const oldest = allNotifications[allNotifications.length - 1].created;
+      const oldest = allNotifications[allNotifications.length - 1];
+      const oldestId = `${oldest.created.toISOString()}/${oldest.type}/${oldest.id}`;
       nextLink = new URL(c.req.url);
-      nextLink.searchParams.set("older_than", oldest.toISOString());
+      // Remove existing pagination parameters
+      nextLink.searchParams.delete("older_than");
+      nextLink.searchParams.delete("min_id");
+      nextLink.searchParams.delete("since_id");
+      nextLink.searchParams.set("max_id", oldestId);
+    }
+
+    // Prev link: for fetching notifications newer than the newest one
+    if (allNotifications.length > 0) {
+      const newest = allNotifications[0];
+      const newestId = `${newest.created.toISOString()}/${newest.type}/${newest.id}`;
+      prevLink = new URL(c.req.url);
+      // Remove existing pagination parameters
+      prevLink.searchParams.delete("older_than");
+      prevLink.searchParams.delete("max_id");
+      prevLink.searchParams.delete("since_id");
+      prevLink.searchParams.set("min_id", newestId);
     }
 
     const serialized = allNotifications
@@ -338,9 +358,17 @@ app.get(
       ms: Math.round(afterSerialization - afterQuery),
     });
 
+    // Build Link header
+    const linkParts: string[] = [];
+    if (nextLink != null) {
+      linkParts.push(`<${nextLink.href}>; rel="next"`);
+    }
+    if (prevLink != null) {
+      linkParts.push(`<${prevLink.href}>; rel="prev"`);
+    }
+
     return c.json(serialized, {
-      headers:
-        nextLink == null ? {} : { Link: `<${nextLink.href}>; rel="next"` },
+      headers: linkParts.length > 0 ? { Link: linkParts.join(", ") } : {},
     });
   },
 );

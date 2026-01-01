@@ -85,7 +85,13 @@ To be released.
 
  -  Upgraded Fedify to 1.10.0.
 
+ -  Added `prev` link to the `Link` header in `/api/v1/notifications` API
+    responses for Mastodon-compatible pagination.  This allows clients to
+    efficiently fetch new notifications since the last received notification,
+    improving caching capabilities and reducing server load.  [[#312]]
+
 [#94]: https://github.com/fedify-dev/hollo/issues/94
+[#312]: https://github.com/fedify-dev/hollo/issues/312
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
