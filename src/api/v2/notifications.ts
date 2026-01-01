@@ -13,9 +13,11 @@ import {
   type Variables,
 } from "../../oauth/middleware";
 import {
+  accounts,
   type NotificationType,
   notificationGroups,
   notifications,
+  posts,
 } from "../../schema";
 import type { Uuid } from "../../uuid";
 
@@ -129,13 +131,13 @@ app.get(
     const [accountsData, postsData, notificationsData] = await Promise.all([
       accountIds.size > 0
         ? db.query.accounts.findMany({
-            where: inArray(sql`id`, Array.from(accountIds)),
+            where: inArray(accounts.id, Array.from(accountIds) as Uuid[]),
             with: { owner: true, successor: true },
           })
         : [],
       postIds.size > 0
         ? db.query.posts.findMany({
-            where: inArray(sql`id`, Array.from(postIds)),
+            where: inArray(posts.id, Array.from(postIds) as Uuid[]),
             with: getPostRelations(owner.id),
           })
         : [],
@@ -353,13 +355,13 @@ app.get(
     const [accountsData, postData, mostRecentNotification] = await Promise.all([
       group.sampleAccountIds.length > 0
         ? db.query.accounts.findMany({
-            where: inArray(sql`id`, group.sampleAccountIds),
+            where: inArray(accounts.id, group.sampleAccountIds),
             with: { owner: true, successor: true },
           })
         : [],
       group.targetPostId != null
         ? db.query.posts.findFirst({
-            where: eq(sql`id`, group.targetPostId),
+            where: eq(posts.id, group.targetPostId),
             with: getPostRelations(owner.id),
           })
         : null,
@@ -513,7 +515,7 @@ app.get(
     }
 
     const accountsData = await db.query.accounts.findMany({
-      where: inArray(sql`id`, Array.from(allAccountIds)),
+      where: inArray(accounts.id, Array.from(allAccountIds) as Uuid[]),
       with: { owner: true, successor: true },
     });
 
