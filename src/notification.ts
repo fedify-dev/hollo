@@ -52,6 +52,8 @@ export function generateGroupKey(context: NotificationContext): string {
 /**
  * Creates a notification and updates the corresponding notification group.
  * This function handles both notification creation and group aggregation in a transaction.
+ * If a duplicate notification already exists (same owner, type, actor, and target),
+ * returns the existing notification ID without creating a new one.
  */
 export async function createNotification(
   context: NotificationContext,
@@ -61,6 +63,35 @@ export async function createNotification(
   const now = new Date();
 
   return await db.transaction(async (tx) => {
+    // Check for existing duplicate notification to prevent duplicates from
+    // federation activities that may be processed multiple times
+    const existingNotification = await tx.query.notifications.findFirst({
+      where: and(
+        eq(notifications.accountOwnerId, context.accountOwnerId),
+        eq(notifications.type, context.type),
+        context.actorAccountId != null
+          ? eq(notifications.actorAccountId, context.actorAccountId)
+          : sql`${notifications.actorAccountId} IS NULL`,
+        context.targetPostId != null
+          ? eq(notifications.targetPostId, context.targetPostId)
+          : sql`${notifications.targetPostId} IS NULL`,
+        context.targetAccountId != null
+          ? eq(notifications.targetAccountId, context.targetAccountId)
+          : sql`${notifications.targetAccountId} IS NULL`,
+      ),
+    });
+
+    if (existingNotification != null) {
+      logger.debug(
+        "Duplicate notification detected, returning existing {id} for {type}",
+        {
+          id: existingNotification.id,
+          type: context.type,
+        },
+      );
+      return existingNotification.id;
+    }
+
     // Insert the notification
     await tx.insert(notifications).values({
       id: notificationId,
