@@ -13,13 +13,7 @@ import {
   tokenRequired,
   type Variables,
 } from "../../oauth/middleware";
-import {
-  accountOwners,
-  notifications,
-  polls,
-  pollVotes,
-  posts,
-} from "../../schema";
+import { notifications, polls, pollVotes, posts } from "../../schema";
 import type { Uuid } from "../../uuid";
 
 const logger = getLogger(["hollo", "notifications"]);
@@ -210,23 +204,23 @@ app.get(
       }
 
       // Find expired polls where user is the author or has voted
+      // Note: We don't join with accountOwners here because that would filter out
+      // polls from remote users. Instead, we check the conditions directly.
       const expiredPollIds = await db
         .selectDistinct({ pollId: polls.id, expires: polls.expires })
         .from(polls)
         .innerJoin(posts, eq(posts.pollId, polls.id))
-        .innerJoin(accountOwners, eq(posts.accountId, accountOwners.id))
         .where(
           and(
             lte(polls.expires, now),
             or(
-              // User is the post author
-              eq(accountOwners.id, owner.id),
+              // User is the post author (owner.id equals the account ID)
+              eq(posts.accountId, owner.id),
               // User has voted in the poll
               sql`EXISTS (
                 SELECT 1 FROM ${pollVotes}
-                INNER JOIN ${accountOwners} AS voter_owner ON ${pollVotes.accountId} = voter_owner.id
                 WHERE ${pollVotes.pollId} = ${polls.id}
-                  AND voter_owner.id = ${owner.id}
+                  AND ${pollVotes.accountId} = ${owner.id}
               )`,
             ),
             ...pollPaginationConditions,
