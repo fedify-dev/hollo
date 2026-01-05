@@ -24,8 +24,8 @@ importers:
         specifier: ~0.3.0
         version: 0.3.0
       '@fedify/postgres':
-        specifier: ~1.9.2
-        version: 1.9.2(@fedify/fedify@1.10.0)(postgres@3.4.7)
+        specifier: ~1.10.0
+        version: 1.10.0(@fedify/fedify@1.10.0)(postgres@3.4.7)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -1181,10 +1181,10 @@ packages:
   '@fedify/markdown-it-mention@0.3.0':
     resolution: {integrity: sha512-4uVELsxh9AW0hzC6BVFqN59YWj6M/p6AZpwb/CQDjvcinfHyQp2yYtGDV4fBgsE5WC/ukpvU1pBNH20ts8TK4w==}
 
-  '@fedify/postgres@1.9.2':
-    resolution: {integrity: sha512-P47rY04pdvHA5mgrEMPN43K7hf1Dk18mMo/exvHFesV+GszKb0fR9f5n3+qel6HSDoq0QBuHWeoK0+KhJySDUQ==}
+  '@fedify/postgres@1.10.0':
+    resolution: {integrity: sha512-BWNnTF2Y1ZrqOZxxjxsHo7+WYjc6gWHvVeNChE2fuBFVdgwJx0qoyPb/ZaYpZeK73UHRiJtD98CarTchaPMxlw==}
     peerDependencies:
-      '@fedify/fedify': ^1.9.2
+      '@fedify/fedify': ^1.10.0
       postgres: ^3.4.7
 
   '@hexagon/base64@2.0.4':
@@ -6353,7 +6353,7 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/postgres@1.9.2(@fedify/fedify@1.10.0)(postgres@3.4.7)':
+  '@fedify/postgres@1.10.0(@fedify/fedify@1.10.0)(postgres@3.4.7)':
     dependencies:
       '@fedify/fedify': 1.10.0
       '@js-temporal/polyfill': 0.5.1
