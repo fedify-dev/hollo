@@ -249,7 +249,14 @@ app.post("/token", clientAuthentication, async (c) => {
   const client = c.get("client");
   const result = await requestBody(c.req, tokenRequestSchema);
 
+  logger.debug("Token request received for client: {clientId}", {
+    clientId: client.clientId,
+  });
+
   if (!result.success) {
+    logger.debug("Token request validation failed: {error}", {
+      error: result.error.issues,
+    });
     if (
       result.error.issues.length === 1 &&
       result.error.issues[0].code === "invalid_union"
@@ -288,6 +295,16 @@ app.post("/token", clientAuthentication, async (c) => {
             accessGrant.applicationId !== client.id ||
             accessGrant?.revoked !== null
           ) {
+            logger.debug(
+              "Invalid grant: code not found or already revoked. " +
+                "Code exists: {exists}, application match: {appMatch}, " +
+                "revoked: {revoked}",
+              {
+                exists: accessGrant !== undefined,
+                appMatch: accessGrant?.applicationId === client.id,
+                revoked: accessGrant?.revoked,
+              },
+            );
             return c.json(INVALID_GRANT_ERROR, 400);
           }
 
@@ -315,6 +332,14 @@ app.post("/token", clientAuthentication, async (c) => {
           }
 
           if (accessGrant.redirectUri !== form.redirect_uri) {
+            logger.debug(
+              "Invalid grant: redirect_uri mismatch. " +
+                "Expected: {expected}, received: {received}",
+              {
+                expected: accessGrant.redirectUri,
+                received: form.redirect_uri,
+              },
+            );
             return c.json(INVALID_GRANT_ERROR, 400);
           }
 

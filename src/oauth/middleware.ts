@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { auth } from "hono/utils/basic-auth";
@@ -13,6 +14,8 @@ import {
   applications,
   type Scope,
 } from "../schema.ts";
+
+const logger = getLogger(["hollo", "oauth", "middleware"]);
 
 export type Variables = {
   token: AccessToken & {
@@ -110,6 +113,14 @@ export const clientAuthentication = createMiddleware<{
   }
 
   if (clientCredentials.length === 0) {
+    logger.debug(
+      "Client authentication failed: no credentials provided. " +
+        "Method: {method}, Content-Type: {contentType}",
+      {
+        method: c.req.method,
+        contentType: c.req.header("Content-Type"),
+      },
+    );
     return c.json(
       {
         error: "invalid_client",
@@ -143,6 +154,14 @@ export const clientAuthentication = createMiddleware<{
   }
 
   if (!client) {
+    logger.debug(
+      "Client authentication failed: client not found. " +
+        "Authentication method: {authMethod}, client_id: {clientId}",
+      {
+        authMethod: clientCredentials[0].authentication,
+        clientId: clientCredentials[0].client_id,
+      },
+    );
     return c.json(
       {
         error: "invalid_client",
