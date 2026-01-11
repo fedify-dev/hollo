@@ -371,6 +371,34 @@ STORAGE_URL_BASE=https://your-bucket.s3.amazonaws.com
 | `REMOTE_ACTOR_FETCH_POSTS`| 10      | Posts to fetch from remote actors|
 
 
+Adding new environment variables
+--------------------------------
+
+When adding a new environment variable to Hollo, update these locations:
+
+ 1. *Source code*: Add the environment variable reading logic in
+    the appropriate source file (e.g., *src/logging.ts*, *src/storage.ts*).
+
+ 2. *AGENTS.md* (this file): Add the variable to the environment variables
+    tables above (required or optional section as appropriate).
+
+ 3. *Documentation site*: Update the installation guides in
+    *docs/src/content/docs/install/* for all languages:
+
+     -  *docs/src/content/docs/install/* (English)
+     -  *docs/src/content/docs/ja/install/* (Japanese)
+     -  *docs/src/content/docs/ko/install/* (Korean)
+     -  *docs/src/content/docs/zh-cn/install/* (Simplified Chinese)
+
+ 4. *Docker Compose files*: If the variable is relevant for Docker deployments:
+
+     -  *compose.yaml*: For S3 storage configuration
+     -  *compose-fs.yaml*: For filesystem storage configuration
+
+ 5. *Changelog*: Document the new variable in *CHANGES.md* under the current
+    version section.
+
+
 Important notes
 ---------------
 
