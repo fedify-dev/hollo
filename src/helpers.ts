@@ -16,6 +16,26 @@ export async function requestBody<T extends z.ZodType = z.ZodTypeAny>(
     return await schema.safeParseAsync(json);
   }
 
+  // Some clients (like Lobsters' Sponge) don't set Content-Type header for
+  // POST requests with form data. In this case, Hono's parseBody() returns
+  // an empty object because it defaults to text/plain.
+  // We need to manually parse the body as URL-encoded form data.
+  if (
+    contentType === undefined ||
+    contentType === "text/plain" ||
+    contentType.startsWith("text/plain;")
+  ) {
+    const text = await req.text();
+    if (text?.includes("=")) {
+      const params = new URLSearchParams(text);
+      const parsed: Record<string, string> = {};
+      for (const [key, value] of params) {
+        parsed[key] = value;
+      }
+      return await schema.safeParseAsync(parsed);
+    }
+  }
+
   const formData = await req.parseBody();
   return await schema.safeParseAsync(formData);
 }

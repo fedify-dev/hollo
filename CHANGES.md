@@ -90,6 +90,13 @@ To be released.
     efficiently fetch new notifications since the last received notification,
     improving caching capabilities and reducing server load.  [[#312]]
 
+ -  Fixed OAuth token endpoint failing to parse request body when HTTP clients
+    don't send `Content-Type` header.  Some clients like Lobsters' Sponge
+    HTTP client don't set `Content-Type` for POST requests with form data,
+    causing authentication failures.  The endpoint now correctly parses
+    URL-encoded form data even when `Content-Type` is missing or set to
+    `text/plain`.
+
 [#94]: https://github.com/fedify-dev/hollo/issues/94
 [#312]: https://github.com/fedify-dev/hollo/issues/312
 [#170]: https://github.com/fedify-dev/hollo/issues/170
