@@ -1,11 +1,15 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import ffmpeg from "fluent-ffmpeg";
+import { getLogger } from "@logtape/logtape";
 import type { Sharp } from "sharp";
 import { drive } from "./storage";
 
+const logger = getLogger(["hollo", "media"]);
 const DEFAULT_THUMBNAIL_AREA = 230_400;
+const defaultScreenshot = readFileSync(
+  join(import.meta.dirname, "..", "assets", "default-screenshot.png"),
+);
 
 export interface Thumbnail {
   thumbnailUrl: string;
@@ -74,18 +78,53 @@ export function calculateThumbnailSize(
 export async function makeVideoScreenshot(
   videoData: Uint8Array,
 ): Promise<Uint8Array> {
-  const tmpDir = await mkdtemp(join(tmpdir(), "hollo-"));
-  const inFile = join(tmpDir, "video");
-  await writeFile(inFile, videoData);
-  await new Promise((resolve) =>
-    ffmpeg(inFile)
-      .on("end", resolve)
-      .screenshots({
-        timestamps: [0],
-        filename: "screenshot.png",
-        folder: tmpDir,
-      }),
-  );
-  const screenshot = await readFile(join(tmpDir, "screenshot.png"));
-  return new Uint8Array(screenshot.buffer);
+  const resultBuffer: Buffer = await new Promise((resolve, _) => {
+    const process = spawn("ffmpeg", [
+      "-i",
+      "pipe:0",
+      "-vframes",
+      "1",
+      "-f",
+      "image2pipe",
+      "pipe:1",
+    ]);
+    const stdin = process.stdin;
+    const stdout = process.stdout;
+    const stderr = process.stderr;
+    const chunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+    if (!stdin || !stdout || !stderr) {
+      logger.error(
+        "Could not build pipes to ffmpeg, can't create a video screenshot",
+      );
+      logger.error("ffmpeg output: {stderr}", { stderr: Buffer.concat(stderrChunks).toString() });
+      resolve(defaultScreenshot);
+    }
+    stdout.on("data", (chunk) => {
+      chunks.push(chunk);
+    });
+    stderr.on("data", (chunk) => {
+      stderrChunks.push(chunk);
+    });
+    process.on("close", (code) => {
+      if (code !== 0) {
+        logger.error("ffmpeg returned a bad error code {code}", { code });
+        logger.error("ffmpeg output: {stderr}", { stderr: Buffer.concat(stderrChunks).toString() });
+        resolve(defaultScreenshot);
+      }
+      resolve(Buffer.concat(chunks));
+    });
+    process.on("error", (error) => {
+      logger.error("Could not run ffmpeg: {error}", { error });
+      logger.error("ffmpeg output: {stderr}", { stderr: Buffer.concat(stderrChunks).toString() });
+      resolve(defaultScreenshot);
+    });
+    stdin.on("error", (_) => {
+      // probably a EPIPE because ffmpeg does not consume the whole file; swallow it here
+    });
+
+    stdin.write(videoData);
+    stdin.end();
+  });
+  return resultBuffer;
 }

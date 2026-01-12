@@ -1,4 +1,4 @@
-FROM docker.io/node:24.0-alpine
+FROM docker.io/node:24-alpine
 
 LABEL org.opencontainers.image.title="Hollo"
 LABEL org.opencontainers.image.description="Federated single-user \
