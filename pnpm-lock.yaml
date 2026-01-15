@@ -38,6 +38,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
+      '@logtape/drizzle-orm':
+        specifier: ~2.0.0
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@logtape/file':
         specifier: ~2.0.0
         version: 2.0.0(@logtape/logtape@2.0.0)
@@ -1379,6 +1382,11 @@ packages:
   '@js-temporal/polyfill@0.5.1':
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
+
+  '@logtape/drizzle-orm@2.0.0':
+    resolution: {integrity: sha512-4QZAcKDlUZe3wIQs3yaRM0OsZW9C41OOw5uepGz4u81YfET2I+O61RWMTe8taKa8W27NaiyM5oFaR/MeY91JxA==}
+    peerDependencies:
+      '@logtape/logtape': ^2.0.0
 
   '@logtape/file@2.0.0':
     resolution: {integrity: sha512-pdJ66AhFOZ09dKqUHM8C9Wj12CRZQ+sJUbU4awAK8Hgix6cESO7/nnF+AVE4y/U20onilTePfp+odrNBnczAdQ==}
@@ -6534,6 +6542,10 @@ snapshots:
   '@js-temporal/polyfill@0.5.1':
     dependencies:
       jsbi: 4.3.0
+
+  '@logtape/drizzle-orm@2.0.0(@logtape/logtape@2.0.0)':
+    dependencies:
+      '@logtape/logtape': 2.0.0
 
   '@logtape/file@2.0.0(@logtape/logtape@2.0.0)':
     dependencies:
