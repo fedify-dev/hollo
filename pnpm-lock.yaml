@@ -39,14 +39,14 @@ importers:
         specifier: ^0.5.0
         version: 0.5.1
       '@logtape/file':
-        specifier: ~1.3.6
-        version: 1.3.6(@logtape/logtape@1.3.6)
+        specifier: ~2.0.0
+        version: 2.0.0(@logtape/logtape@2.0.0)
       '@logtape/logtape':
-        specifier: ~1.3.6
-        version: 1.3.6
+        specifier: ~2.0.0
+        version: 2.0.0
       '@logtape/sentry':
-        specifier: ^1.3.6
-        version: 1.3.6(@logtape/logtape@1.3.6)(@sentry/core@10.32.1)
+        specifier: ~2.0.0
+        version: 2.0.0(@logtape/logtape@2.0.0)(@sentry/core@10.32.1)
       '@sentry/core':
         specifier: ^10.26.0
         version: 10.32.1
@@ -1380,18 +1380,21 @@ packages:
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
 
-  '@logtape/file@1.3.6':
-    resolution: {integrity: sha512-wYh1qb8uOj2LtoAHyzCnkjvScJsJiOSYPcrPaaa3QxLdvR6ZQHo3939jRdeqkv5oQMW/rfMImmY7ma/kgW6Ogw==}
+  '@logtape/file@2.0.0':
+    resolution: {integrity: sha512-pdJ66AhFOZ09dKqUHM8C9Wj12CRZQ+sJUbU4awAK8Hgix6cESO7/nnF+AVE4y/U20onilTePfp+odrNBnczAdQ==}
     peerDependencies:
-      '@logtape/logtape': ^1.3.6
+      '@logtape/logtape': ^2.0.0
 
   '@logtape/logtape@1.3.6':
     resolution: {integrity: sha512-OaK8eal8zcjB0GZbllXKgUC2T9h/GyNLQyQXjJkf1yum7SZKTWs9gs/t8NMS0kVVaSnA7bhU0Sjws/Iy4e0/IQ==}
 
-  '@logtape/sentry@1.3.6':
-    resolution: {integrity: sha512-KhgVxSfvH9RXPvYcPLpskyJi44TZVt6WpIg3TOOsrRDm43Vk7xn6xy2q+yAA2zI/JzjtG/AfJv/H23TM68B4dA==}
+  '@logtape/logtape@2.0.0':
+    resolution: {integrity: sha512-z9Hp44mIRXAzgxSyQfFQiRuJ78EMnZa6g43UCxyGOO3RgHjn/7q+5OhdbhypkeHjiJRPxv6RmRsyF0S+OOYWnA==}
+
+  '@logtape/sentry@2.0.0':
+    resolution: {integrity: sha512-Z3Nlfd6KLGd9a8qVUSThsXR7H2Pxm3Wu2e3nPC2QIE0Q8eL5xQ/8+JN/wsqO99EiX88dJibvgkZOKeIuqFEtVQ==}
     peerDependencies:
-      '@logtape/logtape': ^1.3.6
+      '@logtape/logtape': ^2.0.0
       '@sentry/core': '>=8.0.0'
 
   '@mdx-js/mdx@3.1.1':
@@ -6532,15 +6535,17 @@ snapshots:
     dependencies:
       jsbi: 4.3.0
 
-  '@logtape/file@1.3.6(@logtape/logtape@1.3.6)':
+  '@logtape/file@2.0.0(@logtape/logtape@2.0.0)':
     dependencies:
-      '@logtape/logtape': 1.3.6
+      '@logtape/logtape': 2.0.0
 
   '@logtape/logtape@1.3.6': {}
 
-  '@logtape/sentry@1.3.6(@logtape/logtape@1.3.6)(@sentry/core@10.32.1)':
+  '@logtape/logtape@2.0.0': {}
+
+  '@logtape/sentry@2.0.0(@logtape/logtape@2.0.0)(@sentry/core@10.32.1)':
     dependencies:
-      '@logtape/logtape': 1.3.6
+      '@logtape/logtape': 2.0.0
       '@sentry/core': 10.32.1
 
   '@mdx-js/mdx@3.1.1':
