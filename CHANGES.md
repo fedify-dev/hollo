@@ -52,7 +52,7 @@ To be released.
 
  -  Fixed a bug where multiple JSON objects were written on a single line
     in log files when `LOG_FILE` environment variable was set.  Upgraded
-    LogTape to 1.2 and now uses `jsonLinesFormatter` to ensure proper
+    LogTape to 2.0.0 and now uses `jsonLinesFormatter` to ensure proper
     JSON Lines format with one JSON object per line.  [[#174]]
 
  -  Fixed `POST /api/v1/statuses` endpoint rejecting requests with `null`
