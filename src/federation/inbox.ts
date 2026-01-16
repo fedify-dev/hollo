@@ -32,6 +32,8 @@ import {
   createFollowNotification,
   createFollowRequestNotification,
   createMentionNotifications,
+  createQuotedUpdateNotifications,
+  createQuoteNotification,
   createReblogNotification,
   createStatusNotification,
 } from "../notification";
@@ -398,6 +400,20 @@ export async function onPostCreated(
         replyTargetAuthorId,
       );
     }
+
+    // Create quote notification if this post quotes another post
+    if (post.quoteTargetId != null) {
+      const quoteTarget = await db.query.posts.findFirst({
+        where: eq(posts.id, post.quoteTargetId),
+        with: {
+          account: { with: { owner: true } },
+        },
+      });
+
+      if (quoteTarget != null) {
+        await createQuoteNotification(post.account, post, quoteTarget);
+      }
+    }
   }
 
   if (
@@ -442,7 +458,31 @@ export async function onPostUpdated(
 ): Promise<void> {
   const object = await update.getObject();
   if (!isPost(object)) return;
+
+  // Get post ID before update to find quote posts
+  const existingPost = object.id
+    ? await db.query.posts.findFirst({
+        where: eq(posts.iri, object.id.href),
+      })
+    : null;
+
+  // Persist the updated post
   await persistPost(db, object, ctx.origin, ctx);
+
+  // Create quoted_update notifications for users who quoted this post
+  if (existingPost != null) {
+    const quotePosts = await db.query.posts.findMany({
+      where: eq(posts.quoteTargetId, existingPost.id),
+      with: {
+        account: { with: { owner: true } },
+      },
+    });
+
+    if (quotePosts.length > 0) {
+      const quoteAuthors = quotePosts.map((qp) => qp.account);
+      await createQuotedUpdateNotifications(existingPost, quoteAuthors);
+    }
+  }
 }
 
 export async function onPostDeleted(

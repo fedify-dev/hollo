@@ -464,6 +464,7 @@ export const posts = pgTable(
     index().on(table.accountId, table.sharingId),
     index().on(table.replyTargetId),
     index().on(table.accountId, table.replyTargetId),
+    index().on(table.quoteTargetId).where(isNotNull(table.quoteTargetId)),
     index().on(table.visibility, table.accountId),
     index()
       .on(table.visibility, table.accountId, table.sharingId)
@@ -1090,6 +1091,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "update",
   "admin.sign_up",
   "admin.report",
+  "quote",
+  "quoted_update",
 ]);
 
 export type NotificationType = (typeof notificationTypeEnum.enumValues)[number];

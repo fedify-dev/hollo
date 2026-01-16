@@ -70,7 +70,9 @@ export type NotificationType =
   | "poll"
   | "update"
   | "admin.sign_up"
-  | "admin.report";
+  | "admin.report"
+  | "quote"
+  | "quoted_update";
 
 app.get(
   "/",
@@ -115,6 +117,8 @@ app.get(
         "update",
         "admin.sign_up",
         "admin.report",
+        "quote",
+        "quoted_update",
       ];
     }
     types = types.filter((t) => !excludeTypes?.includes(t));

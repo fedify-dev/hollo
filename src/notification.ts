@@ -6,6 +6,7 @@ import {
   type NotificationType,
   notificationGroups,
   notifications,
+  posts,
 } from "./schema";
 import type { Uuid } from "./uuid";
 import { uuidv7 } from "./uuid";
@@ -501,4 +502,83 @@ export async function deleteAllNotifications(
       ownerId: accountOwnerId,
     });
   });
+}
+
+/**
+ * Creates a quote notification when someone quotes a post.
+ * @param quoter The account that created the quote post
+ * @param quotePost The new post that quotes the original
+ * @param originalPost The original post being quoted
+ */
+export async function createQuoteNotification(
+  quoter: Account,
+  quotePost: Post,
+  originalPost: Post & { account: Account & { owner: AccountOwner | null } },
+): Promise<Uuid | null> {
+  if (originalPost.account.owner == null) {
+    // Original post author is not a local user, no notification needed
+    return null;
+  }
+
+  // Don't notify if the quoter is the same as the original author (self-quote)
+  if (quoter.id === originalPost.account.id) {
+    return null;
+  }
+
+  return await createNotification({
+    accountOwnerId: originalPost.account.owner.id,
+    type: "quote",
+    actorAccountId: quoter.id,
+    targetPostId: quotePost.id, // The quote post, not the original
+  });
+}
+
+/**
+ * Creates quoted_update notifications when a quoted post is edited.
+ * Notifies all local users who quoted the post.
+ * @param editedPost The post that was edited
+ * @param quoteAuthors Array of accounts that quoted this post
+ */
+export async function createQuotedUpdateNotifications(
+  editedPost: Post,
+  quoteAuthors: Array<Account & { owner: AccountOwner | null }>,
+): Promise<Uuid[]> {
+  const notificationIds: Uuid[] = [];
+
+  for (const author of quoteAuthors) {
+    if (author.owner == null) {
+      // Quote author is not a local user, no notification needed
+      continue;
+    }
+
+    // Find this user's quote post
+    const quotePost = await db.query.posts.findFirst({
+      where: and(
+        eq(posts.accountId, author.id),
+        eq(posts.quoteTargetId, editedPost.id),
+      ),
+    });
+
+    if (quotePost == null) {
+      logger.debug(
+        "Quote post not found for author {accountId} quoting {postId}",
+        {
+          accountId: author.id,
+          postId: editedPost.id,
+        },
+      );
+      continue;
+    }
+
+    const notificationId = await createNotification({
+      accountOwnerId: author.owner.id,
+      type: "quoted_update",
+      actorAccountId: editedPost.accountId,
+      targetPostId: quotePost.id, // The user's quote post, not the edited original
+    });
+
+    notificationIds.push(notificationId);
+  }
+
+  return notificationIds;
 }

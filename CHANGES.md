@@ -97,6 +97,26 @@ To be released.
     URL-encoded form data even when `Content-Type` is missing or set to
     `text/plain`.
 
+ -  Implemented Mastodon 4.5.0 quote notification types (`quote` and
+    `quoted_update`) for improved quote post interaction tracking.
+    Users now receive notifications when their posts are quoted by others
+    and when posts they've quoted are edited by the original authors.
+    Key features include:
+
+     -  Added `quote` notification type that triggers when someone quotes
+        your post, with the notification showing the quote post itself.
+     -  Added `quoted_update` notification type that triggers when a post
+        you quoted is edited, with the notification showing your quote post
+        to provide context.
+     -  Both notification types are non-groupable, meaning each quote or edit
+        generates an individual notification for better visibility.
+     -  Self-quotes (quoting your own posts) do not generate notifications
+        to avoid unnecessary noise.
+     -  Existing quote posts are automatically backfilled with notifications
+        during migration to ensure consistent notification history.
+     -  Added database index on `posts.quote_target_id` for improved query
+        performance when looking up quote relationships.
+
 [#94]: https://github.com/fedify-dev/hollo/issues/94
 [#312]: https://github.com/fedify-dev/hollo/issues/312
 [#170]: https://github.com/fedify-dev/hollo/issues/170

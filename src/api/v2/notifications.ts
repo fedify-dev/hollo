@@ -72,6 +72,8 @@ app.get(
         "update",
         "admin.sign_up",
         "admin.report",
+        "quote",
+        "quoted_update",
       ];
     }
     types = types.filter((t) => !excludeTypes?.includes(t));
