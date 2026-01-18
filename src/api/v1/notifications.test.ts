@@ -333,4 +333,35 @@ describe.sequential("/api/v1/notifications", () => {
       });
     });
   });
+
+  describe("Notification types", () => {
+    it("can handle unknown notification types", async () => {
+      expect.assertions(2);
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+
+      await createNotification(
+        account.id as Uuid,
+        "follow",
+        remoteAccount.id,
+        new Date(),
+      );
+
+      const response = await app.request(
+        "/api/v1/notifications?types[]=SurelyInvalidType",
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body).toHaveLength(0);
+    });
+  });
 });

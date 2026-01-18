@@ -17,6 +17,7 @@ import {
   type NotificationType,
   notificationGroups,
   notifications,
+  notificationTypeEnum,
   posts,
 } from "../../schema";
 import type { Uuid } from "../../uuid";
@@ -29,6 +30,12 @@ const app = new Hono<{ Variables: Variables }>();
 // This ensures markers work correctly across v1 and v2 APIs
 function formatNotificationId(created: Date, type: string, id: string): string {
   return `${created.toISOString()}/${type}/${id}`;
+}
+
+// set for O(1) access to all possible types
+const notificationTypeSet = new Set(notificationTypeEnum.enumValues);
+function isNotificationType(value: string) {
+  return notificationTypeSet.has(value as NotificationType);
 }
 
 // GET /api/v2/notifications - Get grouped notifications
@@ -76,6 +83,9 @@ app.get(
         "quoted_update",
       ];
     }
+    // types contains client-supplied values, which are not necessarily valid NotificationType. Filter everything we don't know and prevent problems later
+    // excludeTypes doesn't need filtering because we won't pass it along
+    types = types.filter(isNotificationType);
     types = types.filter((t) => !excludeTypes?.includes(t));
 
     const startTime = performance.now();
