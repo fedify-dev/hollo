@@ -99,7 +99,11 @@ app.get(
 
     const groups = await db.query.notificationGroups.findMany({
       where: and(...conditions),
-      orderBy: desc(notificationGroups.latestPageNotificationAt),
+      // Use COALESCE to handle NULL latestPageNotificationAt values
+      // (e.g., from older migrations that didn't set this field)
+      orderBy: desc(
+        sql`COALESCE(${notificationGroups.latestPageNotificationAt}, ${notificationGroups.created})`,
+      ),
       limit,
     });
 
