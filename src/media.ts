@@ -97,7 +97,9 @@ export async function makeVideoScreenshot(
       logger.error(
         "Could not build pipes to ffmpeg, can't create a video screenshot",
       );
-      logger.error("ffmpeg output: {stderr}", { stderr: Buffer.concat(stderrChunks).toString() });
+      logger.error("ffmpeg output: {stderr}", {
+        stderr: Buffer.concat(stderrChunks).toString(),
+      });
       resolve(defaultScreenshot);
     }
     stdout.on("data", (chunk) => {
@@ -109,14 +111,18 @@ export async function makeVideoScreenshot(
     process.on("close", (code) => {
       if (code !== 0) {
         logger.error("ffmpeg returned a bad error code {code}", { code });
-        logger.error("ffmpeg output: {stderr}", { stderr: Buffer.concat(stderrChunks).toString() });
+        logger.error("ffmpeg output: {stderr}", {
+          stderr: Buffer.concat(stderrChunks).toString(),
+        });
         resolve(defaultScreenshot);
       }
       resolve(Buffer.concat(chunks));
     });
     process.on("error", (error) => {
       logger.error("Could not run ffmpeg: {error}", { error });
-      logger.error("ffmpeg output: {stderr}", { stderr: Buffer.concat(stderrChunks).toString() });
+      logger.error("ffmpeg output: {stderr}", {
+        stderr: Buffer.concat(stderrChunks).toString(),
+      });
       resolve(defaultScreenshot);
     });
     stdin.on("error", (_) => {
