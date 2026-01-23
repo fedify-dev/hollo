@@ -123,6 +123,15 @@ export default defineConfig({
             "zh-CN": "已测试客户端",
           },
         },
+        {
+          slug: "search",
+          label: "Search",
+          translations: {
+            ko: "검색",
+            ja: "検索",
+            "zh-CN": "搜索",
+          },
+        },
       ],
       head: [
         {

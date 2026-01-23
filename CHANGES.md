@@ -6,6 +6,20 @@ Version 0.7.0
 
 To be released.
 
+ -  Implemented advanced search query operators for the `/api/v2/search`
+    endpoint, enabling Mastodon-compatible search filtering.  Supported
+    operators include:
+
+     -  `has:media` / `has:poll` — Filter by attachments
+     -  `is:reply` / `is:sensitive` — Filter by post characteristics
+     -  `language:xx` — Filter by ISO 639-1 language code
+     -  `from:username` — Filter by author (supports `@user`, `user@domain`)
+     -  `mentions:username` — Filter by mentioned user
+     -  `before:YYYY-MM-DD` / `after:YYYY-MM-DD` — Filter by date range
+     -  Negation with `-` prefix (e.g., `-has:media`)
+     -  `OR` operator for alternative matches
+     -  Parentheses for grouping (e.g., `(from:alice OR from:bob) has:poll`)
+
  -  Significantly improved `/api/v1/notifications` endpoint performance by
     implementing a materialized notifications system. The endpoint now uses
     dedicated `notifications` and `notification_groups` tables instead of

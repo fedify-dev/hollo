@@ -32,6 +32,7 @@ import {
   type Variables,
 } from "../../oauth/middleware";
 import { type Account, accounts, posts } from "../../schema";
+import { buildSearchFilter, parseSearchQuery } from "../../search";
 import { uuid } from "../../uuid";
 import { postMedia } from "../v1/media";
 import instance from "./instance";
@@ -148,10 +149,11 @@ app.get(
       }
     }
     if (query.type == null || query.type === "statuses") {
-      let filter = and(
-        ilike(posts.contentHtml, `%${q}%`),
-        isNull(posts.sharingId),
-      )!;
+      // Parse search query with advanced operators
+      const searchAst = parseSearchQuery(q);
+      const searchFilter = searchAst ? buildSearchFilter(searchAst) : sql`TRUE`;
+
+      let filter = and(searchFilter, isNull(posts.sharingId))!;
       if (query.account_id != null) {
         filter = and(filter, eq(posts.accountId, query.account_id))!;
       }
