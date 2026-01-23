@@ -132,7 +132,15 @@ To be released.
     passing them to the database layer, returning an empty result instead of
     an error.  [[#334] by Peter Jeschke]
 
+ -  Fixed a bug where the `/api/v2/search` endpoint did not properly enforce
+    the `limit` parameter on search results.  The endpoint now correctly
+    limits the number of returned accounts and statuses to the requested
+    limit (default 20, maximum 40), improving Mastodon API compatibility
+    and preventing potential performance issues with large result sets.
+    [[#210]]
+
 [#94]: https://github.com/fedify-dev/hollo/issues/94
+[#210]: https://github.com/fedify-dev/hollo/issues/210
 [#312]: https://github.com/fedify-dev/hollo/issues/312
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171

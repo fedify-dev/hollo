@@ -60,7 +60,7 @@ app.get(
         .string()
         .regex(/\d+/)
         .default("20")
-        .transform((v) => Number.parseInt(v, 10)),
+        .transform((v) => Math.min(40, Math.max(1, Number.parseInt(v, 10)))),
       offset: z
         .string()
         .regex(/\d+/)
@@ -195,8 +195,12 @@ app.get(
       }
     }
     return c.json({
-      accounts: users.map((u) => serializeAccount(u, c.req.url)),
-      statuses: statuses.map((s) => serializePost(s, owner, c.req.url)),
+      accounts: users
+        .slice(0, query.limit)
+        .map((u) => serializeAccount(u, c.req.url)),
+      statuses: statuses
+        .slice(0, query.limit)
+        .map((s) => serializePost(s, owner, c.req.url)),
       hashtags: [],
     });
   },
