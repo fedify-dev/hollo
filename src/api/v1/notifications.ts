@@ -13,7 +13,14 @@ import {
   tokenRequired,
   type Variables,
 } from "../../oauth/middleware";
-import { notifications, polls, pollVotes, posts } from "../../schema";
+import {
+  type NotificationType,
+  notifications,
+  notificationTypeEnum,
+  polls,
+  pollVotes,
+  posts,
+} from "../../schema";
 import type { Uuid } from "../../uuid";
 
 const logger = getLogger(["hollo", "notifications"]);
@@ -59,20 +66,11 @@ function parseNotificationId(compositeId: string): ParsedNotificationId {
 
 const app = new Hono<{ Variables: Variables }>();
 
-export type NotificationType =
-  | "mention"
-  | "status"
-  | "reblog"
-  | "follow"
-  | "follow_request"
-  | "favourite"
-  | "emoji_reaction"
-  | "poll"
-  | "update"
-  | "admin.sign_up"
-  | "admin.report"
-  | "quote"
-  | "quoted_update";
+// set for O(1) access to all possible types
+const notificationTypeSet = new Set(notificationTypeEnum.enumValues);
+function isNotificationType(value: string) {
+  return notificationTypeSet.has(value as NotificationType);
+}
 
 app.get(
   "/",
@@ -121,6 +119,9 @@ app.get(
         "quoted_update",
       ];
     }
+    // types contains client-supplied values, which are not necessarily valid NotificationType. Filter everything we don't know and prevent problems later
+    // excludeTypes doesn't need filtering because we won't pass it along
+    types = types.filter(isNotificationType);
     types = types.filter((t) => !excludeTypes?.includes(t));
 
     const startTime = performance.now();

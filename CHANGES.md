@@ -124,6 +124,14 @@ To be released.
     logo) is now returned instead of aborting the entire upload request, and
     ffmpeg error output is logged for debugging.  [[#333] by Peter Jeschke]
 
+ -  Fixed a bug where querying the `/api/v1/notifications` and
+    `/api/v2/notifications` endpoints with unknown notification types
+    (e.g., `types[]=reaction` from clients like Moshidon) resulted in
+    `500 Internal Server Error` responses due to database enum validation
+    failures.  The endpoints now filter out unknown notification types before
+    passing them to the database layer, returning an empty result instead of
+    an error.  [[#334] by Peter Jeschke]
+
 [#94]: https://github.com/fedify-dev/hollo/issues/94
 [#312]: https://github.com/fedify-dev/hollo/issues/312
 [#170]: https://github.com/fedify-dev/hollo/issues/170
@@ -134,6 +142,7 @@ To be released.
 [#295]: https://github.com/fedify-dev/hollo/pull/295
 [#296]: https://github.com/fedify-dev/hollo/pull/296
 [#333]: https://github.com/fedify-dev/hollo/pull/333
+[#334]: https://github.com/fedify-dev/hollo/pull/334
 
 
 Version 0.6.19
