@@ -534,4 +534,106 @@ describe.sequential("/api/v2/search", () => {
       expect(json.statuses.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe("URL search optimization", () => {
+    it("finds posts by URL in cache lookup", async () => {
+      expect.assertions(2);
+
+      const postId = crypto.randomUUID() as Uuid;
+      const postUrl = `https://hollo.test/@user/${postId}`;
+
+      await db.insert(posts).values({
+        id: postId,
+        iri: `https://hollo.test/posts/${postId}`,
+        url: postUrl,
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Test post for URL search</p>",
+        content: "Test post for URL search",
+        published: new Date(),
+      });
+
+      // Search by URL
+      const response = await app.request(
+        `/api/v2/search?q=${encodeURIComponent(postUrl)}&type=statuses`,
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      const json = await response.json();
+
+      const statusIds = json.statuses.map((s: { id: string }) => s.id);
+      expect(statusIds).toContain(postId);
+    });
+
+    it("finds posts by IRI in cache lookup", async () => {
+      expect.assertions(2);
+
+      const postId = crypto.randomUUID() as Uuid;
+      const postIri = `https://hollo.test/posts/${postId}`;
+
+      await db.insert(posts).values({
+        id: postId,
+        iri: postIri,
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Test post for IRI search</p>",
+        content: "Test post for IRI search",
+        published: new Date(),
+      });
+
+      // Search by IRI
+      const response = await app.request(
+        `/api/v2/search?q=${encodeURIComponent(postIri)}&type=statuses`,
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      const json = await response.json();
+
+      const statusIds = json.statuses.map((s: { id: string }) => s.id);
+      expect(statusIds).toContain(postId);
+    });
+
+    it("does not perform full-text search for URL queries", async () => {
+      expect.assertions(2);
+
+      // Create a post with URL-like content in the body
+      const postWithUrl = await createTestPost(account.id as Uuid, {
+        contentHtml:
+          "<p>Check out https://example.com/@user/12345 for more</p>",
+      });
+
+      // Search for a URL that doesn't exist in any post's iri/url fields
+      // This should NOT find the post above through content search
+      const response = await app.request(
+        `/api/v2/search?q=${encodeURIComponent("https://example.com/@user/12345")}&type=statuses`,
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+      const json = await response.json();
+
+      // The post should NOT be found because URL search skips full-text search
+      const statusIds = json.statuses.map((s: { id: string }) => s.id);
+      expect(statusIds).not.toContain(postWithUrl);
+    });
+  });
 });

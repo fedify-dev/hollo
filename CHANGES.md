@@ -153,6 +153,19 @@ To be released.
     and preventing potential performance issues with large result sets.
     [[#210]]
 
+ -  Significantly improved `/api/v2/search` endpoint performance when searching
+    by URL or handle.  The endpoint now responds in approximately 1.4 seconds
+    for URL searches, down from 8–10 seconds previously (approximately 85%
+    improvement).  Key optimizations include:
+
+     -  Skip unnecessary `lookupObject` calls for non-URL/non-handle queries,
+        reducing remote federation lookups by 2–3 seconds.
+     -  Skip full-text search on `posts.content_html` column when the query
+        is a URL and the post is found in cache lookup (by IRI or URL),
+        eliminating expensive table scans that took ~8 seconds.
+     -  Added shared `HANDLE_PATTERN` regex in *src/patterns.ts* for
+        consistent WebFinger handle validation across v1 and v2 APIs.
+
 [#94]: https://github.com/fedify-dev/hollo/issues/94
 [#210]: https://github.com/fedify-dev/hollo/issues/210
 [#312]: https://github.com/fedify-dev/hollo/issues/312

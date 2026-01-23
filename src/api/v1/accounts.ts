@@ -369,8 +369,7 @@ app.get(
   },
 );
 
-const HANDLE_PATTERN =
-  /^@?[\p{L}\p{N}._-]+@(?:[\p{L}\p{N}][\p{L}\p{N}_-]*\.)+[\p{L}\p{N}]{2,}$/giu;
+import { HANDLE_PATTERN } from "../../patterns";
 
 app.get(
   "/search",

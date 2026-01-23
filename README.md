@@ -42,3 +42,4 @@ Docs
      -  [Environment variables](https://docs.hollo.social/install/env/)
      -  [Setting up](https://docs.hollo.social/install/setup/)
  -  [Tested clients](https://docs.hollo.social/clients/)
+ -  [Search](https://docs.hollo.social/search/)
