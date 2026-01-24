@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.7.0
 -------------
 
-To be released.
+Released on January 24, 2026.
 
  -  Implemented advanced search query operators for the `/api/v2/search`
     endpoint, enabling Mastodon-compatible search filtering.  Supported
