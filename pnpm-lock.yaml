@@ -12,11 +12,11 @@ importers:
         specifier: ^3.966.0
         version: 3.966.0
       '@fedify/fedify':
-        specifier: ~1.10.0
-        version: 1.10.0
+        specifier: ~1.10.2
+        version: 1.10.2
       '@fedify/hono':
-        specifier: ~1.10.0
-        version: 1.10.0(@fedify/fedify@1.10.0)(hono@4.11.4)
+        specifier: ~1.10.2
+        version: 1.10.2(@fedify/fedify@1.10.2)(hono@4.11.4)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -24,8 +24,8 @@ importers:
         specifier: ~0.3.0
         version: 0.3.0
       '@fedify/postgres':
-        specifier: ~1.10.0
-        version: 1.10.0(@fedify/fedify@1.10.0)(postgres@3.4.8)
+        specifier: ~1.10.2
+        version: 1.10.2(@fedify/fedify@1.10.2)(postgres@3.4.8)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -521,8 +521,8 @@ packages:
     resolution: {integrity: sha512-nhmgKHnNV9K+i9daumaIz8JTLsIIML9PE/HUks5liyrjUzenjW/aHoc7WJ9/Td/gPZtayxFnXQSJRb/fDlBuJw==}
     engines: {node: '>=18.0.0'}
 
-  '@aws-sdk/util-locate-window@3.965.2':
-    resolution: {integrity: sha512-qKgO7wAYsXzhwCHhdbaKFyxd83Fgs8/1Ka+jjSPrv2Ll7mB55Wbwlo0kkfMLh993/yEc8aoDIAc1Fz9h4Spi4Q==}
+  '@aws-sdk/util-locate-window@3.965.3':
+    resolution: {integrity: sha512-FNUqAjlKAGA7GM05kywE99q8wiPHPZqrzhq3wXRga6PRD6A0kzT85Pb0AzYBVTBRpSrKyyr6M92Y6bnSBVp2BA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/util-user-agent-browser@3.713.0':
@@ -1325,14 +1325,14 @@ packages:
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
     engines: {node: '>=14'}
 
-  '@fedify/fedify@1.10.0':
-    resolution: {integrity: sha512-fzkZrVLMJHBpF6/jqaQMe3ZrL++FR2SLHSUosAYtwjY7gzgsvQ/+GGC4qk9FU2qQEVhi2vEYmeQbhg1nVuO36g==}
+  '@fedify/fedify@1.10.2':
+    resolution: {integrity: sha512-ux+IPa7aABqrBKRUTRUpzf+aDk2qaPoHirqtvAWrZ8D1tsMRCzKVhGwN7DvRiBG9wI153Pc/Ekcf1MhlvXabSg==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/hono@1.10.0':
-    resolution: {integrity: sha512-Vf7Pd6nCVi5k02DuKSJElo9Sccf1FvIlF2hSmaAJeYO6Wno9GrBRVtqFd+GzceGn3Gkl3NxVnMx4YYm9PA0O1Q==}
+  '@fedify/hono@1.10.2':
+    resolution: {integrity: sha512-2jdxDtnwnWxF48bMO6eoWh/6CtwW6Nfz9HFTqasmA2aj3W++m015LOng6MJ7mZgy5Z7Qy9QJLFCnkKgOeKksrg==}
     peerDependencies:
-      '@fedify/fedify': ^1.10.0
+      '@fedify/fedify': ^1.10.2
       hono: ^4.0.0
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -1341,10 +1341,10 @@ packages:
   '@fedify/markdown-it-mention@0.3.0':
     resolution: {integrity: sha512-4uVELsxh9AW0hzC6BVFqN59YWj6M/p6AZpwb/CQDjvcinfHyQp2yYtGDV4fBgsE5WC/ukpvU1pBNH20ts8TK4w==}
 
-  '@fedify/postgres@1.10.0':
-    resolution: {integrity: sha512-BWNnTF2Y1ZrqOZxxjxsHo7+WYjc6gWHvVeNChE2fuBFVdgwJx0qoyPb/ZaYpZeK73UHRiJtD98CarTchaPMxlw==}
+  '@fedify/postgres@1.10.2':
+    resolution: {integrity: sha512-/dNzRrvqNp/z56iRX4XblDvaAwDp3QWRK/qZzO6PMssYFTqi2zdb5YLfJN1iGB2H1wweQrr8BK05MjtVijnPtQ==}
     peerDependencies:
-      '@fedify/fedify': ^1.10.0
+      '@fedify/fedify': ^1.10.2
       postgres: ^3.4.7
 
   '@hexagon/base64@2.0.4':
@@ -2576,6 +2576,9 @@ packages:
 
   '@types/node@20.12.14':
     resolution: {integrity: sha512-scnD59RpYD91xngrQQLGkE+6UrHUPzeKZWhhjBSa3HSkwjbQc38+q3RoIVEwxQGRw3M+j5hpNAM+lgV3cVormg==}
+
+  '@types/node@25.0.10':
+    resolution: {integrity: sha512-zWW5KPngR/yvakJgGOmZ5vTBemDoSqF3AcV/LrO5u5wTWyEAVVh+IT39G4gtyAkh3CtTZs8aX/yRM82OfzHJRg==}
 
   '@types/node@25.0.6':
     resolution: {integrity: sha512-NNu0sjyNxpoiW3YuVFfNz7mxSQ+S4X2G28uqg2s+CzoqoQjLPsWSbsFFyztIAqt2vb8kfEAsJNepMGPTxFDx3Q==}
@@ -5274,14 +5277,14 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.965.0
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.965.0
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
@@ -5289,8 +5292,8 @@ snapshots:
     dependencies:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.965.0
-      '@aws-sdk/util-locate-window': 3.965.2
+      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/util-locate-window': 3.965.3
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
     optional: true
@@ -6158,7 +6161,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@aws-sdk/util-locate-window@3.965.2':
+  '@aws-sdk/util-locate-window@3.965.3':
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -6667,7 +6670,7 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@fedify/fedify@1.10.0':
+  '@fedify/fedify@1.10.2':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@js-temporal/polyfill': 0.5.1
@@ -6690,9 +6693,9 @@ snapshots:
       url-template: 3.1.1
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@1.10.0(@fedify/fedify@1.10.0)(hono@4.11.4)':
+  '@fedify/hono@1.10.2(@fedify/fedify@1.10.2)(hono@4.11.4)':
     dependencies:
-      '@fedify/fedify': 1.10.0
+      '@fedify/fedify': 1.10.2
       hono: 4.11.4
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -6703,9 +6706,9 @@ snapshots:
     dependencies:
       markdown-it: 14.1.0
 
-  '@fedify/postgres@1.10.0(@fedify/fedify@1.10.0)(postgres@3.4.8)':
+  '@fedify/postgres@1.10.2(@fedify/fedify@1.10.2)(postgres@3.4.8)':
     dependencies:
-      '@fedify/fedify': 1.10.0
+      '@fedify/fedify': 1.10.2
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 1.3.6
       postgres: 3.4.8
@@ -8185,6 +8188,11 @@ snapshots:
       undici-types: 5.26.5
     optional: true
 
+  '@types/node@25.0.10':
+    dependencies:
+      undici-types: 7.16.0
+    optional: true
+
   '@types/node@25.0.6':
     dependencies:
       undici-types: 7.16.0
@@ -8225,7 +8233,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 25.0.9
+      '@types/node': 25.0.10
     optional: true
 
   '@ungap/structured-clone@1.3.0': {}
