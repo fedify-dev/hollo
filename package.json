@@ -31,7 +31,7 @@
     "@js-temporal/polyfill": "^0.5.0",
     "@logtape/drizzle-orm": "~2.0.0",
     "@logtape/file": "~2.0.0",
-    "@logtape/logtape": "~2.0.0",
+    "@logtape/logtape": "~2.0.2",
     "@logtape/sentry": "~2.0.0",
     "@sentry/core": "^10.26.0",
     "@sentry/node": "^10.26.0",

@@ -40,16 +40,16 @@ importers:
         version: 0.5.1
       '@logtape/drizzle-orm':
         specifier: ~2.0.0
-        version: 2.0.0(@logtape/logtape@2.0.0)
+        version: 2.0.0(@logtape/logtape@2.0.2)
       '@logtape/file':
         specifier: ~2.0.0
-        version: 2.0.0(@logtape/logtape@2.0.0)
+        version: 2.0.0(@logtape/logtape@2.0.2)
       '@logtape/logtape':
-        specifier: ~2.0.0
-        version: 2.0.0
+        specifier: ~2.0.2
+        version: 2.0.2
       '@logtape/sentry':
         specifier: ~2.0.0
-        version: 2.0.0(@logtape/logtape@2.0.0)(@sentry/core@10.32.1)
+        version: 2.0.0(@logtape/logtape@2.0.2)(@sentry/core@10.32.1)
       '@sentry/core':
         specifier: ^10.26.0
         version: 10.32.1
@@ -1554,11 +1554,11 @@ packages:
     peerDependencies:
       '@logtape/logtape': ^2.0.0
 
-  '@logtape/logtape@1.3.6':
-    resolution: {integrity: sha512-OaK8eal8zcjB0GZbllXKgUC2T9h/GyNLQyQXjJkf1yum7SZKTWs9gs/t8NMS0kVVaSnA7bhU0Sjws/Iy4e0/IQ==}
+  '@logtape/logtape@1.3.7':
+    resolution: {integrity: sha512-YgF+q9op97oLLPwc7TcTNIllTArVtTwkwyKky6XVzAXQcBrvFXXtMuwJSryONAyOUSItrx994O/HABOrszZyFg==}
 
-  '@logtape/logtape@2.0.0':
-    resolution: {integrity: sha512-z9Hp44mIRXAzgxSyQfFQiRuJ78EMnZa6g43UCxyGOO3RgHjn/7q+5OhdbhypkeHjiJRPxv6RmRsyF0S+OOYWnA==}
+  '@logtape/logtape@2.0.2':
+    resolution: {integrity: sha512-cveUBLbCMFkvkLycP/2vNWvywl47JcJbazHIju94/QNGboZ/jyYAgZIm0ZXezAOx3eIz8OG1EOZ5CuQP3+2FQg==}
 
   '@logtape/sentry@2.0.0':
     resolution: {integrity: sha512-Z3Nlfd6KLGd9a8qVUSThsXR7H2Pxm3Wu2e3nPC2QIE0Q8eL5xQ/8+JN/wsqO99EiX88dJibvgkZOKeIuqFEtVQ==}
@@ -6769,7 +6769,7 @@ snapshots:
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 1.3.6
+      '@logtape/logtape': 1.3.7
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 1.30.1(@opentelemetry/api@1.9.0)
@@ -6805,7 +6805,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 1.10.2
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 1.3.6
+      '@logtape/logtape': 1.3.7
       postgres: 3.4.8
 
   '@hexagon/base64@2.0.4': {}
@@ -6951,21 +6951,21 @@ snapshots:
     dependencies:
       jsbi: 4.3.0
 
-  '@logtape/drizzle-orm@2.0.0(@logtape/logtape@2.0.0)':
+  '@logtape/drizzle-orm@2.0.0(@logtape/logtape@2.0.2)':
     dependencies:
-      '@logtape/logtape': 2.0.0
+      '@logtape/logtape': 2.0.2
 
-  '@logtape/file@2.0.0(@logtape/logtape@2.0.0)':
+  '@logtape/file@2.0.0(@logtape/logtape@2.0.2)':
     dependencies:
-      '@logtape/logtape': 2.0.0
+      '@logtape/logtape': 2.0.2
 
-  '@logtape/logtape@1.3.6': {}
+  '@logtape/logtape@1.3.7': {}
 
-  '@logtape/logtape@2.0.0': {}
+  '@logtape/logtape@2.0.2': {}
 
-  '@logtape/sentry@2.0.0(@logtape/logtape@2.0.0)(@sentry/core@10.32.1)':
+  '@logtape/sentry@2.0.0(@logtape/logtape@2.0.2)(@sentry/core@10.32.1)':
     dependencies:
-      '@logtape/logtape': 2.0.0
+      '@logtape/logtape': 2.0.2
       '@sentry/core': 10.32.1
 
   '@mdx-js/mdx@3.1.1':
