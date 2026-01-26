@@ -33,7 +33,7 @@
     "@logtape/file": "~2.0.0",
     "@logtape/logtape": "~2.0.0",
     "@logtape/sentry": "~2.0.0",
-    "@sentry/core": "^10.26.0",
+    "@sentry/core": "^10.36.0",
     "@sentry/node": "^10.26.0",
     "@shikijs/markdown-it": "^3.21.0",
     "@supercharge/promise-pool": "^3.2.0",
