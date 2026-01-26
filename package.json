@@ -62,7 +62,7 @@
     "uuidv7-js": "^1.1.4",
     "x-forwarded-fetch": "^0.2.0",
     "xss": "^1.0.15",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
