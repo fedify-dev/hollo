@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "fetched" timestamp with time zone;

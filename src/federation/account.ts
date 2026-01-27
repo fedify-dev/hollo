@@ -47,6 +47,19 @@ export const REMOTE_ACTOR_FETCH_POSTS = Number.parseInt(
   10,
 );
 
+export const REMOTE_ACTOR_STALENESS_DAYS = Number.parseInt(
+  // biome-ignore lint/complexity/useLiteralKeys: tsc rants about this (TS4111)
+  process.env["REMOTE_ACTOR_STALENESS_DAYS"] ?? "7",
+  10,
+);
+
+// biome-ignore lint/complexity/useLiteralKeys: tsc rants about this (TS4111)
+const refreshOnInteractionEnv = process.env["REFRESH_ACTORS_ON_INTERACTION"];
+export const REFRESH_ACTORS_ON_INTERACTION =
+  refreshOnInteractionEnv === "true" ||
+  refreshOnInteractionEnv === "1" ||
+  refreshOnInteractionEnv === "yes";
+
 export async function persistAccount(
   db: PgDatabase<
     PostgresJsQueryResultHKT,
@@ -163,6 +176,7 @@ export async function persistAccount(
     fieldHtmls,
     emojis,
     published: toDate(actor.published),
+    fetched: new Date(),
   };
   await db
     .insert(schema.accounts)
@@ -541,3 +555,75 @@ export async function blockAccount(
 }
 
 // TODO: define unblockAccount()
+
+/**
+ * Checks if a remote actor's data is stale based on the fetched timestamp.
+ * @param account The account to check
+ * @returns `true` if the account is stale and should be refreshed
+ */
+export function isActorStale(account: schema.Account): boolean {
+  // Local accounts are never considered stale
+  if (account.fetched == null) return false;
+
+  const stalenessMs = REMOTE_ACTOR_STALENESS_DAYS * 24 * 60 * 60 * 1000;
+  const staleThreshold = new Date(Date.now() - stalenessMs);
+  return account.fetched < staleThreshold;
+}
+
+/**
+ * Refreshes a remote actor's data asynchronously (fire-and-forget).
+ * This function does not await the refresh operation and will not throw errors.
+ * @param db The database connection
+ * @param account The account to refresh
+ * @param baseUrl The base URL for the federation context
+ * @param options Document loader options
+ */
+export function refreshActorAsync(
+  db: PgDatabase<
+    PostgresJsQueryResultHKT,
+    typeof schema,
+    ExtractTablesWithRelations<typeof schema>
+  >,
+  account: schema.Account,
+  baseUrl: URL | string,
+  options: {
+    contextLoader?: DocumentLoader;
+    documentLoader?: DocumentLoader;
+  } = {},
+): void {
+  // Fire-and-forget: don't await the promise
+  lookupObject(account.iri, options)
+    .then(async (actor) => {
+      if (!isActor(actor) || actor.id == null) return;
+      await persistAccount(db, actor, baseUrl, options);
+    })
+    .catch(() => {
+      // Silently ignore errors - refreshing actor metadata is not critical
+    });
+}
+
+/**
+ * Checks if a remote actor is stale and triggers an async refresh if needed.
+ * This is meant to be called when processing activities (Announce, Create, etc.)
+ * @param db The database connection
+ * @param account The account to check and potentially refresh
+ * @param baseUrl The base URL for the federation context
+ * @param options Document loader options
+ */
+export function refreshActorIfStale(
+  db: PgDatabase<
+    PostgresJsQueryResultHKT,
+    typeof schema,
+    ExtractTablesWithRelations<typeof schema>
+  >,
+  account: schema.Account,
+  baseUrl: URL | string,
+  options: {
+    contextLoader?: DocumentLoader;
+    documentLoader?: DocumentLoader;
+  } = {},
+): void {
+  if (isActorStale(account)) {
+    refreshActorAsync(db, account, baseUrl, options);
+  }
+}

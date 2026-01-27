@@ -97,6 +97,7 @@ export const accounts = pgTable("accounts", {
   updated: timestamp("updated", { withTimezone: true })
     .notNull()
     .default(currentTimestamp),
+  fetched: timestamp("fetched", { withTimezone: true }),
 });
 
 export const accountRelations = relations(accounts, ({ one, many }) => ({

@@ -540,6 +540,13 @@
       "when": 1768573113452,
       "tag": "0076_fair_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1769516009056,
+      "tag": "0077_add_fetched_to_accounts",
+      "breakpoints": true
     }
   ]
 }

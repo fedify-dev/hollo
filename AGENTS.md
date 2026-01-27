@@ -357,18 +357,20 @@ STORAGE_URL_BASE=https://your-bucket.s3.amazonaws.com
 
 ### Optional variables
 
-| Variable                  | Default | Description                    |
-| ------------------------- | ------- | ------------------------------ |
-| `PORT`                    | 3000    | Server port                    |
-| `BIND`                    | -       | Bind address                   |
-| `BEHIND_PROXY`            | false   | Trust proxy headers            |
-| `LOG_LEVEL`               | info    | Logging level                  |
-| `LOG_QUERY`               | false   | Log database queries           |
-| `LOG_FILE`                | -       | JSON log file path             |
-| `SENTRY_DSN`              | -       | Sentry error tracking          |
-| `HOME_URL`                | -       | Home page redirect URL         |
-| `ALLOW_PRIVATE_ADDRESS`   | false   | Disable SSRF protection        |
-| `REMOTE_ACTOR_FETCH_POSTS`| 10      | Posts to fetch from remote actors|
+| Variable                       | Default | Description                              |
+| ------------------------------ | ------- | ---------------------------------------- |
+| `PORT`                         | 3000    | Server port                              |
+| `BIND`                         | -       | Bind address                             |
+| `BEHIND_PROXY`                 | false   | Trust proxy headers                      |
+| `LOG_LEVEL`                    | info    | Logging level                            |
+| `LOG_QUERY`                    | false   | Log database queries                     |
+| `LOG_FILE`                     | -       | JSON log file path                       |
+| `SENTRY_DSN`                   | -       | Sentry error tracking                    |
+| `HOME_URL`                     | -       | Home page redirect URL                   |
+| `ALLOW_PRIVATE_ADDRESS`        | false   | Disable SSRF protection                  |
+| `REMOTE_ACTOR_FETCH_POSTS`     | 10      | Posts to fetch from remote actors        |
+| `REMOTE_ACTOR_STALENESS_DAYS`  | 7       | Days before remote actor data is stale   |
+| `REFRESH_ACTORS_ON_INTERACTION`| false   | Refresh actors on all activity types     |
 
 
 Adding new environment variables

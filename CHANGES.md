@@ -6,6 +6,23 @@ Version 0.8.0
 
 To be released.
 
+ -  Added automatic refresh of stale remote actor profiles.  When receiving
+    activities like `Announce` or `Create(Note)`, Hollo now checks if the
+    actor's cached data is stale and asynchronously refreshes their profile
+    in the background.  This helps keep remote actor information (avatars,
+    display names, etc.) up to date without relying solely on `Update`
+    activities from remote servers.  [[#348]]
+
+     -  Added `REMOTE_ACTOR_STALENESS_DAYS` environment variable to configure
+        how many days before a remote actor's data is considered stale.
+        Defaults to `7` days.
+     -  Added `REFRESH_ACTORS_ON_INTERACTION` environment variable.  When set
+        to `true`, checks for stale actors on all activity types (likes, emoji
+        reactions, follows, etc.).  When `false` (default), only checks on
+        activities that appear in timelines (`Announce`, `Create`).
+
+[#348]: https://github.com/fedify-dev/hollo/issues/348
+
 
 Version 0.7.0
 -------------

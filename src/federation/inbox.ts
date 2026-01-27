@@ -53,6 +53,8 @@ import {
 import { isUuid } from "../uuid";
 import {
   persistAccount,
+  REFRESH_ACTORS_ON_INTERACTION,
+  refreshActorIfStale,
   removeFollower,
   unfollowAccount,
   updateAccountStats,
@@ -361,6 +363,11 @@ export async function onPostCreated(
     return post;
   });
 
+  // Refresh actor if stale (fire-and-forget)
+  if (post?.account != null) {
+    refreshActorIfStale(db, post.account, ctx.origin, ctx);
+  }
+
   // Create status notification for reply target author (if this is a reply)
   // and mention notifications for other mentioned local users
   if (post != null) {
@@ -528,6 +535,10 @@ export async function onPostShared(
     }
     return post;
   });
+  // Refresh actor if stale (fire-and-forget)
+  if (post?.account != null) {
+    refreshActorIfStale(db, post.account, ctx.origin, ctx);
+  }
   if (post?.sharing?.account?.owner != null) {
     await ctx.forwardActivity(
       { username: post.sharing.account.owner.handle },
@@ -659,6 +670,10 @@ export async function onLiked(
     if (actor == null) return;
     const account = await persistAccount(db, actor, ctx.origin, ctx);
     if (account == null) return;
+    // Refresh actor if stale (fire-and-forget) when interaction refresh is enabled
+    if (REFRESH_ACTORS_ON_INTERACTION) {
+      refreshActorIfStale(db, account, ctx.origin, ctx);
+    }
     // biome-ignore lint/complexity/useLiteralKeys: tsc complains about this (TS4111)
     const postId = parsed.values["id"];
     if (!isUuid(postId)) return;
@@ -767,6 +782,10 @@ export async function onEmojiReactionAdded(
   if (actor == null) return;
   const account = await persistAccount(db, actor, ctx.origin, ctx);
   if (account == null) return;
+  // Refresh actor if stale (fire-and-forget) when interaction refresh is enabled
+  if (REFRESH_ACTORS_ON_INTERACTION) {
+    refreshActorIfStale(db, account, ctx.origin, ctx);
+  }
   let emojiIri: URL | null = null;
   let customEmoji: URL | null = null;
   if (emoji.startsWith(":") && emoji.endsWith(":")) {
