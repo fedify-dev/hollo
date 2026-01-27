@@ -16,7 +16,7 @@ importers:
         version: 1.10.2
       '@fedify/hono':
         specifier: ~1.10.2
-        version: 1.10.2(@fedify/fedify@1.10.2)(hono@4.11.4)
+        version: 1.10.2(@fedify/fedify@1.10.2)(hono@4.11.7)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -31,10 +31,10 @@ importers:
         version: 2.0.4
       '@hono/node-server':
         specifier: ^1.19.9
-        version: 1.19.9(hono@4.11.4)
+        version: 1.19.9(hono@4.11.7)
       '@hono/zod-validator':
         specifier: ^0.7.6
-        version: 0.7.6(hono@4.11.4)(zod@4.3.5)
+        version: 0.7.6(hono@4.11.7)(zod@4.3.5)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -87,8 +87,8 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0(@aws-sdk/client-s3@3.713.0)(@aws-sdk/s3-request-presigner@3.713.0)
       hono:
-        specifier: ^4.11.4
-        version: 4.11.4
+        specifier: ^4.11.7
+        version: 4.11.7
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.5
@@ -531,6 +531,10 @@ packages:
 
   '@aws-sdk/util-locate-window@3.965.3':
     resolution: {integrity: sha512-FNUqAjlKAGA7GM05kywE99q8wiPHPZqrzhq3wXRga6PRD6A0kzT85Pb0AzYBVTBRpSrKyyr6M92Y6bnSBVp2BA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/util-locate-window@3.965.4':
+    resolution: {integrity: sha512-H1onv5SkgPBK2P6JR2MjGgbOnttoNzSPIRoeZTNPZYyaplwGg50zS3amXvXqF0/qfXpWEC9rLWU564QTB9bSog==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/util-user-agent-browser@3.713.0':
@@ -3504,8 +3508,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hono@4.11.4:
-    resolution: {integrity: sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==}
+  hono@4.11.7:
+    resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -5301,14 +5305,14 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.973.0
       tslib: 2.8.1
     optional: true
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.973.0
       tslib: 2.8.1
     optional: true
 
@@ -5316,8 +5320,8 @@ snapshots:
     dependencies:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
-      '@aws-sdk/util-locate-window': 3.965.3
+      '@aws-sdk/types': 3.973.0
+      '@aws-sdk/util-locate-window': 3.965.4
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
     optional: true
@@ -6277,6 +6281,11 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@aws-sdk/util-locate-window@3.965.4':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
   '@aws-sdk/util-user-agent-browser@3.713.0':
     dependencies:
       '@aws-sdk/types': 3.713.0
@@ -6804,10 +6813,10 @@ snapshots:
       url-template: 3.1.1
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@1.10.2(@fedify/fedify@1.10.2)(hono@4.11.4)':
+  '@fedify/hono@1.10.2(@fedify/fedify@1.10.2)(hono@4.11.7)':
     dependencies:
       '@fedify/fedify': 1.10.2
-      hono: 4.11.4
+      hono: 4.11.7
 
   '@fedify/markdown-it-hashtag@0.3.0':
     dependencies:
@@ -6826,13 +6835,13 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@1.19.9(hono@4.11.4)':
+  '@hono/node-server@1.19.9(hono@4.11.7)':
     dependencies:
-      hono: 4.11.4
+      hono: 4.11.7
 
-  '@hono/zod-validator@0.7.6(hono@4.11.4)(zod@4.3.5)':
+  '@hono/zod-validator@0.7.6(hono@4.11.7)(zod@4.3.5)':
     dependencies:
-      hono: 4.11.4
+      hono: 4.11.7
       zod: 4.3.5
 
   '@humanwhocodes/retry@0.4.3': {}
@@ -9487,7 +9496,7 @@ snapshots:
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
 
-  hono@4.11.4: {}
+  hono@4.11.7: {}
 
   html-escaper@2.0.2: {}
 
