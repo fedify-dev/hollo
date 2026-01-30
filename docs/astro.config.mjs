@@ -104,6 +104,15 @@ export default defineConfig({
               slug: "install/env",
             },
             {
+              label: "Separating worker nodes",
+              translations: {
+                ko: "워커 노드 분리",
+                ja: "ワーカーノードの分離",
+                "zh-CN": "分离工作节点",
+              },
+              slug: "install/workers",
+            },
+            {
               label: "Setting up",
               translations: {
                 ko: "설정하기",

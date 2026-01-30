@@ -1,0 +1,310 @@
+---
+title: 分离工作节点
+description: 如何分离运行Web和工作节点以获得更好的可扩展性。
+---
+
+import { Aside, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+对于拥有大量关注者的高流量实例，您可以通过将Web服务器与后台工作器分离来
+提高性能。这使您能够根据工作负载独立扩展每个组件。
+
+
+何时考虑工作器分离
+------------------
+
+在以下情况下，工作器分离是有益的：
+
+ -  您有数千个关注者并且活动传递缓慢
+ -  您的实例处理大量联合流量（大量传入/传出的帖子）
+ -  在高峰活动时间Web服务器响应性下降
+ -  您希望跨多个服务器进行横向扩展
+
+<Aside type="note">
+  对于活动量适中的大多数单用户实例，在单个进程中运行所有内容（默认）
+  完全足够。工作器分离会增加部署复杂性，仅建议用于高流量场景。
+</Aside>
+
+
+工作原理
+--------
+
+Hollo由三个主要组件组成：
+
+ 1. *Web服务器*：处理HTTP请求（API、Web UI）
+ 2. *Fedify消息队列*：处理ActivityPub inbox/outbox消息
+ 3. *导入工作器*：处理后台数据导入作业
+
+默认情况下（`NODE_TYPE=all`），所有三个都在单个进程中运行。
+您可以使用`NODE_TYPE`环境变量来分离它们：
+
+| `NODE_TYPE` | Web服务器 | Fedify队列 | 导入工作器 |
+| ----------- | --------- | ---------- | ---------- |
+| `all`（默认） | ✓ | ✓ | ✓ |
+| `web` | ✓ | ✗ | ✗ |
+| `worker` | ✗ | ✓ | ✓ |
+
+所有节点共享相同的PostgreSQL数据库，该数据库使用`LISTEN`/`NOTIFY`
+作为消息队列后端进行实时消息传递。
+
+
+Docker Compose设置
+------------------
+
+以下是运行单独的Web和工作节点的*compose.yaml*示例：
+
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hollo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hollo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  web:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_TYPE=web
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+      - BEHIND_PROXY=true
+    volumes:
+      - ./data/storage:/data/storage
+
+  worker:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+    volumes:
+      - ./data/storage:/data/storage
+```
+
+<Aside>
+  - Web节点和工作节点都需要访问相同的存储卷
+  - Web节点在端口3000上公开；工作节点不需要端口公开
+  - 您可以通过添加更多服务来运行多个工作节点
+</Aside>
+
+### 扩展工作器
+
+要运行多个工作节点，请添加更多工作服务：
+
+```yaml
+services:
+  # ... db和web服务 ...
+
+  worker-1:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... 其他环境变量 ...
+
+  worker-2:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... 其他环境变量 ...
+```
+
+PostgreSQL的`LISTEN`/`NOTIFY`确保每条消息只由一个工作器处理。
+
+
+手动安装
+--------
+
+对于手动安装，您可以使用不同的`NODE_TYPE`值运行单独的进程。
+
+### Web节点
+
+```bash
+NODE_TYPE=web pnpm prod
+```
+
+这仅在配置的端口上启动Web服务器。
+
+### 工作节点
+
+```bash
+NODE_TYPE=worker pnpm prod
+# 或
+pnpm worker
+```
+
+这将启动Fedify消息队列和导入工作器，但不启动Web服务器。
+
+<Aside type="caution">
+  当运行`NODE_TYPE=web`时，请确保至少有一个`NODE_TYPE=worker`节点正在运行。
+  否则，传入的活动不会被处理，传出的帖子也不会被传递。
+</Aside>
+
+
+Systemd示例
+-----------
+
+如果您使用systemd，请创建单独的服务文件：
+
+### /etc/systemd/system/hollo-web.service
+
+```ini
+[Unit]
+Description=Hollo Web Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=web"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm prod
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /etc/systemd/system/hollo-worker.service
+
+```ini
+[Unit]
+Description=Hollo Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=worker"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm worker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+然后启用并启动两个服务：
+
+```bash
+sudo systemctl enable hollo-web hollo-worker
+sudo systemctl start hollo-web hollo-worker
+```
+
+
+监控
+----
+
+### 检查工作器状态
+
+对于Docker Compose：
+
+```bash
+# 查看Web节点日志
+docker compose logs -f web
+
+# 查看工作节点日志
+docker compose logs -f worker
+```
+
+对于systemd：
+
+```bash
+# 查看Web节点日志
+sudo journalctl -u hollo-web -f
+
+# 查看工作节点日志
+sudo journalctl -u hollo-worker -f
+```
+
+### 工作器日志消息
+
+当工作节点启动时，您应该看到：
+
+```
+Worker started (Fedify queue + Import worker)
+```
+
+观察有关处理活动和导入作业的消息，以确认工作器正常运行。
+
+
+故障排除
+--------
+
+### Web节点工作但活动未被处理
+
+*问题*：您可以访问Web UI，但传入的活动（关注、点赞、帖子）未被处理。
+
+*解决方案*：确保至少有一个使用`NODE_TYPE=worker`的工作节点正在运行。
+
+### 工作节点无法启动
+
+*问题*：工作节点退出并显示错误。
+
+*解决方案*：检查：
+
+ -  `DATABASE_URL`是否正确且数据库可访问
+ -  数据库是否应用了最新的迁移
+ -  存储配置（`DRIVE_DISK`、`FS_STORAGE_PATH`等）是否正确
+
+### 活动处理缓慢
+
+*问题*：处理联合活动存在延迟。
+
+*解决方案*：添加更多工作节点以并行处理消息。PostgreSQL的消息队列将在所有可用工作器之间分配工作。
+
+### 存储访问错误
+
+*问题*：工作节点无法访问上传的文件。
+
+*解决方案*：确保：
+
+ -  所有节点（Web和工作器）都可以访问相同的存储
+ -  对于文件系统存储：存储卷已挂载到所有节点
+ -  对于S3存储：所有节点具有相同的S3凭据
+
+
+性能考虑
+--------
+
+ -  *Web节点*：轻量级，可以使用最少的资源运行（512MB-1GB RAM）
+ -  *工作节点*：资源密集型，特别是在高联合活动期间（建议1GB-2GB RAM）
+ -  *数据库*：由所有节点共享；确保它有足够的资源
+    （对于繁忙的实例建议2GB+ RAM）
+ -  *并发*：每个工作器最多并发处理10条消息
+    （通过`ParallelMessageQueue`配置）
+
+
+最佳实践
+--------
+
+ -  从`NODE_TYPE=all`（默认）开始，直到遇到性能问题
+ -  监控资源使用情况以确定何时需要分离
+ -  使用`NODE_TYPE=web`时至少运行一个专用工作节点
+ -  在Web节点前使用反向代理（nginx、Caddy）进行负载均衡
+ -  保持存储对所有节点可访问（共享卷或S3）
+ -  监控所有节点的日志以查找错误和性能问题

@@ -1,0 +1,318 @@
+---
+title: ワーカーノードの分離
+description: スケーラビリティ向上のためにWebとワーカーノードを分離して実行する方法。
+---
+
+import { Aside, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+フォロワーが多い高トラフィックインスタンスの場合、Webサーバーとバックグラウンドワーカーを
+分離することでパフォーマンスを向上させることができます。これにより、ワークロードに応じて
+各コンポーネントを独立してスケールすることができます。
+
+
+ワーカー分離を検討すべき場合
+----------------------------
+
+次のような場合にワーカー分離が有用です:
+
+ -  数千人のフォロワーがいて、アクティビティの配信が遅い場合
+ -  インスタンスが大量の連合トラフィック(多くの受信/送信投稿)を処理する場合
+ -  ピーク時にWebサーバーの応答性が低下する場合
+ -  複数のサーバーで水平スケーリングしたい場合
+
+<Aside type="note">
+  通常の活動量を持つほとんどのシングルユーザーインスタンスでは、
+  すべてを単一プロセスで実行すること(デフォルト)で十分です。
+  ワーカー分離はデプロイの複雑さを増し、高トラフィックシナリオにのみ推奨されます。
+</Aside>
+
+
+動作の仕組み
+------------
+
+Holloは3つの主要コンポーネントで構成されています:
+
+ 1. *Webサーバー*: HTTPリクエスト(API、Web UI)を処理
+ 2. *Fedifyメッセージキュー*: ActivityPub inbox/outboxメッセージを処理
+ 3. *インポートワーカー*: バックグラウンドデータインポートジョブを処理
+
+デフォルト(`NODE_TYPE=all`)では、3つすべてが単一プロセスで実行されます。
+`NODE_TYPE`環境変数を使用して分離できます:
+
+| `NODE_TYPE` | Webサーバー | Fedifyキュー | インポートワーカー |
+| ----------- | ----------- | ------------ | ------------------ |
+| `all` (デフォルト) | ✓ | ✓ | ✓ |
+| `web` | ✓ | ✗ | ✗ |
+| `worker` | ✗ | ✓ | ✓ |
+
+すべてのノードは同じPostgreSQLデータベースを共有し、
+`LISTEN`/`NOTIFY`を使用してリアルタイムメッセージ配信のための
+メッセージキューバックエンドとして機能します。
+
+
+Docker Compose設定
+------------------
+
+以下は、別々のWebとワーカーノードを実行するための*compose.yaml*の例です:
+
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hollo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hollo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  web:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_TYPE=web
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+      - BEHIND_PROXY=true
+    volumes:
+      - ./data/storage:/data/storage
+
+  worker:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+    volumes:
+      - ./data/storage:/data/storage
+```
+
+<Aside>
+  - Webノードとワーカーノードの両方が同じストレージボリュームにアクセスする必要があります
+  - Webノードはポート3000で公開されます; ワーカーノードはポート公開が不要です
+  - サービスを追加することで複数のワーカーノードを実行できます
+</Aside>
+
+### ワーカーのスケーリング
+
+複数のワーカーノードを実行するには、ワーカーサービスを追加します:
+
+```yaml
+services:
+  # ... dbとwebサービス ...
+
+  worker-1:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... その他の環境変数 ...
+
+  worker-2:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... その他の環境変数 ...
+```
+
+PostgreSQLの`LISTEN`/`NOTIFY`により、各メッセージが1つのワーカーでのみ
+処理されることが保証されます。
+
+
+手動インストール
+----------------
+
+手動インストールの場合、異なる`NODE_TYPE`値を使用して別々のプロセスを実行できます。
+
+### Webノード
+
+```bash
+NODE_TYPE=web pnpm prod
+```
+
+設定されたポートでWebサーバーのみを起動します。
+
+### ワーカーノード
+
+```bash
+NODE_TYPE=worker pnpm prod
+# または
+pnpm worker
+```
+
+Webサーバーなしで、Fedifyメッセージキューとインポートワーカーのみを起動します。
+
+<Aside type="caution">
+  `NODE_TYPE=web`を実行する場合、少なくとも1つの`NODE_TYPE=worker`ノードが
+  実行されている必要があります。そうでない場合、受信アクティビティが処理されず、
+  送信投稿が配信されません。
+</Aside>
+
+
+Systemdの例
+-----------
+
+systemdを使用している場合、別々のサービスファイルを作成します:
+
+### /etc/systemd/system/hollo-web.service
+
+```ini
+[Unit]
+Description=Hollo Web Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=web"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm prod
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /etc/systemd/system/hollo-worker.service
+
+```ini
+[Unit]
+Description=Hollo Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=worker"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm worker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+次に、両方のサービスを有効化して起動します:
+
+```bash
+sudo systemctl enable hollo-web hollo-worker
+sudo systemctl start hollo-web hollo-worker
+```
+
+
+モニタリング
+------------
+
+### ワーカーステータスの確認
+
+Docker Composeの場合:
+
+```bash
+# Webノードのログを表示
+docker compose logs -f web
+
+# ワーカーノードのログを表示
+docker compose logs -f worker
+```
+
+systemdの場合:
+
+```bash
+# Webノードのログを表示
+sudo journalctl -u hollo-web -f
+
+# ワーカーノードのログを表示
+sudo journalctl -u hollo-worker -f
+```
+
+### ワーカーログメッセージ
+
+ワーカーノードが起動すると、次のように表示されます:
+
+```
+Worker started (Fedify queue + Import worker)
+```
+
+ワーカーが正常に機能していることを確認するには、
+アクティビティ処理とインポートジョブに関するメッセージを確認してください。
+
+
+トラブルシューティング
+----------------------
+
+### Webノードは動作するがアクティビティが処理されない
+
+*問題*: Web UIにアクセスできるが、受信アクティビティ(フォロー、いいね、投稿)が
+処理されない。
+
+*解決*: `NODE_TYPE=worker`で少なくとも1つのワーカーノードが実行されているか確認してください。
+
+### ワーカーノードが起動しない
+
+*問題*: ワーカーノードがエラーで終了する。
+
+*解決*: 次を確認してください:
+
+ -  `DATABASE_URL`が正しく、データベースにアクセス可能か
+ -  データベースに最新のマイグレーションが適用されているか
+ -  ストレージ設定(`DRIVE_DISK`、`FS_STORAGE_PATH`など)が正しいか
+
+### アクティビティ処理が遅い
+
+*問題*: 連合アクティビティの処理に遅延がある。
+
+*解決*: メッセージを並列処理するためにワーカーノードを追加してください。
+PostgreSQLのメッセージキューが、利用可能なすべてのワーカーに作業を分散します。
+
+### ストレージアクセスエラー
+
+*問題*: ワーカーノードがアップロードされたファイルにアクセスできない。
+
+*解決*: 次を確認してください:
+
+ -  すべてのノード(Webとワーカー)が同じストレージにアクセスできるか
+ -  ファイルシステムストレージの場合: ストレージボリュームがすべてのノードにマウントされているか
+ -  S3ストレージの場合: すべてのノードが同じS3認証情報を持っているか
+
+
+パフォーマンスの考慮事項
+------------------------
+
+ -  *Webノード*: 軽量で最小限のリソースで実行可能(512MB-1GB RAM)
+ -  *ワーカーノード*: 特に高い連合活動中にリソース集約的(1GB-2GB RAM推奨)
+ -  *データベース*: すべてのノードで共有; 十分なリソースを確保
+    (ビジーなインスタンスには2GB+ RAM推奨)
+ -  *並行性*: 各ワーカーは最大10個のメッセージを同時に処理
+    (`ParallelMessageQueue`で設定)
+
+
+ベストプラクティス
+------------------
+
+ -  パフォーマンス問題が発生するまで`NODE_TYPE=all`(デフォルト)で開始してください
+ -  リソース使用状況をモニタリングして、分離が必要な時期を判断してください
+ -  `NODE_TYPE=web`使用時は、少なくとも1つの専用ワーカーノードを実行してください
+ -  Webノードの前にリバースプロキシ(nginx、Caddy)を使用してロードバランシングしてください
+ -  すべてのノードからストレージにアクセスできるようにしてください(共有ボリュームまたはS3)
+ -  エラーとパフォーマンス問題のために、すべてのノードのログをモニタリングしてください

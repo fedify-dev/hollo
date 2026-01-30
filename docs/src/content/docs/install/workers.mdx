@@ -1,0 +1,319 @@
+---
+title: Separating worker nodes
+description: How to run web and worker nodes separately for better scalability.
+---
+
+import { Aside, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+For high-traffic instances with many followers, you can improve performance
+by separating the web server from background workers. This allows you to scale
+each component independently based on your workload.
+
+
+When to consider worker separation
+-----------------------------------
+
+Worker separation is beneficial when:
+
+ -  You have thousands of followers and experience slow activity delivery
+ -  Your instance handles heavy federation traffic (many incoming/outgoing posts)
+ -  The web server becomes less responsive during peak activity times
+ -  You want to scale horizontally across multiple servers
+
+<Aside type="note">
+  For most single-user instances with moderate activity, running everything
+  in a single process (the default) is perfectly adequate. Worker separation
+  adds deployment complexity and is only recommended for high-traffic scenarios.
+</Aside>
+
+
+How it works
+------------
+
+Hollo has three main components:
+
+ 1. *Web server*: Handles HTTP requests (API, web UI)
+ 2. *Fedify message queue*: Processes ActivityPub inbox/outbox messages
+ 3. *Import worker*: Handles background data import jobs
+
+By default (`NODE_TYPE=all`), all three run in a single process. You can
+separate them using the `NODE_TYPE` environment variable:
+
+| `NODE_TYPE` | Web server | Fedify queue | Import worker |
+| ----------- | ---------- | ------------ | ------------- |
+| `all` (default) | ✓ | ✓ | ✓ |
+| `web` | ✓ | ✗ | ✗ |
+| `worker` | ✗ | ✓ | ✓ |
+
+All nodes share the same PostgreSQL database, which acts as the message queue
+backend using `LISTEN`/`NOTIFY` for real-time message delivery.
+
+
+Docker Compose setup
+--------------------
+
+Here's an example *compose.yaml* for running separate web and worker nodes:
+
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hollo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hollo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  web:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_TYPE=web
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+      - BEHIND_PROXY=true
+    volumes:
+      - ./data/storage:/data/storage
+
+  worker:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+    volumes:
+      - ./data/storage:/data/storage
+```
+
+<Aside>
+  - Both web and worker nodes need access to the same storage volume
+  - The web node is exposed on port 3000; worker nodes don't need port exposure
+  - You can run multiple worker nodes by adding more services
+</Aside>
+
+### Scaling workers
+
+To run multiple worker nodes, add more worker services:
+
+```yaml
+services:
+  # ... db and web services ...
+
+  worker-1:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... other environment variables ...
+
+  worker-2:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... other environment variables ...
+```
+
+PostgreSQL's `LISTEN`/`NOTIFY` ensures that each message is processed by
+only one worker.
+
+
+Manual installation
+-------------------
+
+For manual installations, you can run separate processes using different
+`NODE_TYPE` values.
+
+### Web node
+
+```bash
+NODE_TYPE=web pnpm prod
+```
+
+This starts only the web server on the configured port.
+
+### Worker node
+
+```bash
+NODE_TYPE=worker pnpm prod
+# or
+pnpm worker
+```
+
+This starts the Fedify message queue and import worker without the web server.
+
+<Aside type="caution">
+  When running `NODE_TYPE=web`, ensure at least one `NODE_TYPE=worker` node
+  is running. Otherwise, incoming activities won't be processed and outgoing
+  posts won't be delivered.
+</Aside>
+
+
+Systemd example
+---------------
+
+If you're using systemd, create separate service files:
+
+### /etc/systemd/system/hollo-web.service
+
+```ini
+[Unit]
+Description=Hollo Web Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=web"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm prod
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /etc/systemd/system/hollo-worker.service
+
+```ini
+[Unit]
+Description=Hollo Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=worker"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm worker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start both services:
+
+```bash
+sudo systemctl enable hollo-web hollo-worker
+sudo systemctl start hollo-web hollo-worker
+```
+
+
+Monitoring
+----------
+
+### Check worker status
+
+For Docker Compose:
+
+```bash
+# View web node logs
+docker compose logs -f web
+
+# View worker node logs
+docker compose logs -f worker
+```
+
+For systemd:
+
+```bash
+# View web node logs
+sudo journalctl -u hollo-web -f
+
+# View worker node logs
+sudo journalctl -u hollo-worker -f
+```
+
+### Worker log messages
+
+When a worker node starts, you should see:
+
+```
+Worker started (Fedify queue + Import worker)
+```
+
+Watch for messages about processing activities and import jobs to confirm
+the worker is functioning correctly.
+
+
+Troubleshooting
+---------------
+
+### Web node works but activities aren't processed
+
+*Problem*: You can access the web UI, but incoming activities (follows, likes,
+posts) aren't being processed.
+
+*Solution*: Ensure at least one worker node is running with `NODE_TYPE=worker`.
+
+### Worker node won't start
+
+*Problem*: Worker node exits with an error.
+
+*Solution*: Check that:
+
+ -  `DATABASE_URL` is correct and the database is accessible
+ -  The database has the latest migrations applied
+ -  Storage configuration (`DRIVE_DISK`, `FS_STORAGE_PATH`, etc.) is correct
+
+### Activities are processed slowly
+
+*Problem*: There's a delay in processing federation activities.
+
+*Solution*: Add more worker nodes to process messages in parallel. PostgreSQL's
+message queue will distribute work among all available workers.
+
+### Storage access errors
+
+*Problem*: Worker nodes can't access uploaded files.
+
+*Solution*: Ensure:
+
+ -  All nodes (web and worker) have access to the same storage
+ -  For filesystem storage: the storage volume is mounted on all nodes
+ -  For S3 storage: all nodes have the same S3 credentials
+
+
+Performance considerations
+--------------------------
+
+ -  *Web nodes*: Lightweight, can run with minimal resources (512MB-1GB RAM)
+ -  *Worker nodes*: More resource-intensive, especially during high federation
+    activity (1GB-2GB RAM recommended)
+ -  *Database*: Shared by all nodes; ensure it has adequate resources
+    (2GB+ RAM recommended for busy instances)
+ -  *Concurrency*: Each worker processes up to 10 messages concurrently
+    (configured via `ParallelMessageQueue`)
+
+
+Best practices
+--------------
+
+ -  Start with `NODE_TYPE=all` (default) until you experience performance issues
+ -  Monitor resource usage to determine when separation is needed
+ -  Run at least one dedicated worker node when using `NODE_TYPE=web`
+ -  Use a reverse proxy (nginx, Caddy) in front of web nodes for load balancing
+ -  Keep storage accessible to all nodes (shared volume or S3)
+ -  Monitor logs from all nodes for errors and performance issues

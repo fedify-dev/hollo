@@ -1,0 +1,316 @@
+---
+title: 워커 노드 분리
+description: 더 나은 확장성을 위해 웹과 워커 노드를 분리하여 실행하는 방법.
+---
+
+import { Aside, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+팔로워가 많은 고트래픽 인스턴스의 경우, 웹 서버와 백그라운드 워커를 분리하여
+성능을 향상시킬 수 있습니다. 이를 통해 워크로드에 따라 각 구성 요소를 독립적으로
+확장할 수 있습니다.
+
+
+워커 분리를 고려해야 하는 경우
+-------------------------------
+
+다음과 같은 경우 워커 분리가 유용합니다:
+
+ -  수천 명의 팔로워가 있고 액티비티 전달이 느린 경우
+ -  인스턴스가 많은 연합 트래픽(많은 들어오는/나가는 포스트)을 처리하는 경우
+ -  피크 활동 시간에 웹 서버의 응답성이 떨어지는 경우
+ -  여러 서버에서 수평적으로 확장하고 싶은 경우
+
+<Aside type="note">
+  보통의 활동량을 가진 대부분의 단일 사용자 인스턴스의 경우,
+  모든 것을 단일 프로세스에서 실행하는 것(기본값)으로 충분합니다.
+  워커 분리는 배포 복잡성을 증가시키며 고트래픽 시나리오에만 권장됩니다.
+</Aside>
+
+
+작동 방식
+---------
+
+Hollo는 세 가지 주요 구성 요소로 이루어져 있습니다:
+
+ 1. *웹 서버*: HTTP 요청(API, 웹 UI) 처리
+ 2. *Fedify 메시지 큐*: ActivityPub inbox/outbox 메시지 처리
+ 3. *임포트 워커*: 백그라운드 데이터 가져오기 작업 처리
+
+기본적으로(`NODE_TYPE=all`) 세 가지 모두 단일 프로세스에서 실행됩니다.
+`NODE_TYPE` 환경 변수를 사용하여 분리할 수 있습니다:
+
+| `NODE_TYPE` | 웹 서버 | Fedify 큐 | 임포트 워커 |
+| ----------- | ------- | --------- | ----------- |
+| `all` (기본값) | ✓ | ✓ | ✓ |
+| `web` | ✓ | ✗ | ✗ |
+| `worker` | ✗ | ✓ | ✓ |
+
+모든 노드는 동일한 PostgreSQL 데이터베이스를 공유하며,
+`LISTEN`/`NOTIFY`를 사용하여 실시간 메시지 전달을 위한 메시지 큐 백엔드로 작동합니다.
+
+
+Docker Compose 설정
+-------------------
+
+다음은 별도의 웹 및 워커 노드를 실행하기 위한 *compose.yaml* 예제입니다:
+
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hollo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hollo
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  web:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_TYPE=web
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+      - BEHIND_PROXY=true
+    volumes:
+      - ./data/storage:/data/storage
+
+  worker:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      - DATABASE_URL=postgresql://hollo:password@db/hollo
+      - SECRET_KEY=${SECRET_KEY}
+      - DRIVE_DISK=fs
+      - FS_STORAGE_PATH=/data/storage
+      - STORAGE_URL_BASE=https://hollo.example.com/assets
+    volumes:
+      - ./data/storage:/data/storage
+```
+
+<Aside>
+  - 웹 노드와 워커 노드 모두 동일한 스토리지 볼륨에 접근해야 합니다
+  - 웹 노드는 3000 포트로 노출됩니다; 워커 노드는 포트 노출이 필요 없습니다
+  - 서비스를 더 추가하여 여러 워커 노드를 실행할 수 있습니다
+</Aside>
+
+### 워커 확장
+
+여러 워커 노드를 실행하려면 워커 서비스를 더 추가하세요:
+
+```yaml
+services:
+  # ... db 및 web 서비스 ...
+
+  worker-1:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... 기타 환경 변수 ...
+
+  worker-2:
+    image: ghcr.io/dahlia/hollo:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      - NODE_TYPE=worker
+      # ... 기타 환경 변수 ...
+```
+
+PostgreSQL의 `LISTEN`/`NOTIFY`는 각 메시지가 하나의 워커에서만
+처리되도록 보장합니다.
+
+
+수동 설치
+---------
+
+수동 설치의 경우, 다른 `NODE_TYPE` 값을 사용하여 별도의 프로세스를 실행할 수 있습니다.
+
+### 웹 노드
+
+```bash
+NODE_TYPE=web pnpm prod
+```
+
+구성된 포트에서 웹 서버만 시작합니다.
+
+### 워커 노드
+
+```bash
+NODE_TYPE=worker pnpm prod
+# 또는
+pnpm worker
+```
+
+웹 서버 없이 Fedify 메시지 큐와 임포트 워커만 시작합니다.
+
+<Aside type="caution">
+  `NODE_TYPE=web`을 실행할 때는 최소 하나의 `NODE_TYPE=worker` 노드가
+  실행 중이어야 합니다. 그렇지 않으면 들어오는 액티비티가 처리되지 않고
+  나가는 포스트가 전달되지 않습니다.
+</Aside>
+
+
+Systemd 예제
+-------------
+
+systemd를 사용하는 경우, 별도의 서비스 파일을 만드세요:
+
+### /etc/systemd/system/hollo-web.service
+
+```ini
+[Unit]
+Description=Hollo Web Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=web"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm prod
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### /etc/systemd/system/hollo-worker.service
+
+```ini
+[Unit]
+Description=Hollo Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=hollo
+WorkingDirectory=/opt/hollo
+Environment="NODE_TYPE=worker"
+EnvironmentFile=/opt/hollo/.env
+ExecStart=/usr/bin/pnpm worker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+그런 다음 두 서비스를 활성화하고 시작하세요:
+
+```bash
+sudo systemctl enable hollo-web hollo-worker
+sudo systemctl start hollo-web hollo-worker
+```
+
+
+모니터링
+--------
+
+### 워커 상태 확인
+
+Docker Compose의 경우:
+
+```bash
+# 웹 노드 로그 보기
+docker compose logs -f web
+
+# 워커 노드 로그 보기
+docker compose logs -f worker
+```
+
+systemd의 경우:
+
+```bash
+# 웹 노드 로그 보기
+sudo journalctl -u hollo-web -f
+
+# 워커 노드 로그 보기
+sudo journalctl -u hollo-worker -f
+```
+
+### 워커 로그 메시지
+
+워커 노드가 시작되면 다음과 같이 표시됩니다:
+
+```
+Worker started (Fedify queue + Import worker)
+```
+
+워커가 정상적으로 작동하는지 확인하려면 액티비티 처리 및 가져오기 작업에 대한 메시지를 확인하세요.
+
+
+문제 해결
+---------
+
+### 웹 노드는 작동하지만 액티비티가 처리되지 않음
+
+*문제*: 웹 UI에 접근할 수 있지만 들어오는 액티비티(팔로우, 좋아요, 포스트)가
+처리되지 않습니다.
+
+*해결*: `NODE_TYPE=worker`로 최소 하나의 워커 노드가 실행 중인지 확인하세요.
+
+### 워커 노드가 시작되지 않음
+
+*문제*: 워커 노드가 오류와 함께 종료됩니다.
+
+*해결*: 다음을 확인하세요:
+
+ -  `DATABASE_URL`이 올바르고 데이터베이스에 접근 가능한지
+ -  데이터베이스에 최신 마이그레이션이 적용되었는지
+ -  스토리지 설정(`DRIVE_DISK`, `FS_STORAGE_PATH` 등)이 올바른지
+
+### 액티비티 처리가 느림
+
+*문제*: 연합 액티비티 처리에 지연이 있습니다.
+
+*해결*: 메시지를 병렬로 처리하기 위해 워커 노드를 더 추가하세요.
+PostgreSQL의 메시지 큐가 사용 가능한 모든 워커에 작업을 분산합니다.
+
+### 스토리지 접근 오류
+
+*문제*: 워커 노드가 업로드된 파일에 접근할 수 없습니다.
+
+*해결*: 다음을 확인하세요:
+
+ -  모든 노드(웹 및 워커)가 동일한 스토리지에 접근할 수 있는지
+ -  파일시스템 스토리지의 경우: 스토리지 볼륨이 모든 노드에 마운트되어 있는지
+ -  S3 스토리지의 경우: 모든 노드가 동일한 S3 자격 증명을 가지고 있는지
+
+
+성능 고려사항
+-------------
+
+ -  *웹 노드*: 가볍고 최소한의 리소스로 실행 가능(512MB-1GB RAM)
+ -  *워커 노드*: 특히 높은 연합 활동 중에 리소스 집약적(1GB-2GB RAM 권장)
+ -  *데이터베이스*: 모든 노드가 공유; 충분한 리소스 확보 필요
+    (바쁜 인스턴스의 경우 2GB+ RAM 권장)
+ -  *동시성*: 각 워커는 최대 10개의 메시지를 동시에 처리
+    (`ParallelMessageQueue`를 통해 구성됨)
+
+
+모범 사례
+---------
+
+ -  성능 문제가 발생할 때까지 `NODE_TYPE=all`(기본값)로 시작하세요
+ -  리소스 사용량을 모니터링하여 분리가 필요한 시점을 결정하세요
+ -  `NODE_TYPE=web` 사용 시 최소 하나의 전용 워커 노드를 실행하세요
+ -  웹 노드 앞에 리버스 프록시(nginx, Caddy)를 사용하여 로드 밸런싱하세요
+ -  모든 노드에서 스토리지에 접근 가능하도록 유지하세요(공유 볼륨 또는 S3)
+ -  오류 및 성능 문제를 위해 모든 노드의 로그를 모니터링하세요

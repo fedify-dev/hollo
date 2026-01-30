@@ -7,6 +7,7 @@
   "scripts": {
     "prod": "pnpm run migrate && tsx --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
     "dev": "pnpm run migrate && tsx watch --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
+    "worker": "NODE_TYPE=worker tsx --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
     "list:routes": "tsx --env-file-if-exists=.env bin/routes.ts",
     "test": "pnpm run migrate:test && vitest",
     "test:ci": "vitest",

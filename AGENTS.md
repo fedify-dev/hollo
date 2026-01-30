@@ -361,6 +361,7 @@ STORAGE_URL_BASE=https://your-bucket.s3.amazonaws.com
 | ------------------------------ | ------- | ---------------------------------------- |
 | `PORT`                         | 3000    | Server port                              |
 | `BIND`                         | -       | Bind address                             |
+| `NODE_TYPE`                    | all     | Node type: `all`, `web`, or `worker`     |
 | `BEHIND_PROXY`                 | false   | Trust proxy headers                      |
 | `LOG_LEVEL`                    | info    | Logging level                            |
 | `LOG_QUERY`                    | false   | Log database queries                     |

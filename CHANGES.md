@@ -6,6 +6,23 @@ Version 0.8.0
 
 To be released.
 
+ -  Added support for separating worker nodes from the web server for better
+    scalability in high-traffic scenarios.  This allows running web server and
+    background workers (Fedify message queue and import worker) in separate
+    processes, preventing heavy federation workloads from slowing down web
+    server responsiveness.  This is particularly beneficial for instances with
+    thousands of followers where a single post can generate thousands of
+    outbox messages.  [[#350]]
+
+     -  Added `NODE_TYPE` environment variable to control which components run
+        in each process: `all` (default, current behavior), `web` (web server
+        only), or `worker` (workers only).
+     -  All nodes share the same PostgreSQL database, which acts as the message
+        queue backend using `LISTEN`/`NOTIFY` for real-time message delivery.
+     -  Added comprehensive documentation for Docker Compose, systemd, and
+        manual deployment setups with worker separation.
+     -  Added `pnpm worker` script for running worker-only nodes.
+
  -  Added automatic refresh of stale remote actor profiles.  When receiving
     activities like `Announce` or `Create(Note)`, Hollo now checks if the
     actor's cached data is stale and asynchronously refreshes their profile
@@ -22,6 +39,7 @@ To be released.
         activities that appear in timelines (`Announce`, `Create`).
 
 [#348]: https://github.com/fedify-dev/hollo/issues/348
+[#350]: https://github.com/fedify-dev/hollo/issues/350
 
 
 Version 0.7.0
