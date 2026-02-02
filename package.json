@@ -36,7 +36,7 @@
     "@logtape/sentry": "~2.0.2",
     "@sentry/core": "^10.36.0",
     "@sentry/node": "^10.36.0",
-    "@shikijs/markdown-it": "^3.21.0",
+    "@shikijs/markdown-it": "^3.22.0",
     "@supercharge/promise-pool": "^3.2.0",
     "argon2": "^0.44.0",
     "cheerio": "^1.2.0",
