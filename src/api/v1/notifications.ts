@@ -20,6 +20,7 @@ import {
   polls,
   pollVotes,
   posts,
+  reactions,
 } from "../../schema";
 import type { Uuid } from "../../uuid";
 
@@ -173,6 +174,48 @@ app.get(
       count: notificationsData.length,
     });
 
+    // Fetch emoji reactions for emoji_reaction notifications
+    const emojiReactionNotifications = notificationsData.filter(
+      (n) =>
+        n.type === "emoji_reaction" &&
+        n.targetPostId != null &&
+        n.actorAccount != null,
+    );
+
+    // Fetch reactions from DB
+    const reactionsData =
+      emojiReactionNotifications.length > 0
+        ? await db.query.reactions.findMany({
+            where: or(
+              ...emojiReactionNotifications.map((n) =>
+                and(
+                  eq(reactions.postId, n.targetPostId!),
+                  eq(reactions.accountId, n.actorAccount!.id),
+                ),
+              ),
+            ),
+            with: {
+              account: { with: { owner: true, successor: true } },
+            },
+          })
+        : [];
+
+    // Build map: "postId:accountId" -> Reaction
+    const reactionsMap = new Map<string, (typeof reactionsData)[number]>();
+    for (const reaction of reactionsData) {
+      const mapKey = `${reaction.postId}:${reaction.accountId}`;
+      reactionsMap.set(mapKey, reaction);
+    }
+
+    if (reactionsData.length > 0) {
+      logger.debug(
+        "Fetched {count} emoji reactions for emoji_reaction notifications",
+        {
+          count: reactionsData.length,
+        },
+      );
+    }
+
     // Query poll expiry notifications dynamically (not stored in DB)
     type StoredNotification = (typeof notificationsData)[number];
     type PollNotification = {
@@ -321,7 +364,7 @@ app.get(
           });
           return null;
         }
-        return {
+        const result: Record<string, unknown> = {
           id: `${created_at}/${n.type}/${n.id}`,
           type: n.type,
           created_at,
@@ -338,23 +381,42 @@ app.get(
           status: n.targetPost
             ? serializePost(n.targetPost, owner, c.req.url)
             : null,
-          ...(n.type === "emoji_reaction" && n.targetPost && account
-            ? {
-                emoji_reaction: serializeReaction(
-                  {
-                    postId: n.targetPost.id,
-                    accountId: account.id,
-                    account,
-                    emoji: "", // Will be fetched from reactions table if needed
-                    customEmoji: null,
-                    emojiIri: null,
-                    created: n.created,
-                  },
-                  owner,
-                ),
-              }
-            : {}),
         };
+
+        // Add emoji and emoji_url fields for emoji_reaction notifications
+        // These fields are used by clients like Phanpy, Misskey, Pleroma
+        if (n.type === "emoji_reaction" && n.targetPost && account != null) {
+          const mapKey = `${n.targetPost.id}:${account.id}`;
+          const reaction = reactionsMap.get(mapKey);
+
+          if (reaction != null) {
+            // Add top-level emoji and emoji_url fields for client compatibility
+            result.emoji = reaction.emoji;
+            if (reaction.customEmoji != null) {
+              result.emoji_url = reaction.customEmoji;
+              // Also add camelCase variant for Phanpy compatibility (Phanpy bug workaround)
+              result.emojiURL = reaction.customEmoji;
+            }
+
+            // Also include emoji_reaction object for Mastodon-compatible clients
+            result.emoji_reaction = serializeReaction(reaction, owner);
+          } else {
+            // Fallback: reaction not found (deleted)
+            logger.warn(
+              "Reaction not found for emoji_reaction notification {notifId}",
+              { notifId: n.id },
+            );
+            result.emoji = "";
+            result.emoji_reaction = {
+              name: "",
+              count: 1,
+              me: false,
+              account_ids: [account.id],
+            };
+          }
+        }
+
+        return result;
       })
       .filter((n) => n != null);
 

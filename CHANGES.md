@@ -6,6 +6,14 @@ Version 0.7.1
 
 To be released.
 
+ -  Fixed emoji reaction notifications not displaying emoji information in
+    Mastodon-compatible clients. The `/api/v1/notifications` endpoint now
+    includes top-level `emoji` and `emoji_url` fields for `emoji_reaction`
+    notifications, compatible with Pleroma/Akkoma clients like Phanpy.
+    [[#358]]
+
+[#358]: https://github.com/fedify-dev/hollo/issues/358
+
 
 Version 0.7.0
 -------------
