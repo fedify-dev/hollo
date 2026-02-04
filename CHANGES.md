@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.7.1
 -------------
 
-To be released.
+Released on February 4, 2026.
 
  -  Fixed emoji reaction notifications not displaying emoji information in
     Mastodon-compatible clients. The `/api/v1/notifications` endpoint now
