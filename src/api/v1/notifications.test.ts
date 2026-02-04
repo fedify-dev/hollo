@@ -364,4 +364,136 @@ describe.sequential("/api/v1/notifications", () => {
       expect(body).toHaveLength(0);
     });
   });
+
+  describe("Emoji reaction notifications", () => {
+    it("includes emoji in emoji_reaction notifications", async () => {
+      expect.assertions(5);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+
+      // Create a post by the local user
+      const postId = crypto.randomUUID() as Uuid;
+      const postIri = `https://test.local/@test/${postId}`;
+      await db.insert(Schema.posts).values({
+        id: postId,
+        iri: postIri,
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "Test post",
+        content: "Test post",
+        url: postIri,
+      });
+
+      // Create an emoji reaction from remote account
+      const emoji = "😊";
+      await db.insert(Schema.reactions).values({
+        postId,
+        accountId: remoteAccount.id,
+        emoji,
+        customEmoji: null,
+        emojiIri: null,
+      });
+
+      // Create emoji_reaction notification
+      await db.insert(Schema.notifications).values({
+        id: crypto.randomUUID() as Uuid,
+        accountOwnerId: account.id as Uuid,
+        type: "emoji_reaction",
+        actorAccountId: remoteAccount.id,
+        targetPostId: postId,
+        groupKey: `test-emoji-reaction-${postId}`,
+        created: new Date(),
+      });
+
+      const response = await app.request(
+        "/api/v1/notifications?types[]=emoji_reaction",
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+
+      const notifications = await response.json();
+      expect(notifications.length).toBe(1);
+
+      const notification = notifications[0];
+      expect(notification.type).toBe("emoji_reaction");
+      expect(notification.emoji_reaction).toBeDefined();
+      expect(notification.emoji_reaction.name).toBe(emoji);
+    });
+
+    it("handles custom emoji in emoji_reaction notifications", async () => {
+      expect.assertions(6);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+
+      // Create a post by the local user
+      const postId = crypto.randomUUID() as Uuid;
+      const postIri = `https://test.local/@test/${postId}`;
+      await db.insert(Schema.posts).values({
+        id: postId,
+        iri: postIri,
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "Test post",
+        content: "Test post",
+        url: postIri,
+      });
+
+      // Create a custom emoji reaction from remote account
+      const emojiName = ":custom_emoji:";
+      const emojiUrl = "https://remote.test/emoji/custom_emoji.png";
+      const emojiIri = "https://remote.test/emoji/custom_emoji";
+
+      await db.insert(Schema.reactions).values({
+        postId,
+        accountId: remoteAccount.id,
+        emoji: emojiName,
+        customEmoji: emojiUrl,
+        emojiIri: emojiIri,
+      });
+
+      // Create emoji_reaction notification
+      await db.insert(Schema.notifications).values({
+        id: crypto.randomUUID() as Uuid,
+        accountOwnerId: account.id as Uuid,
+        type: "emoji_reaction",
+        actorAccountId: remoteAccount.id,
+        targetPostId: postId,
+        groupKey: `test-custom-emoji-${postId}`,
+        created: new Date(),
+      });
+
+      const response = await app.request(
+        "/api/v1/notifications?types[]=emoji_reaction",
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+
+      expect(response.status).toBe(200);
+
+      const notifications = await response.json();
+      expect(notifications.length).toBe(1);
+
+      const notification = notifications[0];
+      expect(notification.type).toBe("emoji_reaction");
+      expect(notification.emoji_reaction).toBeDefined();
+      expect(notification.emoji_reaction.name).toBe("custom_emoji");
+      expect(notification.emoji_reaction.url).toBe(emojiUrl);
+    });
+  });
 });
