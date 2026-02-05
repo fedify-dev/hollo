@@ -1,3 +1,4 @@
 [tools]
 node = "24"
-"npm:pnpm" = "latest"
+"npm:pnpm" = "10.28.1"
+pnpm = "latest"

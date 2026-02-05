@@ -10,3 +10,4 @@ coverage/**
 !coverage/.gitkeep
 
 **/.claude/settings.local.json
+dist
