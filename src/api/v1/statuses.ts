@@ -12,12 +12,14 @@ import * as vocab from "@fedify/fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
   and,
+  desc,
   eq,
   exists,
   gt,
   inArray,
   isNotNull,
   isNull,
+  lt,
   notInArray,
   or,
   sql,
@@ -200,11 +202,13 @@ const statusSchema = z.object({
   sensitive: z.boolean().default(false),
   spoiler_text: z.string().optional().nullable(),
   language: z.string().min(2).optional().nullable(),
+  quote_approval_policy: z.string().optional().nullable(),
 });
 
 const createStatusSchema = statusSchema.extend({
   in_reply_to_id: uuid.optional().nullable(),
   quote_id: uuid.optional().nullable(),
+  quoted_status_id: uuid.optional().nullable(),
   visibility: z
     .enum(["public", "unlisted", "private", "direct"])
     .optional()
@@ -274,7 +278,8 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
     previewCard = await fetchPreviewCard(content.previewLink);
   }
   let quoteTargetId: Uuid | null = null;
-  if (data.quote_id != null) quoteTargetId = data.quote_id;
+  if (data.quoted_status_id != null) quoteTargetId = data.quoted_status_id;
+  else if (data.quote_id != null) quoteTargetId = data.quote_id;
   else if (content?.quoteTarget != null) {
     const quoted = await persistPost(
       db,
@@ -283,6 +288,21 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
       fmtOpts,
     );
     if (quoted != null) quoteTargetId = quoted.id;
+  }
+  let effectiveVisibility = data.visibility ?? owner.visibility;
+  if (quoteTargetId != null) {
+    const quoteTarget = await db.query.posts.findFirst({
+      where: eq(posts.id, quoteTargetId),
+    });
+    if (quoteTarget == null) {
+      return c.json({ error: "Quote target not found" }, 404);
+    }
+    if (quoteTarget.visibility === "direct") {
+      return c.json({ error: "Cannot quote a direct message" }, 422);
+    }
+    if (quoteTarget.visibility === "private") {
+      effectiveVisibility = "private";
+    }
   }
   await db.transaction(async (tx) => {
     let poll: Poll | null = null;
@@ -318,7 +338,7 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
         replyTargetId: data.in_reply_to_id,
         quoteTargetId,
         sharingId: null,
-        visibility: data.visibility ?? owner.visibility,
+        visibility: effectiveVisibility,
         summary,
         content: data.status,
         contentHtml: content?.html,
@@ -357,6 +377,12 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
           })),
         )
         .returning();
+    }
+    if (quoteTargetId != null) {
+      await tx
+        .update(posts)
+        .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
+        .where(eq(posts.id, quoteTargetId));
     }
     await updateAccountStats(tx, owner);
     await appendPostToTimelines(tx, {
@@ -530,6 +556,14 @@ app.delete(
     if (post == null) return c.json({ error: "Record not found" }, 404);
     await db.transaction(async (tx) => {
       await tx.delete(posts).where(eq(posts.id, id));
+      if (post.quoteTargetId != null) {
+        await tx
+          .update(posts)
+          .set({
+            quotesCount: sql`GREATEST(coalesce(${posts.quotesCount}, 0) - 1, 0)`,
+          })
+          .where(eq(posts.id, post.quoteTargetId));
+      }
       await updateAccountStats(tx, owner);
     });
     const fedCtx = federation.createContext(c.req.raw, undefined);
@@ -1369,6 +1403,123 @@ app.post(
   tokenRequired,
   scopeRequired(["write:favourites"]),
   removeEmojiReaction,
+);
+
+const quotesQuerySchema = z.object({
+  max_id: uuid.optional(),
+  since_id: uuid.optional(),
+  limit: z
+    .string()
+    .default("20")
+    .transform((v) => Math.min(Number.parseInt(v, 10), 40)),
+});
+
+app.get("/:id/quotes", async (c) => {
+  const token = await getAccessToken(c);
+  const owner =
+    token?.scopes.includes("read:statuses") || token?.scopes.includes("read")
+      ? token?.accountOwner
+      : null;
+  const id = c.req.param("id");
+  if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
+
+  const post = await db.query.posts.findFirst({
+    where: and(eq(posts.id, id), buildVisibilityConditions(owner?.id)),
+  });
+  if (post == null) return c.json({ error: "Record not found" }, 404);
+
+  const url = new URL(c.req.url);
+  const queryResult = quotesQuerySchema.safeParse(
+    Object.fromEntries(url.searchParams),
+  );
+  if (!queryResult.success) {
+    return c.json({ error: "Invalid query parameters" }, 400);
+  }
+  const query = queryResult.data;
+
+  const quotes = await db.query.posts.findMany({
+    where: and(
+      eq(posts.quoteTargetId, id),
+      isNull(posts.sharingId),
+      buildVisibilityConditions(owner?.id),
+      buildMuteAndBlockConditions(owner?.id),
+      query.max_id != null ? lt(posts.id, query.max_id) : undefined,
+      query.since_id != null ? gt(posts.id, query.since_id) : undefined,
+    ),
+    with: getPostRelations(owner?.id),
+    orderBy: [desc(posts.id)],
+    limit: query.limit,
+  });
+
+  const nextMaxId =
+    quotes.length >= query.limit ? quotes[quotes.length - 1].id : null;
+  const nextLink = nextMaxId == null ? undefined : new URL(c.req.url);
+  nextLink?.searchParams.set("max_id", nextMaxId ?? "");
+  return c.json(
+    quotes.map((p) => serializePost(p, owner, c.req.url)),
+    200,
+    nextLink == null ? undefined : { Link: `<${nextLink.href}>; rel="next"` },
+  );
+});
+
+app.post(
+  "/:id/quotes/:quoting_status_id/revoke",
+  tokenRequired,
+  scopeRequired(["write:statuses"]),
+  async (c) => {
+    const owner = c.get("token").accountOwner;
+    if (owner == null) {
+      return c.json(
+        { error: "This method requires an authenticated user" },
+        422,
+      );
+    }
+    const id = c.req.param("id");
+    const quotingStatusId = c.req.param("quoting_status_id");
+    if (!isUuid(id) || !isUuid(quotingStatusId)) {
+      return c.json({ error: "Record not found" }, 404);
+    }
+
+    // Verify the target post is owned by the current user
+    const targetPost = await db.query.posts.findFirst({
+      where: and(eq(posts.id, id), eq(posts.accountId, owner.id)),
+    });
+    if (targetPost == null) {
+      return c.json({ error: "Record not found" }, 404);
+    }
+
+    // Verify the quoting post actually quotes the target post
+    const quotingPost = await db.query.posts.findFirst({
+      where: and(eq(posts.id, quotingStatusId), eq(posts.quoteTargetId, id)),
+    });
+    if (quotingPost == null) {
+      return c.json({ error: "Record not found" }, 404);
+    }
+
+    // Revoke: set quoteTargetId to null and decrement quotesCount
+    await db.transaction(async (tx) => {
+      await tx
+        .update(posts)
+        .set({ quoteTargetId: null })
+        .where(eq(posts.id, quotingStatusId));
+      await tx
+        .update(posts)
+        .set({
+          quotesCount: sql`GREATEST(coalesce(${posts.quotesCount}, 0) - 1, 0)`,
+        })
+        .where(eq(posts.id, id));
+    });
+
+    // Return the updated quoting status with revoked quote state
+    const updatedPost = await db.query.posts.findFirst({
+      where: eq(posts.id, quotingStatusId),
+      with: getPostRelations(owner.id),
+    });
+    if (updatedPost == null) {
+      return c.json({ error: "Record not found" }, 404);
+    }
+    return c.json(serializePost(updatedPost, owner, c.req.url));
+  },
 );
 
 export default app;

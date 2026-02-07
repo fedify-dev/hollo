@@ -38,6 +38,23 @@ To be released.
         reactions, follows, etc.).  When `false` (default), only checks on
         activities that appear in timelines (`Announce`, `Create`).
 
+ -  Added Mastodon 4.5-compatible quote post APIs.  The `quote` field on
+    Status entities now uses the Mastodon `Quote` entity format
+    (`{ state, quoted_status }`) instead of the previous Fedibird-style flat
+    status format.  The `quote_id` field is kept for backward compatibility.
+
+     -  Added `quoted_status_id` parameter to `POST /api/v1/statuses` as the
+        Mastodon 4.5 way to create quote posts (alongside existing `quote_id`).
+     -  Added `quotes_count` field to Status entities.
+     -  Added `quote_approval` field to Status entities indicating whether
+        a post can be quoted.
+     -  Added `GET /api/v1/statuses/:id/quotes` endpoint to list quotes
+        of a post with cursor-based pagination.
+     -  Added `POST /api/v1/statuses/:id/quotes/:quoting_status_id/revoke`
+        endpoint to let users revoke quotes of their posts.
+     -  The `quote_approval_policy` parameter is accepted but ignored
+        (all public/unlisted posts are freely quotable).
+
 [#348]: https://github.com/fedify-dev/hollo/issues/348
 [#350]: https://github.com/fedify-dev/hollo/issues/350
 

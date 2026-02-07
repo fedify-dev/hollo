@@ -360,6 +360,9 @@ export async function onPostCreated(
     if (post?.replyTargetId != null) {
       await updatePostStats(tx, { id: post.replyTargetId });
     }
+    if (post?.quoteTargetId != null) {
+      await updatePostStats(tx, { id: post.quoteTargetId });
+    }
     return post;
   });
 
@@ -511,6 +514,9 @@ export async function onPostDeleted(
       }
       if (deletedPost.sharingId != null) {
         await updatePostStats(tx, { id: deletedPost.sharingId });
+      }
+      if (deletedPost.quoteTargetId != null) {
+        await updatePostStats(tx, { id: deletedPost.quoteTargetId });
       }
     }
   });

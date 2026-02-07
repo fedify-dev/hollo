@@ -450,6 +450,7 @@ export const posts = pgTable(
     repliesCount: bigint("replies_count", { mode: "number" }).default(0),
     sharesCount: bigint("shares_count", { mode: "number" }).default(0),
     likesCount: bigint("likes_count", { mode: "number" }).default(0),
+    quotesCount: bigint("quotes_count", { mode: "number" }).default(0),
     idempotenceKey: text("idempotence_key"),
     published: timestamp("published", { withTimezone: true }),
     updated: timestamp("updated", { withTimezone: true })

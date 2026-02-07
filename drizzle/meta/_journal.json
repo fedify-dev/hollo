@@ -547,6 +547,13 @@
       "when": 1769516009056,
       "tag": "0077_add_fetched_to_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1770422400000,
+      "tag": "0078_add_quotes_count",
+      "breakpoints": true
     }
   ]
 }

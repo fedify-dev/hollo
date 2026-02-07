@@ -679,12 +679,17 @@ export async function updatePostStats(
     .select({ cnt: count() })
     .from(likes)
     .where(eq(likes.postId, id));
+  const quotesCount = db
+    .select({ cnt: count() })
+    .from(posts)
+    .where(eq(posts.quoteTargetId, id));
   await db
     .update(posts)
     .set({
       repliesCount: sql`${repliesCount}`,
       sharesCount: sql`${sharesCount}`,
       likesCount: sql`${likesCount}`,
+      quotesCount: sql`${quotesCount}`,
     })
     .where(
       and(
