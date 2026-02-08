@@ -55,6 +55,18 @@ To be released.
      -  The `quote_approval_policy` parameter is accepted but ignored
         (all public/unlisted posts are freely quotable).
 
+ -  Added automatic cleanup of unreachable remote actors on permanent
+    delivery failures.  When sending activities to followers' inboxes fails
+    permanently, Hollo now cleans up the associated records to avoid
+    retrying delivery to dead servers.
+
+     -  On `404 Not Found`: removes follower relationships for the failed
+        actor so that future activities are no longer delivered to them.
+        The account record itself is preserved.
+     -  On `410 Gone`: deletes the remote account entirely (along with
+        associated follows, mentions, likes, etc. via cascade) since the
+        actor is explicitly marked as permanently gone.
+
  -  Upgraded Fedify to 2.0.0.
 
 [#348]: https://github.com/fedify-dev/hollo/issues/348
