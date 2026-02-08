@@ -1,23 +1,21 @@
+import { type Context, getNodeInfo } from "@fedify/fedify";
 import {
   type Actor,
   Announce,
   Block,
-  type Context,
   Create,
   type DocumentLoader,
   Emoji,
   Follow,
-  formatSemVer,
   getActorHandle,
   getActorTypeName,
-  getNodeInfo,
   isActor,
   Link,
   lookupObject,
   PropertyValue,
   Reject,
   Undo,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import {
   and,
   count,
@@ -137,10 +135,9 @@ export async function persistAccount(
   const instanceValues: Omit<schema.NewInstance, "host"> = {
     software: nodeInfo?.software.name ?? null,
     softwareVersion:
-      nodeInfo?.software == null ||
-      formatSemVer(nodeInfo.software.version) === "0.0.0"
+      nodeInfo?.software == null || nodeInfo.software.version === "0.0.0"
         ? null
-        : formatSemVer(nodeInfo.software.version),
+        : nodeInfo.software.version,
   };
   await db
     .insert(schema.instances)

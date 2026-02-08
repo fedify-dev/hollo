@@ -55,6 +55,8 @@ To be released.
      -  The `quote_approval_policy` parameter is accepted but ignored
         (all public/unlisted posts are freely quotable).
 
+ -  Upgraded Fedify to 2.0.0.
+
 [#348]: https://github.com/fedify-dev/hollo/issues/348
 [#350]: https://github.com/fedify-dev/hollo/issues/350
 

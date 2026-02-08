@@ -1,10 +1,10 @@
+import type { Context } from "@fedify/fedify";
 import {
-  type Context,
   type DocumentLoader,
   type Object as FedifyObject,
   isActor,
   type Link,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { and, eq } from "drizzle-orm";
 import db from "../db";

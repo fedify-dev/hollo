@@ -1,4 +1,4 @@
-import { Create, Note } from "@fedify/fedify";
+import { Create, Note } from "@fedify/vocab";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { maxBy } from "es-toolkit";

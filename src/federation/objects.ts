@@ -1,4 +1,4 @@
-import { Emoji, Flag, Note } from "@fedify/fedify";
+import { Emoji, Flag, Note } from "@fedify/vocab";
 import { and, eq, inArray, like } from "drizzle-orm";
 import { db } from "../db";
 import {

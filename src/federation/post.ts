@@ -1,9 +1,10 @@
+import type { Context } from "@fedify/fedify";
+import * as vocab from "@fedify/vocab";
 import {
   type Announce,
   Article,
   ChatMessage,
   Collection,
-  type Context,
   Create,
   Delete,
   Document,
@@ -24,8 +25,8 @@ import {
   Tombstone,
   Update,
   Video,
-} from "@fedify/fedify";
-import * as vocab from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
+
 import { getLogger } from "@logtape/logtape";
 import {
   and,
@@ -257,9 +258,9 @@ export async function persistPost(
     contentHtml: object.content?.toString(),
     language:
       object.content instanceof LanguageString
-        ? object.content.language.compact()
+        ? object.content.locale.toString()
         : object.summary instanceof LanguageString
-          ? object.summary.language.compact()
+          ? object.summary.locale.toString()
           : null,
     previewCard,
     tags,

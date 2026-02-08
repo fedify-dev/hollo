@@ -1,3 +1,4 @@
+import * as vocab from "@fedify/vocab";
 import {
   Add,
   Emoji,
@@ -7,8 +8,7 @@ import {
   PUBLIC_COLLECTION,
   Remove,
   Undo,
-} from "@fedify/fedify";
-import * as vocab from "@fedify/fedify/vocab";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import {
   and,

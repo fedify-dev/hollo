@@ -1,4 +1,4 @@
-import { isActor } from "@fedify/fedify";
+import { isActor } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { count, sql } from "drizzle-orm";
 import { Hono } from "hono";

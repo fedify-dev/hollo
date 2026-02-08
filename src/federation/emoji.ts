@@ -1,4 +1,5 @@
-import { type Context, Emoji, Image } from "@fedify/fedify";
+import type { Context } from "@fedify/fedify";
+import { Emoji, Image } from "@fedify/vocab";
 
 interface CustomEmoji {
   shortcode: string;

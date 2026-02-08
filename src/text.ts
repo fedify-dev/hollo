@@ -1,6 +1,6 @@
-import { type DocumentLoader, isActor, lookupObject } from "@fedify/fedify";
 import { hashtag } from "@fedify/markdown-it-hashtag";
 import { mention } from "@fedify/markdown-it-mention";
+import { type DocumentLoader, isActor, lookupObject } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import Shiki from "@shikijs/markdown-it";
 import * as cheerio from "cheerio";

@@ -1,4 +1,4 @@
-import * as vocab from "@fedify/fedify/vocab";
+import * as vocab from "@fedify/vocab";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { Hono } from "hono";

@@ -1,13 +1,13 @@
+import { importJwk } from "@fedify/fedify";
 import {
   Emoji,
   Endpoints,
   getActorClassByTypeName,
   Hashtag,
   Image,
-  importJwk,
   Like,
   PropertyValue,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { and, count, desc, eq, ilike, inArray, isNotNull } from "drizzle-orm";
 import { uniq } from "es-toolkit";

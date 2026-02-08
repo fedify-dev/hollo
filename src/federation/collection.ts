@@ -4,7 +4,7 @@ import {
   type DocumentLoader,
   Link,
   traverseCollection,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 
 export interface IterateCollectionOptions {
   documentLoader?: DocumentLoader;

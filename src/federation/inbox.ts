@@ -1,3 +1,4 @@
+import type { InboxContext } from "@fedify/fedify";
 import {
   Accept,
   type Add,
@@ -11,7 +12,6 @@ import {
   EmojiReact,
   Follow,
   Image,
-  type InboxContext,
   isActor,
   Like,
   Link,
@@ -22,7 +22,7 @@ import {
   type Remove,
   type Undo,
   type Update,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";

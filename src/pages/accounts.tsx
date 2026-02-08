@@ -1,7 +1,6 @@
+import { exportJwk, generateCryptoKeyPair } from "@fedify/fedify";
 import {
   Delete,
-  exportJwk,
-  generateCryptoKeyPair,
   getActorHandle,
   isActor,
   Move,
@@ -9,7 +8,7 @@ import {
   PUBLIC_COLLECTION,
   type Recipient,
   Update,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { createObjectCsvStringifier } from "csv-writer-portable";
 import { and, count, eq, inArray } from "drizzle-orm";

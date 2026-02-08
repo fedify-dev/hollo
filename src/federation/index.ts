@@ -16,7 +16,7 @@ import {
   Remove,
   Undo,
   Update,
-} from "@fedify/fedify";
+} from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { db } from "../db";
 import "./actor";

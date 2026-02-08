@@ -1,4 +1,4 @@
-import { Accept, Follow, Reject } from "@fedify/fedify";
+import { Accept, Follow, Reject } from "@fedify/vocab";
 import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import db from "../../db";
