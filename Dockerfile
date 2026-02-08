@@ -1,4 +1,12 @@
-FROM docker.io/node:24-alpine
+FROM docker.io/node:24-alpine AS builder
+
+RUN apk add --no-cache pnpm
+RUN mkdir -p /temp/builder
+COPY . /temp/builder/
+WORKDIR /temp/builder
+RUN pnpm install && pnpm run build
+
+FROM docker.io/node:24-alpine AS result
 
 LABEL org.opencontainers.image.title="Hollo"
 LABEL org.opencontainers.image.description="Federated single-user \
@@ -14,6 +22,8 @@ WORKDIR /app/
 RUN pnpm install --frozen-lockfile --prod
 
 COPY . /app/
+COPY --from=builder /temp/builder/dist /app/dist
+COPY src/public /app/dist/public
 
 ARG VERSION
 LABEL org.opencontainers.image.version="${VERSION}"

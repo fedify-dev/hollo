@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noPropertyAccessFromIndexSignature": false
+    "noPropertyAccessFromIndexSignature": false,
+    "outDir": "dist"
   },
   "exclude": ["node_modules", "docs"]
 }

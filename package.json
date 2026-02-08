@@ -5,9 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prod": "pnpm run migrate && tsx --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
+    "prod": "pnpm run migrate && node --env-file-if-exists=.env --dns-result-order=ipv6first dist/server.js",
     "dev": "pnpm run migrate && tsx watch --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
-    "worker": "NODE_TYPE=worker tsx --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
+    "worker": "NODE_TYPE=worker node --env-file-if-exists=.env --dns-result-order=ipv6first dist/server.js",
     "list:routes": "tsx --env-file-if-exists=.env bin/routes.ts",
     "test": "pnpm run migrate:test && vitest",
     "test:ci": "vitest",
@@ -17,7 +17,8 @@
     "migrate": "drizzle-kit migrate",
     "migrate:test": "dotenvx run -f .env.test -- drizzle-kit migrate",
     "migrate:generate": "drizzle-kit generate",
-    "rebuild-timelines": "tsx --env-file-if-exists=.env scripts/rebuild-timelines.ts"
+    "rebuild-timelines": "node --env-file-if-exists=.env dist/rebuild-timelines.js",
+    "build": "esbuild bin/server.ts --bundle --platform=node --outfile=dist/server.js --format=esm --packages=external && esbuild scripts/rebuild-timelines.ts --bundle --platform=node --outfile=dist/rebuild-timelines.js --format=esm --packages=external"
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.975.0",
@@ -75,6 +76,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.7.1",
     "@vitest/coverage-v8": "3.1.4",
+    "esbuild": "0.27.2",
     "linkedom": "^0.18.12",
     "timekeeper": "^2.3.1",
     "typescript": "^5.9.2",
