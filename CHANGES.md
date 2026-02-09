@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.6.20
 --------------
 
-To be released.
+Released on February 10, 2026.
 
  -  Fixed a security vulnerability where DMs and followers-only posts were
     exposed through the ActivityPub outbox endpoint without authorization.
