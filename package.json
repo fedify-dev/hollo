@@ -57,7 +57,7 @@
     "otpauth": "^9.4.1",
     "postgres": "^3.4.8",
     "qrcode": "^1.5.4",
-    "semver": "^7.7.3",
+    "semver": "^7.7.4",
     "sharp": "^0.34.5",
     "ssrfcheck": "^1.1.1",
     "tsx": "^4.21.0",
