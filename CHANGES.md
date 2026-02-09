@@ -6,6 +6,14 @@ Version 0.6.20
 
 To be released.
 
+ -  Fixed a security vulnerability where DMs and followers-only posts were
+    exposed through the ActivityPub outbox endpoint without authorization.
+    The outbox now only serves public and unlisted posts.  Any unauthenticated
+    request to the outbox could previously retrieve all posts regardless of
+    their visibility setting.  [[CVE-2026-25808]]
+
+[CVE-2026-25808]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-6r2w-3pcj-v4v5
+
 
 Version 0.6.19
 --------------
