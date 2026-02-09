@@ -151,8 +151,8 @@ importers:
         specifier: ^1.52.0
         version: 1.52.0
       '@reporters/github':
-        specifier: ^1.11.0
-        version: 1.11.0
+        specifier: ^1.12.0
+        version: 1.12.0
       '@types/fluent-ffmpeg':
         specifier: ^2.1.28
         version: 2.1.28
@@ -191,10 +191,10 @@ importers:
         version: 0.9.6(prettier@3.7.4)(typescript@5.9.3)
       '@astrojs/starlight':
         specifier: ^0.37.5
-        version: 0.37.5(astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+        version: 0.37.5(astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       astro:
         specifier: ^5.17.1
-        version: 5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+        version: 5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -207,17 +207,17 @@ importers:
 
 packages:
 
-  '@actions/core@1.11.1':
-    resolution: {integrity: sha512-hXJCSrkwfA46Vd9Z3q4cpEpHB1rL5NG04+/rbqW9d3+CSvtB1tYe8UTpAlixa1vj0m/ULglfEK2UKxMGxCxv5A==}
+  '@actions/core@2.0.3':
+    resolution: {integrity: sha512-Od9Thc3T1mQJYddvVPM4QGiLUewdh+3txmDYHHxoNdkqysR1MbCT+rFOtNUxYAz+7+6RIsqipVahY2GJqGPyxA==}
 
-  '@actions/exec@1.1.1':
-    resolution: {integrity: sha512-+sCcHHbVdk93a0XT19ECtO/gIXoxvdsgQLzb2fE2/5sIZmWQuluYyjPQtrtTHdU1YzTZ7bAPN4sITq2xi1679w==}
+  '@actions/exec@2.0.0':
+    resolution: {integrity: sha512-k8ngrX2voJ/RIN6r9xB82NVqKpnMRtxDoiO+g3olkIUpQNqjArXrCQceduQZCQj3P3xm32pChRLqRrtXTlqhIw==}
 
-  '@actions/http-client@2.2.3':
-    resolution: {integrity: sha512-mx8hyJi/hjFvbPokCg4uRd4ZX78t+YyRPtnKWwIl+RzNaVuFpQHfmlGVfsKEJN8LwTCvL+DfVgAM04XaHkm6bA==}
+  '@actions/http-client@3.0.2':
+    resolution: {integrity: sha512-JP38FYYpyqvUsz+Igqlc/JG6YO9PaKuvqjM3iGvaLqFnJ7TFmcLyy2IDrY0bI0qCQug8E9K+elv5ZNfw62ZJzA==}
 
-  '@actions/io@1.1.3':
-    resolution: {integrity: sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q==}
+  '@actions/io@2.0.0':
+    resolution: {integrity: sha512-Jv33IN09XLO+0HS79aaODsvIRyduiF7NY/F6LYeK5oeUmrsz7aFdRphQjFoESF4jS7lMauDOttKALcpapVDIAg==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -1336,10 +1336,6 @@ packages:
   '@expressive-code/plugin-text-markers@0.41.6':
     resolution: {integrity: sha512-PBFa1wGyYzRExMDzBmAWC6/kdfG1oLn4pLpBeTfIRrALPjcGA/59HP3e7q9J0Smk4pC7U+lWkA2LHR8FYV8U7Q==}
 
-  '@fastify/busboy@2.1.1':
-    resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
-    engines: {node: '>=14'}
-
   '@fedify/fedify@2.0.0-pr.559.6':
     resolution: {integrity: sha512-KHQ5f00cbI6WdVFX8KPRu2jRO77JGZOEIzkOLu9ybUecBSOgMC9OlVwvuuUbEW59P90BkLoXGmg3Dvd9fwCgyA==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
@@ -1883,8 +1879,8 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.8
 
-  '@reporters/github@1.11.0':
-    resolution: {integrity: sha512-sP/fSOgIoMYXZFWVy2Hw6vWUG3akUBiykqnFjx2jWI/kdqj55VZNXAQ27MYuiNffWlITW6mMBcv8+i47O7C77w==}
+  '@reporters/github@1.12.0':
+    resolution: {integrity: sha512-2f9wjb6ncO3iLXXGWFJaRT7ztYtPGuzK2FnBODWK7VTZLyhhjr4RnBI4l3D8RJGsSAEXSv0tsH+0bvapTGdg9g==}
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -2603,6 +2599,9 @@ packages:
   '@types/node@25.2.0':
     resolution: {integrity: sha512-DZ8VwRFUNzuqJ5khrvwMXHmvPe+zGayJhr2CDNiKB1WBE1ST8Djl00D0IC4vvNmHMdj6DlbYRIaFE7WHjlDl5w==}
 
+  '@types/node@25.2.2':
+    resolution: {integrity: sha512-BkmoP5/FhRYek5izySdkOneRyXYN35I860MFAGupTdebyE66uZaR+bXLHq8k4DirE5DwQi3NuhvRU1jqTVwUrQ==}
+
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
 
@@ -2812,6 +2811,9 @@ packages:
 
   bowser@2.13.1:
     resolution: {integrity: sha512-OHawaAbjwx6rqICCKgSG0SAnT05bzd7ppyKLVUITZpANBaaMFBAsaNkto3LoQ31tyFP5kNujE8Cdx85G9VzOkw==}
+
+  bowser@2.14.1:
+    resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
 
   boxen@8.0.1:
     resolution: {integrity: sha512-F3PH5k5juxom4xktynS7MoFY+NUWH5LC4CnH11YB8NPew+HLpmBLCybSAEyb2F+4pRXhuhWqFesoQd6DAyc2hw==}
@@ -3436,6 +3438,7 @@ packages:
 
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   h3@1.15.5:
@@ -4628,10 +4631,6 @@ packages:
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
-  undici@5.29.0:
-    resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
-    engines: {node: '>=14.0'}
-
   undici@6.23.0:
     resolution: {integrity: sha512-VfQPToRA5FZs/qJxLIinmU59u0r7LXqoJkCzinq3ckNJp3vKEh7jTWN589YQ5+aoAC/TGRLyJLCPKcLQbM8r9g==}
     engines: {node: '>=18.17'}
@@ -5130,21 +5129,21 @@ packages:
 
 snapshots:
 
-  '@actions/core@1.11.1':
+  '@actions/core@2.0.3':
     dependencies:
-      '@actions/exec': 1.1.1
-      '@actions/http-client': 2.2.3
+      '@actions/exec': 2.0.0
+      '@actions/http-client': 3.0.2
 
-  '@actions/exec@1.1.1':
+  '@actions/exec@2.0.0':
     dependencies:
-      '@actions/io': 1.1.3
+      '@actions/io': 2.0.0
 
-  '@actions/http-client@2.2.3':
+  '@actions/http-client@3.0.2':
     dependencies:
       tunnel: 0.0.6
-      undici: 5.29.0
+      undici: 6.23.0
 
-  '@actions/io@1.1.3': {}
+  '@actions/io@2.0.0': {}
 
   '@ampproject/remapping@2.3.0':
     dependencies:
@@ -5227,12 +5226,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/mdx@4.3.13(astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
+  '@astrojs/mdx@4.3.13(astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
     dependencies:
       '@astrojs/markdown-remark': 6.3.10
       '@mdx-js/mdx': 3.1.1
       acorn: 8.15.0
-      astro: 5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro: 5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       es-module-lexer: 1.7.0
       estree-util-visit: 2.0.0
       hast-util-to-html: 9.0.5
@@ -5256,17 +5255,17 @@ snapshots:
       stream-replace-string: 2.0.0
       zod: 3.25.76
 
-  '@astrojs/starlight@0.37.5(astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
+  '@astrojs/starlight@0.37.5(astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
     dependencies:
       '@astrojs/markdown-remark': 6.3.10
-      '@astrojs/mdx': 4.3.13(astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      '@astrojs/mdx': 4.3.13(astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       '@astrojs/sitemap': 3.7.0
       '@pagefind/default-ui': 1.4.0
       '@types/hast': 3.0.4
       '@types/js-yaml': 4.0.9
       '@types/mdast': 4.0.4
-      astro: 5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
-      astro-expressive-code: 0.41.6(astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      astro: 5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro-expressive-code: 0.41.6(astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       bcp-47: 2.1.0
       hast-util-from-html: 2.0.3
       hast-util-select: 6.0.4
@@ -6294,7 +6293,7 @@ snapshots:
     dependencies:
       '@aws-sdk/types': 3.713.0
       '@smithy/types': 3.7.2
-      bowser: 2.13.1
+      bowser: 2.14.1
       tslib: 2.8.1
     optional: true
 
@@ -6791,8 +6790,6 @@ snapshots:
   '@expressive-code/plugin-text-markers@0.41.6':
     dependencies:
       '@expressive-code/core': 0.41.6
-
-  '@fastify/busboy@2.1.1': {}
 
   '@fedify/fedify@2.0.0-pr.559.6':
     dependencies:
@@ -7395,9 +7392,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@reporters/github@1.11.0':
+  '@reporters/github@1.12.0':
     dependencies:
-      '@actions/core': 1.11.1
+      '@actions/core': 2.0.3
       stack-utils: 2.0.6
 
   '@rollup/pluginutils@5.3.0(rollup@4.57.1)':
@@ -8152,7 +8149,7 @@ snapshots:
       '@smithy/property-provider': 3.1.11
       '@smithy/smithy-client': 3.7.0
       '@smithy/types': 3.7.2
-      bowser: 2.13.1
+      bowser: 2.14.1
       tslib: 2.8.1
     optional: true
 
@@ -8353,6 +8350,11 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
+  '@types/node@25.2.2':
+    dependencies:
+      undici-types: 7.16.0
+    optional: true
+
   '@types/pg-pool@2.0.7':
     dependencies:
       '@types/pg': 8.15.6
@@ -8385,7 +8387,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 25.2.0
+      '@types/node': 25.2.2
     optional: true
 
   '@ungap/structured-clone@1.3.0': {}
@@ -8563,12 +8565,12 @@ snapshots:
 
   astring@1.9.0: {}
 
-  astro-expressive-code@0.41.6(astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)):
+  astro-expressive-code@0.41.6(astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)):
     dependencies:
-      astro: 5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro: 5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       rehype-expressive-code: 0.41.6
 
-  astro@5.17.1(@types/node@25.2.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
+  astro@5.17.1(@types/node@25.2.2)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
     dependencies:
       '@astrojs/compiler': 2.13.0
       '@astrojs/internal-helpers': 0.7.5
@@ -8625,8 +8627,8 @@ snapshots:
       unist-util-visit: 5.1.0
       unstorage: 1.17.4
       vfile: 6.0.3
-      vite: 6.4.1(@types/node@25.2.0)(tsx@4.21.0)(yaml@2.8.2)
-      vitefu: 1.1.1(vite@6.4.1(@types/node@25.2.0)(tsx@4.21.0)(yaml@2.8.2))
+      vite: 6.4.1(@types/node@25.2.2)(tsx@4.21.0)(yaml@2.8.2)
+      vitefu: 1.1.1(vite@6.4.1(@types/node@25.2.2)(tsx@4.21.0)(yaml@2.8.2))
       xxhash-wasm: 1.1.0
       yargs-parser: 21.1.1
       yocto-spinner: 0.2.3
@@ -8689,6 +8691,9 @@ snapshots:
   boolbase@1.0.0: {}
 
   bowser@2.13.1: {}
+
+  bowser@2.14.1:
+    optional: true
 
   boxen@8.0.1:
     dependencies:
@@ -10990,10 +10995,6 @@ snapshots:
 
   undici-types@7.16.0: {}
 
-  undici@5.29.0:
-    dependencies:
-      '@fastify/busboy': 2.1.1
-
   undici@6.23.0: {}
 
   undici@7.16.0: {}
@@ -11152,9 +11153,23 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.2
 
-  vitefu@1.1.1(vite@6.4.1(@types/node@25.2.0)(tsx@4.21.0)(yaml@2.8.2)):
+  vite@6.4.1(@types/node@25.2.2)(tsx@4.21.0)(yaml@2.8.2):
+    dependencies:
+      esbuild: 0.25.12
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.57.1
+      tinyglobby: 0.2.15
     optionalDependencies:
-      vite: 6.4.1(@types/node@25.2.0)(tsx@4.21.0)(yaml@2.8.2)
+      '@types/node': 25.2.2
+      fsevents: 2.3.3
+      tsx: 4.21.0
+      yaml: 2.8.2
+
+  vitefu@1.1.1(vite@6.4.1(@types/node@25.2.2)(tsx@4.21.0)(yaml@2.8.2)):
+    optionalDependencies:
+      vite: 6.4.1(@types/node@25.2.2)(tsx@4.21.0)(yaml@2.8.2)
 
   vitest@3.1.4(@types/debug@4.1.12)(@types/node@25.2.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
