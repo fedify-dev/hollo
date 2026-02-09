@@ -221,7 +221,10 @@ federation
       });
       if (owner == null) return null;
       const items = await db.query.posts.findMany({
-        where: eq(posts.accountId, owner.id),
+        where: and(
+          eq(posts.accountId, owner.id),
+          inArray(posts.visibility, ["public", "unlisted"]),
+        ),
         orderBy: desc(posts.published),
         offset: Number.parseInt(cursor, 10),
         limit: 41,
@@ -256,7 +259,12 @@ federation
     const result = await db
       .select({ cnt: count() })
       .from(posts)
-      .where(eq(posts.accountId, owner.id));
+      .where(
+        and(
+          eq(posts.accountId, owner.id),
+          inArray(posts.visibility, ["public", "unlisted"]),
+        ),
+      );
     if (result.length < 1) return 0;
     return result[0].cnt;
   });
