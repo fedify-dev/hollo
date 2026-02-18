@@ -12,10 +12,10 @@ importers:
         specifier: ^3.990.0
         version: 3.990.0
       '@fedify/fedify':
-        specifier: ~2.0.0-dev.335
+        specifier: ~2.0.0-dev.387
         version: 2.0.0-pr.559.6
       '@fedify/hono':
-        specifier: ~2.0.0-dev.335
+        specifier: ~2.0.0-dev.387
         version: 2.0.0-pr.559.6(@fedify/fedify@2.0.0-pr.559.6)(hono@4.11.9)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
@@ -24,10 +24,10 @@ importers:
         specifier: ~0.3.0
         version: 0.3.0
       '@fedify/postgres':
-        specifier: ~2.0.0-dev.335
+        specifier: ~2.0.0-dev.387
         version: 2.0.0-pr.559.6(@fedify/fedify@2.0.0-pr.559.6)(postgres@3.4.8)
       '@fedify/vocab':
-        specifier: ~2.0.0-dev.335
+        specifier: ~2.0.0-dev.387
         version: 2.0.0-pr.559.6
       '@hexagon/base64':
         specifier: ^2.0.4
