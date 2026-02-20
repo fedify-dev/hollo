@@ -60,7 +60,7 @@ federation
   .setInboxListeners("/@{identifier}/inbox", "/inbox")
   .setSharedKeyDispatcher(async (_) => {
     const anyOwner = await db.query.accountOwners.findFirst();
-    return anyOwner ?? null;
+    return anyOwner == null ? null : { username: anyOwner.handle };
   })
   .on(Follow, onFollowed)
   .on(Accept, onFollowAccepted)
