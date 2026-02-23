@@ -55,7 +55,7 @@ importers:
         version: 2.0.2
       '@logtape/sentry':
         specifier: ~2.0.2
-        version: 2.0.2(@logtape/logtape@2.0.2)(@sentry/core@10.38.0)
+        version: 2.0.2(@logtape/logtape@2.0.2)(@sentry/core@10.39.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -69,8 +69,8 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1(@opentelemetry/api@1.9.0)
       '@sentry/core':
-        specifier: ^10.36.0
-        version: 10.38.0
+        specifier: ^10.39.0
+        version: 10.39.0
       '@sentry/node':
         specifier: ^10.36.0
         version: 10.38.0
@@ -2146,6 +2146,10 @@ packages:
 
   '@sentry/core@10.38.0':
     resolution: {integrity: sha512-1pubWDZE5y5HZEPMAZERP4fVl2NH3Ihp1A+vMoVkb3Qc66Diqj1WierAnStlZP7tCx0TBa0dK85GTW/ZFYyB9g==}
+    engines: {node: '>=18'}
+
+  '@sentry/core@10.39.0':
+    resolution: {integrity: sha512-xCLip2mBwCdRrvXHtVEULX0NffUTYZZBhEUGht0WFL+GNdNQ7gmBOGOczhZlrf2hgFFtDO0fs1xiP9bqq5orEQ==}
     engines: {node: '>=18'}
 
   '@sentry/node-core@10.38.0':
@@ -7023,10 +7027,10 @@ snapshots:
 
   '@logtape/logtape@2.0.2': {}
 
-  '@logtape/sentry@2.0.2(@logtape/logtape@2.0.2)(@sentry/core@10.38.0)':
+  '@logtape/sentry@2.0.2(@logtape/logtape@2.0.2)(@sentry/core@10.39.0)':
     dependencies:
       '@logtape/logtape': 2.0.2
-      '@sentry/core': 10.38.0
+      '@sentry/core': 10.39.0
 
   '@mdx-js/mdx@3.1.1':
     dependencies:
@@ -7548,6 +7552,8 @@ snapshots:
     optional: true
 
   '@sentry/core@10.38.0': {}
+
+  '@sentry/core@10.39.0': {}
 
   '@sentry/node-core@10.38.0(@opentelemetry/api@1.9.0)(@opentelemetry/context-async-hooks@2.5.1(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.5.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.211.0(@opentelemetry/api@1.9.0))(@opentelemetry/resources@2.5.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.39.0)':
     dependencies:
