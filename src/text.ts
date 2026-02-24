@@ -265,6 +265,55 @@ export function extractText(html: string | null): string | null {
 // biome-ignore lint/complexity/useLiteralKeys: tsc claims about this
 const SEONBI_URL = process.env["SEONBI_URL"];
 
+async function transformWithSeonbi(html: string): Promise<string> {
+  const response = await fetch(SEONBI_URL!, {
+    method: "POST",
+    body: JSON.stringify({
+      content: html,
+      contentType: "text/html",
+      quote: "HorizontalCornerBrackets",
+      cite: "AngleQuotes",
+      arrow: {
+        bidirArrow: true,
+        doubleArrow: true,
+      },
+      ellipsis: true,
+      emDash: true,
+      stop: "Horizontal",
+      hanja: {
+        rendering: "HanjaInRuby",
+        reading: {
+          initialSoundLaw: true,
+          useDictionaries: ["kr-stdict"],
+          dictionary: {},
+        },
+      },
+    }),
+  });
+  try {
+    const seonbiResult = await response.json();
+    if (seonbiResult.success) {
+      if (
+        Array.isArray(seonbiResult.warnings) &&
+        seonbiResult.warnings.length > 0
+      ) {
+        logger.warn("Seonbi warnings: {warnings}", {
+          warnings: seonbiResult.warnings,
+        });
+      }
+      return seonbiResult.content;
+    }
+    logger.error("Seonbi failed to format post content: {message}", {
+      message: seonbiResult.message,
+    });
+  } catch (error) {
+    logger.error("Failed to format post content with Seonbi: {error}", {
+      error,
+    });
+  }
+  return html;
+}
+
 export async function formatPostContent(
   db: PgDatabase<
     PostgresJsQueryResultHKT,
@@ -284,52 +333,7 @@ export async function formatPostContent(
     SEONBI_URL != null &&
     (language === "ko" || language?.startsWith("ko-"))
   ) {
-    const response = await fetch(SEONBI_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        content: result.html,
-        contentType: "text/html",
-        quote: "HorizontalCornerBrackets",
-        cite: "AngleQuotes",
-        arrow: {
-          bidirArrow: true,
-          doubleArrow: true,
-        },
-        ellipsis: true,
-        emDash: true,
-        stop: "Horizontal",
-        hanja: {
-          rendering: "HanjaInRuby",
-          reading: {
-            initialSoundLaw: true,
-            useDictionaries: ["kr-stdict"],
-            dictionary: {},
-          },
-        },
-      }),
-    });
-    try {
-      const seonbiResult = await response.json();
-      if (seonbiResult.success) {
-        result.html = seonbiResult.content;
-        if (
-          Array.isArray(seonbiResult.warnings) &&
-          seonbiResult.warnings.length > 0
-        ) {
-          logger.warn("Seonbi warnings: {warnings}", {
-            warnings: seonbiResult.warnings,
-          });
-        }
-      } else {
-        logger.error("Seonbi failed to format post content: {message}", {
-          message: seonbiResult.message,
-        });
-      }
-    } catch (error) {
-      logger.error("Failed to format post content with Seonbi: {error}", {
-        error,
-      });
-    }
+    result.html = await transformWithSeonbi(result.html);
   }
   return result;
 }
