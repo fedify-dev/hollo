@@ -262,6 +262,21 @@ export function extractText(html: string | null): string | null {
   return $(":root").text();
 }
 
+const SEONBI_NATIVE =
+  process.env.SEONBI_NATIVE?.trim()?.toLowerCase() === "true";
+
+let seonbiTransform:
+  | ((config: import("@seonbi/node").Configuration, input: string) => string)
+  | null = null;
+if (SEONBI_NATIVE) {
+  try {
+    const mod = await import("@seonbi/node");
+    seonbiTransform = mod.transform;
+  } catch {
+    logger.error("SEONBI_NATIVE is enabled but @seonbi/node is not installed");
+  }
+}
+
 // biome-ignore lint/complexity/useLiteralKeys: tsc claims about this
 const SEONBI_URL = process.env["SEONBI_URL"];
 
@@ -314,6 +329,39 @@ async function transformWithSeonbi(html: string): Promise<string> {
   return html;
 }
 
+function transformWithSeonbiNative(html: string): string {
+  try {
+    return seonbiTransform!(
+      {
+        contentType: "text/html",
+        quote: "HorizontalCornerBrackets" as const,
+        cite: "AngleQuotes" as const,
+        arrow: {
+          bidirArrow: true,
+          doubleArrow: true,
+        },
+        ellipsis: true,
+        emDash: true,
+        stop: "Horizontal" as const,
+        hanja: {
+          rendering: "HanjaInRuby" as const,
+          reading: {
+            initialSoundLaw: true,
+            useDictionaries: ["kr-stdict"],
+            dictionary: {},
+          },
+        },
+      } as import("@seonbi/node").Configuration,
+      html,
+    );
+  } catch (error) {
+    logger.error("Failed to format post content with Seonbi native: {error}", {
+      error,
+    });
+    return html;
+  }
+}
+
 export async function formatPostContent(
   db: PgDatabase<
     PostgresJsQueryResultHKT,
@@ -329,11 +377,12 @@ export async function formatPostContent(
   },
 ): Promise<FormatResult> {
   const result = await formatText(db, text, options);
-  if (
-    SEONBI_URL != null &&
-    (language === "ko" || language?.startsWith("ko-"))
-  ) {
-    result.html = await transformWithSeonbi(result.html);
+  if (language === "ko" || language?.startsWith("ko-")) {
+    if (seonbiTransform != null) {
+      result.html = transformWithSeonbiNative(result.html);
+    } else if (SEONBI_URL != null) {
+      result.html = await transformWithSeonbi(result.html);
+    }
   }
   return result;
 }

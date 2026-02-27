@@ -158,6 +158,10 @@ importers:
       zod:
         specifier: ^4.3.5
         version: 4.3.5
+    optionalDependencies:
+      '@seonbi/node':
+        specifier: 0.2.1-alpha.0
+        version: 0.2.1-alpha.0
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.4
@@ -2190,6 +2194,39 @@ packages:
       '@opentelemetry/core': ^1.30.1 || ^2.1.0
       '@opentelemetry/sdk-trace-base': ^1.30.1 || ^2.1.0
       '@opentelemetry/semantic-conventions': ^1.39.0
+
+  '@seonbi/node-darwin-arm64@0.2.1-alpha.0':
+    resolution: {integrity: sha512-oE0JmApaEk0wvucxjokOY1QbE046t34AsJpDlS+0yv4cc0RO0MtnXsfD+e8OhGATnEH27tk28ZLvwfMuyqbk7A==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@seonbi/node-darwin-x64@0.2.1-alpha.0':
+    resolution: {integrity: sha512-kFrnHXQze8q58u7KvsXidzES2P8VbsE/TVVhP21kcJqdXu1Oloo+tZAbvVJRxVU02otR1hXU4rayf+pLVnivvw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@seonbi/node-linux-arm64-gnu@0.2.1-alpha.0':
+    resolution: {integrity: sha512-pgF9/8/oj6r6R7TJjzvevjPNY+TmpwoNBr0dPx19nAEQZFG44FgGvo373HEw72jh2V5qPiarLCSxNnrV8Q/pJw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@seonbi/node-linux-x64-gnu@0.2.1-alpha.0':
+    resolution: {integrity: sha512-mN79CWZzcrT8Rf2/G8rCROz+rUZMhdcYVa+1UAuWFKPxXreGt+hizFrH+5azpJvua60hY20T7AimZwI+vNFBkg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@seonbi/node-linux-x64-musl@0.2.1-alpha.0':
+    resolution: {integrity: sha512-LnPr0l6kF2lBeBgu5ofGFyym7joFdoK12HKXYSnlGO+TEuetyWNhPX5O/2kZLWArF5wKQgPwUjSuza/kw8lcQg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@seonbi/node-win32-x64-msvc@0.2.1-alpha.0':
+    resolution: {integrity: sha512-2uNrRTVh51zZdM47Q3SGKyh7J0e2kywmwgJ9DC84nydiZTwV+zP6wMIryOCu6UhQJF1HEMgBtyA7RlHuojDP3Q==}
+    cpu: [x64]
+    os: [win32]
+
+  '@seonbi/node@0.2.1-alpha.0':
+    resolution: {integrity: sha512-EVly/uBdA7OHl2KZ51kJz7tl7SslcP0WJn3xN3X8loPl4eNFzIdgwPOnF3L+hwex7/oxFge0DbYLPme5EGrCyg==}
 
   '@shikijs/core@3.22.0':
     resolution: {integrity: sha512-iAlTtSDDbJiRpvgL5ugKEATDtHdUVkqgHDm/gbD2ZS9c88mx7G1zSYjjOxp5Qa0eaW0MAQosFRmJSk354PRoQA==}
@@ -7670,6 +7707,34 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 2.5.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.39.0
       '@sentry/core': 10.39.0
+
+  '@seonbi/node-darwin-arm64@0.2.1-alpha.0':
+    optional: true
+
+  '@seonbi/node-darwin-x64@0.2.1-alpha.0':
+    optional: true
+
+  '@seonbi/node-linux-arm64-gnu@0.2.1-alpha.0':
+    optional: true
+
+  '@seonbi/node-linux-x64-gnu@0.2.1-alpha.0':
+    optional: true
+
+  '@seonbi/node-linux-x64-musl@0.2.1-alpha.0':
+    optional: true
+
+  '@seonbi/node-win32-x64-msvc@0.2.1-alpha.0':
+    optional: true
+
+  '@seonbi/node@0.2.1-alpha.0':
+    optionalDependencies:
+      '@seonbi/node-darwin-arm64': 0.2.1-alpha.0
+      '@seonbi/node-darwin-x64': 0.2.1-alpha.0
+      '@seonbi/node-linux-arm64-gnu': 0.2.1-alpha.0
+      '@seonbi/node-linux-x64-gnu': 0.2.1-alpha.0
+      '@seonbi/node-linux-x64-musl': 0.2.1-alpha.0
+      '@seonbi/node-win32-x64-msvc': 0.2.1-alpha.0
+    optional: true
 
   '@shikijs/core@3.22.0':
     dependencies:
