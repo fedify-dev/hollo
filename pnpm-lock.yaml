@@ -160,8 +160,8 @@ importers:
         version: 4.3.5
     optionalDependencies:
       '@seonbi/node':
-        specifier: 0.2.1-alpha.0
-        version: 0.2.1-alpha.0
+        specifier: 0.2.1
+        version: 0.2.1
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.4.4
@@ -2195,38 +2195,38 @@ packages:
       '@opentelemetry/sdk-trace-base': ^1.30.1 || ^2.1.0
       '@opentelemetry/semantic-conventions': ^1.39.0
 
-  '@seonbi/node-darwin-arm64@0.2.1-alpha.0':
-    resolution: {integrity: sha512-oE0JmApaEk0wvucxjokOY1QbE046t34AsJpDlS+0yv4cc0RO0MtnXsfD+e8OhGATnEH27tk28ZLvwfMuyqbk7A==}
+  '@seonbi/node-darwin-arm64@0.2.1':
+    resolution: {integrity: sha512-GTIlLXcatfzVnTluN8y2vcCWAsrNvX0gc57CuYx1n7xK09Vm8U9c6Hw/x+gFCWSfODyDbwV9uRXZDF4xTBaY5Q==}
     cpu: [arm64]
     os: [darwin]
 
-  '@seonbi/node-darwin-x64@0.2.1-alpha.0':
-    resolution: {integrity: sha512-kFrnHXQze8q58u7KvsXidzES2P8VbsE/TVVhP21kcJqdXu1Oloo+tZAbvVJRxVU02otR1hXU4rayf+pLVnivvw==}
+  '@seonbi/node-darwin-x64@0.2.1':
+    resolution: {integrity: sha512-Eq4WIFaMcQ9hKufwAoewO5d6TIZl5XfFIu8YgQGJfuhE5vXl/weUhoFmaqJJJmcEMJF4XNwEKyC4y5nv/P63Bg==}
     cpu: [x64]
     os: [darwin]
 
-  '@seonbi/node-linux-arm64-gnu@0.2.1-alpha.0':
-    resolution: {integrity: sha512-pgF9/8/oj6r6R7TJjzvevjPNY+TmpwoNBr0dPx19nAEQZFG44FgGvo373HEw72jh2V5qPiarLCSxNnrV8Q/pJw==}
+  '@seonbi/node-linux-arm64-gnu@0.2.1':
+    resolution: {integrity: sha512-yKGDq/iNmI7W1r03+q4DzoFbBe9dImyjgfp/wb3sgDB/DGS31c/rm1GdeEwWmlh3BrCMzhZkfJjQ0oPQAzajbg==}
     cpu: [arm64]
     os: [linux]
 
-  '@seonbi/node-linux-x64-gnu@0.2.1-alpha.0':
-    resolution: {integrity: sha512-mN79CWZzcrT8Rf2/G8rCROz+rUZMhdcYVa+1UAuWFKPxXreGt+hizFrH+5azpJvua60hY20T7AimZwI+vNFBkg==}
+  '@seonbi/node-linux-x64-gnu@0.2.1':
+    resolution: {integrity: sha512-MDGQiCaH+4C3sdMatuK96CFwJIcZ8qWohX2qM2Q2Wxmjf5VTaJDuJ9HBLV2xvK0KLUtmGVAaI4T2YxnkT3RJPg==}
     cpu: [x64]
     os: [linux]
 
-  '@seonbi/node-linux-x64-musl@0.2.1-alpha.0':
-    resolution: {integrity: sha512-LnPr0l6kF2lBeBgu5ofGFyym7joFdoK12HKXYSnlGO+TEuetyWNhPX5O/2kZLWArF5wKQgPwUjSuza/kw8lcQg==}
+  '@seonbi/node-linux-x64-musl@0.2.1':
+    resolution: {integrity: sha512-y88O0DJoDA9GeuFWw8IDWeCVk/JmPr6GoYHWx2Bt76ZfRyZicXApJGHaHlfJh1UH2KKFe+iZLFdrculz79pvJg==}
     cpu: [x64]
     os: [linux]
 
-  '@seonbi/node-win32-x64-msvc@0.2.1-alpha.0':
-    resolution: {integrity: sha512-2uNrRTVh51zZdM47Q3SGKyh7J0e2kywmwgJ9DC84nydiZTwV+zP6wMIryOCu6UhQJF1HEMgBtyA7RlHuojDP3Q==}
+  '@seonbi/node-win32-x64-msvc@0.2.1':
+    resolution: {integrity: sha512-P6JOdmhQ6werGebzzZ3R3PAEuCrieMr55KThzudxmGE11GydyB9+Witgl1u0WAryr7cvrrEYqYKFvStRQLzSkg==}
     cpu: [x64]
     os: [win32]
 
-  '@seonbi/node@0.2.1-alpha.0':
-    resolution: {integrity: sha512-EVly/uBdA7OHl2KZ51kJz7tl7SslcP0WJn3xN3X8loPl4eNFzIdgwPOnF3L+hwex7/oxFge0DbYLPme5EGrCyg==}
+  '@seonbi/node@0.2.1':
+    resolution: {integrity: sha512-gOzS78Zj+qgjwGClgXxGadbNOIMaEYAruT080gGsBVXviWif/3yccgKPaHXaLSQl0LnASra7uMvPAvWcyKYDaw==}
 
   '@shikijs/core@3.22.0':
     resolution: {integrity: sha512-iAlTtSDDbJiRpvgL5ugKEATDtHdUVkqgHDm/gbD2ZS9c88mx7G1zSYjjOxp5Qa0eaW0MAQosFRmJSk354PRoQA==}
@@ -7708,32 +7708,32 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.39.0
       '@sentry/core': 10.39.0
 
-  '@seonbi/node-darwin-arm64@0.2.1-alpha.0':
+  '@seonbi/node-darwin-arm64@0.2.1':
     optional: true
 
-  '@seonbi/node-darwin-x64@0.2.1-alpha.0':
+  '@seonbi/node-darwin-x64@0.2.1':
     optional: true
 
-  '@seonbi/node-linux-arm64-gnu@0.2.1-alpha.0':
+  '@seonbi/node-linux-arm64-gnu@0.2.1':
     optional: true
 
-  '@seonbi/node-linux-x64-gnu@0.2.1-alpha.0':
+  '@seonbi/node-linux-x64-gnu@0.2.1':
     optional: true
 
-  '@seonbi/node-linux-x64-musl@0.2.1-alpha.0':
+  '@seonbi/node-linux-x64-musl@0.2.1':
     optional: true
 
-  '@seonbi/node-win32-x64-msvc@0.2.1-alpha.0':
+  '@seonbi/node-win32-x64-msvc@0.2.1':
     optional: true
 
-  '@seonbi/node@0.2.1-alpha.0':
+  '@seonbi/node@0.2.1':
     optionalDependencies:
-      '@seonbi/node-darwin-arm64': 0.2.1-alpha.0
-      '@seonbi/node-darwin-x64': 0.2.1-alpha.0
-      '@seonbi/node-linux-arm64-gnu': 0.2.1-alpha.0
-      '@seonbi/node-linux-x64-gnu': 0.2.1-alpha.0
-      '@seonbi/node-linux-x64-musl': 0.2.1-alpha.0
-      '@seonbi/node-win32-x64-msvc': 0.2.1-alpha.0
+      '@seonbi/node-darwin-arm64': 0.2.1
+      '@seonbi/node-darwin-x64': 0.2.1
+      '@seonbi/node-linux-arm64-gnu': 0.2.1
+      '@seonbi/node-linux-x64-gnu': 0.2.1
+      '@seonbi/node-linux-x64-musl': 0.2.1
+      '@seonbi/node-win32-x64-msvc': 0.2.1
     optional: true
 
   '@shikijs/core@3.22.0':
