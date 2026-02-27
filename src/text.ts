@@ -262,115 +262,121 @@ export function extractText(html: string | null): string | null {
   return $(":root").text();
 }
 
-export type PostContentTransformer = (text: string) => Promise<string>;
+export type PostContentTransformer = (html: string) => Promise<string>;
 
-const SEONBI_NATIVE =
-  process.env.SEONBI_NATIVE?.trim()?.toLowerCase() === "true";
+const koPostContentTransformer = await determineKoPostContentTransformer();
 
-let seonbiTransform:
-  | ((config: import("@seonbi/node").Configuration, input: string) => string)
-  | null = null;
-if (SEONBI_NATIVE) {
-  try {
-    const mod = await import("@seonbi/node");
-    seonbiTransform = mod.transform;
-    logger.info("Enabled seonbi native binding");
-  } catch {
-    logger.error("SEONBI_NATIVE is enabled but @seonbi/node is not installed");
+async function determineKoPostContentTransformer(): Promise<PostContentTransformer> {
+  const SEONBI_NATIVE =
+    process.env.SEONBI_NATIVE?.trim()?.toLowerCase() === "true";
+
+  // biome-ignore lint/complexity/useLiteralKeys: tsc claims about this
+  const SEONBI_URL = process.env["SEONBI_URL"];
+
+  if (SEONBI_NATIVE) {
+    try {
+      const { transform } = await import("@seonbi/node");
+      return async (html: string) => {
+        try {
+          return transform(
+            {
+              contentType: "text/html",
+              quote: "HorizontalCornerBrackets" as const,
+              cite: "AngleQuotes" as const,
+              arrow: {
+                bidirArrow: true,
+                doubleArrow: true,
+              },
+              ellipsis: true,
+              emDash: true,
+              stop: "Horizontal" as const,
+              hanja: {
+                rendering: "HanjaInRuby" as const,
+                reading: {
+                  initialSoundLaw: true,
+                  useDictionaries: ["kr-stdict"],
+                  dictionary: {},
+                },
+              },
+            } as import("@seonbi/node").Configuration,
+            html,
+          );
+        } catch (error) {
+          logger.error(
+            "Failed to format post content with Seonbi native: {error}",
+            {
+              error,
+            },
+          );
+          return html;
+        }
+      };
+    } catch {
+      logger.error(
+        "SEONBI_NATIVE is enabled but @seonbi/node is not installed",
+      );
+    }
   }
-}
 
-// biome-ignore lint/complexity/useLiteralKeys: tsc claims about this
-const SEONBI_URL = process.env["SEONBI_URL"];
-
-async function transformWithSeonbiApi(html: string): Promise<string> {
-  const response = await fetch(SEONBI_URL!, {
-    method: "POST",
-    body: JSON.stringify({
-      content: html,
-      contentType: "text/html",
-      quote: "HorizontalCornerBrackets",
-      cite: "AngleQuotes",
-      arrow: {
-        bidirArrow: true,
-        doubleArrow: true,
-      },
-      ellipsis: true,
-      emDash: true,
-      stop: "Horizontal",
-      hanja: {
-        rendering: "HanjaInRuby",
-        reading: {
-          initialSoundLaw: true,
-          useDictionaries: ["kr-stdict"],
-          dictionary: {},
-        },
-      },
-    }),
-  });
-  try {
-    const seonbiResult = await response.json();
-    if (seonbiResult.success) {
-      if (
-        Array.isArray(seonbiResult.warnings) &&
-        seonbiResult.warnings.length > 0
-      ) {
-        logger.warn("Seonbi warnings: {warnings}", {
-          warnings: seonbiResult.warnings,
+  if (SEONBI_URL != null) {
+    return async (html: string): Promise<string> => {
+      const response = await fetch(SEONBI_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          content: html,
+          contentType: "text/html",
+          quote: "HorizontalCornerBrackets",
+          cite: "AngleQuotes",
+          arrow: {
+            bidirArrow: true,
+            doubleArrow: true,
+          },
+          ellipsis: true,
+          emDash: true,
+          stop: "Horizontal",
+          hanja: {
+            rendering: "HanjaInRuby",
+            reading: {
+              initialSoundLaw: true,
+              useDictionaries: ["kr-stdict"],
+              dictionary: {},
+            },
+          },
+        }),
+      });
+      try {
+        const seonbiResult = await response.json();
+        if (seonbiResult.success) {
+          if (
+            Array.isArray(seonbiResult.warnings) &&
+            seonbiResult.warnings.length > 0
+          ) {
+            logger.warn("Seonbi warnings: {warnings}", {
+              warnings: seonbiResult.warnings,
+            });
+          }
+          return seonbiResult.content;
+        }
+        logger.error("Seonbi failed to format post content: {message}", {
+          message: seonbiResult.message,
+        });
+      } catch (error) {
+        logger.error("Failed to format post content with Seonbi: {error}", {
+          error,
         });
       }
-      return seonbiResult.content;
-    }
-    logger.error("Seonbi failed to format post content: {message}", {
-      message: seonbiResult.message,
-    });
-  } catch (error) {
-    logger.error("Failed to format post content with Seonbi: {error}", {
-      error,
-    });
+      return html;
+    };
   }
-  return html;
-}
 
-async function transformWithSeonbiNative(html: string): Promise<string> {
-  try {
-    return seonbiTransform!(
-      {
-        contentType: "text/html",
-        quote: "HorizontalCornerBrackets" as const,
-        cite: "AngleQuotes" as const,
-        arrow: {
-          bidirArrow: true,
-          doubleArrow: true,
-        },
-        ellipsis: true,
-        emDash: true,
-        stop: "Horizontal" as const,
-        hanja: {
-          rendering: "HanjaInRuby" as const,
-          reading: {
-            initialSoundLaw: true,
-            useDictionaries: ["kr-stdict"],
-            dictionary: {},
-          },
-        },
-      } as import("@seonbi/node").Configuration,
-      html,
-    );
-  } catch (error) {
-    logger.error("Failed to format post content with Seonbi native: {error}", {
-      error,
-    });
-    return html;
-  }
+  return async (html: string) => html;
 }
 
 function getPostContentTransformer(
   language: string | null | undefined,
 ): PostContentTransformer | null {
   if (language === "ko" || language?.startsWith("ko-")) {
-    if (seonbiTransform != null) return transformWithSeonbiNative;
-    if (SEONBI_URL != null) return transformWithSeonbiApi;
+    return koPostContentTransformer;
   }
   return null;
 }
