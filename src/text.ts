@@ -262,6 +262,8 @@ export function extractText(html: string | null): string | null {
   return $(":root").text();
 }
 
+export type PostContentTransformer = (text: string) => Promise<string>;
+
 const SEONBI_NATIVE =
   process.env.SEONBI_NATIVE?.trim()?.toLowerCase() === "true";
 
@@ -329,7 +331,7 @@ async function transformWithSeonbi(html: string): Promise<string> {
   return html;
 }
 
-function transformWithSeonbiNative(html: string): string {
+async function transformWithSeonbiNative(html: string): Promise<string> {
   try {
     return seonbiTransform!(
       {
@@ -362,6 +364,16 @@ function transformWithSeonbiNative(html: string): string {
   }
 }
 
+function getPostContentTransformer(
+  language: string | null | undefined,
+): PostContentTransformer | null {
+  if (language === "ko" || language?.startsWith("ko-")) {
+    if (seonbiTransform != null) return transformWithSeonbiNative;
+    if (SEONBI_URL != null) return transformWithSeonbi;
+  }
+  return null;
+}
+
 export async function formatPostContent(
   db: PgDatabase<
     PostgresJsQueryResultHKT,
@@ -377,12 +389,9 @@ export async function formatPostContent(
   },
 ): Promise<FormatResult> {
   const result = await formatText(db, text, options);
-  if (language === "ko" || language?.startsWith("ko-")) {
-    if (seonbiTransform != null) {
-      result.html = transformWithSeonbiNative(result.html);
-    } else if (SEONBI_URL != null) {
-      result.html = await transformWithSeonbi(result.html);
-    }
+  const transformer = getPostContentTransformer(language);
+  if (transformer != null) {
+    result.html = await transformer(result.html);
   }
   return result;
 }
