@@ -274,6 +274,7 @@ if (SEONBI_NATIVE) {
   try {
     const mod = await import("@seonbi/node");
     seonbiTransform = mod.transform;
+    logger.info("Enabled seonbi native binding");
   } catch {
     logger.error("SEONBI_NATIVE is enabled but @seonbi/node is not installed");
   }
