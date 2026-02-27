@@ -282,7 +282,7 @@ if (SEONBI_NATIVE) {
 // biome-ignore lint/complexity/useLiteralKeys: tsc claims about this
 const SEONBI_URL = process.env["SEONBI_URL"];
 
-async function transformWithSeonbi(html: string): Promise<string> {
+async function transformWithSeonbiApi(html: string): Promise<string> {
   const response = await fetch(SEONBI_URL!, {
     method: "POST",
     body: JSON.stringify({
@@ -369,7 +369,7 @@ function getPostContentTransformer(
 ): PostContentTransformer | null {
   if (language === "ko" || language?.startsWith("ko-")) {
     if (seonbiTransform != null) return transformWithSeonbiNative;
-    if (SEONBI_URL != null) return transformWithSeonbi;
+    if (SEONBI_URL != null) return transformWithSeonbiApi;
   }
   return null;
 }
