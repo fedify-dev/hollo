@@ -273,34 +273,33 @@ async function determineKoPostContentTransformer(): Promise<PostContentTransform
   // biome-ignore lint/complexity/useLiteralKeys: tsc claims about this
   const SEONBI_URL = process.env["SEONBI_URL"];
 
+  const SEONBI_CONFIGURATION = {
+    contentType: "text/html",
+    quote: "HorizontalCornerBrackets",
+    cite: "AngleQuotes",
+    arrow: {
+      bidirArrow: true,
+      doubleArrow: true,
+    },
+    ellipsis: true,
+    emDash: true,
+    stop: "Horizontal",
+    hanja: {
+      rendering: "HanjaInRuby",
+      reading: {
+        initialSoundLaw: true,
+        useDictionaries: ["kr-stdict"],
+        dictionary: {},
+      },
+    },
+  } satisfies import("@seonbi/node").Configuration;
+
   if (SEONBI_NATIVE) {
     try {
       const { transform } = await import("@seonbi/node");
       return async (html: string) => {
         try {
-          return transform(
-            {
-              contentType: "text/html",
-              quote: "HorizontalCornerBrackets" as const,
-              cite: "AngleQuotes" as const,
-              arrow: {
-                bidirArrow: true,
-                doubleArrow: true,
-              },
-              ellipsis: true,
-              emDash: true,
-              stop: "Horizontal" as const,
-              hanja: {
-                rendering: "HanjaInRuby" as const,
-                reading: {
-                  initialSoundLaw: true,
-                  useDictionaries: ["kr-stdict"],
-                  dictionary: {},
-                },
-              },
-            } as import("@seonbi/node").Configuration,
-            html,
-          );
+          return transform(SEONBI_CONFIGURATION, html);
         } catch (error) {
           logger.error(
             "Failed to format post content with Seonbi native: {error}",
@@ -323,25 +322,8 @@ async function determineKoPostContentTransformer(): Promise<PostContentTransform
       const response = await fetch(SEONBI_URL, {
         method: "POST",
         body: JSON.stringify({
+          ...SEONBI_CONFIGURATION,
           content: html,
-          contentType: "text/html",
-          quote: "HorizontalCornerBrackets",
-          cite: "AngleQuotes",
-          arrow: {
-            bidirArrow: true,
-            doubleArrow: true,
-          },
-          ellipsis: true,
-          emDash: true,
-          stop: "Horizontal",
-          hanja: {
-            rendering: "HanjaInRuby",
-            reading: {
-              initialSoundLaw: true,
-              useDictionaries: ["kr-stdict"],
-              dictionary: {},
-            },
-          },
         }),
       });
       try {
