@@ -46,16 +46,16 @@ importers:
         version: 0.5.1
       '@logtape/drizzle-orm':
         specifier: ~2.0.2
-        version: 2.0.2(@logtape/logtape@2.0.2)
+        version: 2.0.2(@logtape/logtape@2.0.4)
       '@logtape/file':
         specifier: ~2.0.2
-        version: 2.0.2(@logtape/logtape@2.0.2)
+        version: 2.0.2(@logtape/logtape@2.0.4)
       '@logtape/logtape':
-        specifier: ~2.0.2
-        version: 2.0.2
+        specifier: ~2.0.4
+        version: 2.0.4
       '@logtape/sentry':
         specifier: ~2.0.2
-        version: 2.0.2(@logtape/logtape@2.0.2)(@sentry/core@10.39.0)
+        version: 2.0.2(@logtape/logtape@2.0.4)(@sentry/core@10.39.0)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -206,10 +206,10 @@ importers:
         version: 0.9.6(prettier@3.7.4)(typescript@5.9.3)
       '@astrojs/starlight':
         specifier: ^0.37.5
-        version: 0.37.6(astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+        version: 0.37.6(astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       astro:
         specifier: ^5.17.2
-        version: 5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+        version: 5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -1599,8 +1599,8 @@ packages:
     peerDependencies:
       '@logtape/logtape': ^2.0.2
 
-  '@logtape/logtape@2.0.2':
-    resolution: {integrity: sha512-cveUBLbCMFkvkLycP/2vNWvywl47JcJbazHIju94/QNGboZ/jyYAgZIm0ZXezAOx3eIz8OG1EOZ5CuQP3+2FQg==}
+  '@logtape/logtape@2.0.4':
+    resolution: {integrity: sha512-Z4COeAMdedcBFuFkXaPFvDPOVuHoEom1hwNnPCIkSyojyikuNguplwPoSG+kZthWrS7GiOJo1USQyjWwIFfTKA==}
 
   '@logtape/sentry@2.0.2':
     resolution: {integrity: sha512-vo10X0kfFBkgVbteDSg7KMsIkDUWlMmu83fCiwI0rIFYrDBJIrb+TIxBWg66AizjsYXwZWE5Hs2XX1/sL3fAgA==}
@@ -2643,6 +2643,9 @@ packages:
 
   '@types/node@25.3.0':
     resolution: {integrity: sha512-4K3bqJpXpqfg2XKGK9bpDTc6xO/xoUP/RBWS7AtRMug6zZFaRekiLzjVtAoZMquxoAbzBvy5nxQ7veS5eYzf8A==}
+
+  '@types/node@25.3.3':
+    resolution: {integrity: sha512-DpzbrH7wIcBaJibpKo9nnSQL0MTRdnWttGyE5haGwK86xgMOkFLp7vEyfQPGLOJh5wNYiJ3V9PmUMDhV9u8kkQ==}
 
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
@@ -5267,12 +5270,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/mdx@4.3.13(astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
+  '@astrojs/mdx@4.3.13(astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
     dependencies:
       '@astrojs/markdown-remark': 6.3.10
       '@mdx-js/mdx': 3.1.1
       acorn: 8.15.0
-      astro: 5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro: 5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       es-module-lexer: 1.7.0
       estree-util-visit: 2.0.0
       hast-util-to-html: 9.0.5
@@ -5296,17 +5299,17 @@ snapshots:
       stream-replace-string: 2.0.0
       zod: 3.25.76
 
-  '@astrojs/starlight@0.37.6(astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
+  '@astrojs/starlight@0.37.6(astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
     dependencies:
       '@astrojs/markdown-remark': 6.3.10
-      '@astrojs/mdx': 4.3.13(astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      '@astrojs/mdx': 4.3.13(astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       '@astrojs/sitemap': 3.7.0
       '@pagefind/default-ui': 1.4.0
       '@types/hast': 3.0.4
       '@types/js-yaml': 4.0.9
       '@types/mdast': 4.0.4
-      astro: 5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
-      astro-expressive-code: 0.41.6(astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      astro: 5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro-expressive-code: 0.41.6(astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       bcp-47: 2.1.0
       hast-util-from-html: 2.0.3
       hast-util-select: 6.0.4
@@ -6845,7 +6848,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.0.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/context-async-hooks': 2.5.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/core': 2.5.1(@opentelemetry/api@1.9.0)
@@ -6858,7 +6861,7 @@ snapshots:
       '@fedify/vocab-runtime': 2.0.0
       '@fedify/webfinger': 2.0.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.5.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 2.5.1(@opentelemetry/api@1.9.0)
@@ -6890,12 +6893,12 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.0.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       postgres: 3.4.8
 
   '@fedify/vocab-runtime@2.0.0':
     dependencies:
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
       asn1js: 3.0.7
@@ -6916,7 +6919,7 @@ snapshots:
       '@fedify/vocab-tools': 2.0.0
       '@fedify/webfinger': 2.0.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.0
       asn1js: 3.0.7
@@ -6928,7 +6931,7 @@ snapshots:
   '@fedify/webfinger@2.0.0':
     dependencies:
       '@fedify/vocab-runtime': 2.0.0
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       '@opentelemetry/api': 1.9.0
       es-toolkit: 1.43.0
 
@@ -7075,19 +7078,19 @@ snapshots:
     dependencies:
       jsbi: 4.3.0
 
-  '@logtape/drizzle-orm@2.0.2(@logtape/logtape@2.0.2)':
+  '@logtape/drizzle-orm@2.0.2(@logtape/logtape@2.0.4)':
     dependencies:
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
 
-  '@logtape/file@2.0.2(@logtape/logtape@2.0.2)':
+  '@logtape/file@2.0.2(@logtape/logtape@2.0.4)':
     dependencies:
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
 
-  '@logtape/logtape@2.0.2': {}
+  '@logtape/logtape@2.0.4': {}
 
-  '@logtape/sentry@2.0.2(@logtape/logtape@2.0.2)(@sentry/core@10.39.0)':
+  '@logtape/sentry@2.0.2(@logtape/logtape@2.0.4)(@sentry/core@10.39.0)':
     dependencies:
-      '@logtape/logtape': 2.0.2
+      '@logtape/logtape': 2.0.4
       '@sentry/core': 10.39.0
 
   '@mdx-js/mdx@3.1.1':
@@ -8414,6 +8417,11 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
+  '@types/node@25.3.3':
+    dependencies:
+      undici-types: 7.18.2
+    optional: true
+
   '@types/pg-pool@2.0.7':
     dependencies:
       '@types/pg': 8.15.6
@@ -8446,7 +8454,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 25.3.0
+      '@types/node': 25.3.3
     optional: true
 
   '@ungap/structured-clone@1.3.0': {}
@@ -8624,12 +8632,12 @@ snapshots:
 
   astring@1.9.0: {}
 
-  astro-expressive-code@0.41.6(astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)):
+  astro-expressive-code@0.41.6(astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)):
     dependencies:
-      astro: 5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro: 5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       rehype-expressive-code: 0.41.6
 
-  astro@5.17.2(@types/node@25.3.0)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
+  astro@5.17.2(@types/node@25.3.3)(rollup@4.57.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
     dependencies:
       '@astrojs/compiler': 2.13.1
       '@astrojs/internal-helpers': 0.7.5
@@ -8686,8 +8694,8 @@ snapshots:
       unist-util-visit: 5.1.0
       unstorage: 1.17.4
       vfile: 6.0.3
-      vite: 6.4.1(@types/node@25.3.0)(tsx@4.21.0)(yaml@2.8.2)
-      vitefu: 1.1.1(vite@6.4.1(@types/node@25.3.0)(tsx@4.21.0)(yaml@2.8.2))
+      vite: 6.4.1(@types/node@25.3.3)(tsx@4.21.0)(yaml@2.8.2)
+      vitefu: 1.1.1(vite@6.4.1(@types/node@25.3.3)(tsx@4.21.0)(yaml@2.8.2))
       xxhash-wasm: 1.1.0
       yargs-parser: 21.1.1
       yocto-spinner: 0.2.3
@@ -11222,9 +11230,23 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.2
 
-  vitefu@1.1.1(vite@6.4.1(@types/node@25.3.0)(tsx@4.21.0)(yaml@2.8.2)):
+  vite@6.4.1(@types/node@25.3.3)(tsx@4.21.0)(yaml@2.8.2):
+    dependencies:
+      esbuild: 0.25.12
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.57.1
+      tinyglobby: 0.2.15
     optionalDependencies:
-      vite: 6.4.1(@types/node@25.3.0)(tsx@4.21.0)(yaml@2.8.2)
+      '@types/node': 25.3.3
+      fsevents: 2.3.3
+      tsx: 4.21.0
+      yaml: 2.8.2
+
+  vitefu@1.1.1(vite@6.4.1(@types/node@25.3.3)(tsx@4.21.0)(yaml@2.8.2)):
+    optionalDependencies:
+      vite: 6.4.1(@types/node@25.3.3)(tsx@4.21.0)(yaml@2.8.2)
 
   vitest@3.1.4(@types/debug@4.1.12)(@types/node@25.3.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
