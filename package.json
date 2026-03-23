@@ -27,7 +27,7 @@
     "@fedify/markdown-it-hashtag": "~0.3.0",
     "@fedify/markdown-it-mention": "~0.3.0",
     "@fedify/postgres": "^2.0.6",
-    "@fedify/vocab": "^2.0.6",
+    "@fedify/vocab": "^2.0.7",
     "@hexagon/base64": "^2.0.4",
     "@hono/node-server": "^1.19.11",
     "@hono/zod-validator": "^0.7.6",
