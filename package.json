@@ -22,7 +22,7 @@
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.1009.0",
     "@fedify/debugger": "^2.1.1",
-    "@fedify/fedify": "^2.1.1",
+    "@fedify/fedify": "^2.1.2",
     "@fedify/hono": "^2.1.1",
     "@fedify/markdown-it-hashtag": "~0.3.0",
     "@fedify/markdown-it-mention": "~0.3.0",

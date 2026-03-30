@@ -13,13 +13,13 @@ importers:
         version: 3.1009.0
       '@fedify/debugger':
         specifier: ^2.1.1
-        version: 2.1.1(@fedify/fedify@2.1.1)
+        version: 2.1.1(@fedify/fedify@2.1.2)
       '@fedify/fedify':
-        specifier: ^2.1.1
-        version: 2.1.1
+        specifier: ^2.1.2
+        version: 2.1.2
       '@fedify/hono':
         specifier: ^2.1.1
-        version: 2.1.1(@fedify/fedify@2.1.1)(hono@4.12.8)
+        version: 2.1.1(@fedify/fedify@2.1.2)(hono@4.12.8)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -28,7 +28,7 @@ importers:
         version: 0.3.0
       '@fedify/postgres':
         specifier: ^2.1.1
-        version: 2.1.1(@fedify/fedify@2.1.1)(postgres@3.4.8)
+        version: 2.1.1(@fedify/fedify@2.1.2)(postgres@3.4.8)
       '@fedify/vocab':
         specifier: ^2.1.1
         version: 2.1.1
@@ -1348,8 +1348,8 @@ packages:
     peerDependencies:
       '@fedify/fedify': ^2.1.1
 
-  '@fedify/fedify@2.1.1':
-    resolution: {integrity: sha512-DHhtrfBrg899Voi6W9rjDr6QDFcRQi/Ur7mmttGFnVJa5fVnXbOCZaQ9Bb9di8559Zbn+xX3sqWKJfW2v8lvAQ==}
+  '@fedify/fedify@2.1.2':
+    resolution: {integrity: sha512-9i2dFdf/Fch6E/mlBCqlooAujujd2/Vf+7ZYlSqBkBeGtBYxicYswr842mU6lSO4DYjBAFQM83gLOxmLhqdOtg==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/hono@2.1.1':
@@ -1374,16 +1374,32 @@ packages:
     resolution: {integrity: sha512-W/R/+AOKld4S5HuwPf8bgT8dA+apNoaF8j0wVqFcj9/nCWYrTzWX8KfiHK2kOGxK1gK1ia+AtJJ/uFUcBpbc/A==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
+  '@fedify/vocab-runtime@2.1.2':
+    resolution: {integrity: sha512-Yn7XUAWclBz+eHuGnaHtz8CxynLYJ66qnEV1QjraveLSz+tB5Z4T0jQjpY3PMkUx3EhEiGJFu8Nb5hB7a89Jcw==}
+    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
+
   '@fedify/vocab-tools@2.1.1':
     resolution: {integrity: sha512-c64ZKjeJjqllEQ0WWPF+5s5V2PADJoL63MV5HqR/wQVvOyBpMK/oOcjLYLtwmwAgqQY2HHDOQwYvsIbTTPujTA==}
+    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
+
+  '@fedify/vocab-tools@2.1.2':
+    resolution: {integrity: sha512-AeMA04m8pRnRut5mFKifKyAYrAEvEw0o0RVPCxzypZM8iEwneIQBRhZA435NHMdhIb5Zqx3aEp6J0+P9gevfWQ==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@fedify/vocab@2.1.1':
     resolution: {integrity: sha512-Jy5t4jAzrR0+sF0b+aQRuvZC4pvsEsutjeayJf6RVTNSs+QugvbyCz7k+GXtMvofnpP9QjuK6nUKal+c/3qfiQ==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
+  '@fedify/vocab@2.1.2':
+    resolution: {integrity: sha512-gyBRp8BdXnRGNX98+5z//30xElWUP8d4kOid41wQJ9t4sqSYcyPpNr5re7r6jPQxc3ut7fpGBDmr9DJItJ7YYw==}
+    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
+
   '@fedify/webfinger@2.1.1':
     resolution: {integrity: sha512-yCtHWMA/sA1NZUvopuFQ4KEgKHHj129WyPdVSpOiWGneUw+p3sgf8ffO1oj13FYwiR3qvpIV8SMcJ9aFmOa6Ug==}
+    engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
+
+  '@fedify/webfinger@2.1.2':
+    resolution: {integrity: sha512-7wzWrYAZaTd+NG/CqbNrgt10+EXHRGbk1B640GjP51tT0oOEALG9/WGh8PYTSg/8G7htR8GLgWQEwskWO2cmjg==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
   '@hexagon/base64@2.0.4':
@@ -6760,9 +6776,9 @@ snapshots:
     dependencies:
       '@expressive-code/core': 0.41.7
 
-  '@fedify/debugger@2.1.1(@fedify/fedify@2.1.1)':
+  '@fedify/debugger@2.1.1(@fedify/fedify@2.1.2)':
     dependencies:
-      '@fedify/fedify': 2.1.1
+      '@fedify/fedify': 2.1.2
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.0.5
       '@opentelemetry/api': 1.9.0
@@ -6771,11 +6787,11 @@ snapshots:
       '@opentelemetry/sdk-trace-base': 2.6.0(@opentelemetry/api@1.9.0)
       hono: 4.12.8
 
-  '@fedify/fedify@2.1.1':
+  '@fedify/fedify@2.1.2':
     dependencies:
-      '@fedify/vocab': 2.1.1
-      '@fedify/vocab-runtime': 2.1.1
-      '@fedify/webfinger': 2.1.1
+      '@fedify/vocab': 2.1.2
+      '@fedify/vocab-runtime': 2.1.2
+      '@fedify/webfinger': 2.1.2
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.0.5
       '@opentelemetry/api': 1.9.0
@@ -6791,9 +6807,9 @@ snapshots:
       url-template: 3.1.1
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@2.1.1(@fedify/fedify@2.1.1)(hono@4.12.8)':
+  '@fedify/hono@2.1.1(@fedify/fedify@2.1.2)(hono@4.12.8)':
     dependencies:
-      '@fedify/fedify': 2.1.1
+      '@fedify/fedify': 2.1.2
       hono: 4.12.8
 
   '@fedify/markdown-it-hashtag@0.3.0':
@@ -6804,9 +6820,9 @@ snapshots:
     dependencies:
       markdown-it: 14.1.1
 
-  '@fedify/postgres@2.1.1(@fedify/fedify@2.1.1)(postgres@3.4.8)':
+  '@fedify/postgres@2.1.1(@fedify/fedify@2.1.2)(postgres@3.4.8)':
     dependencies:
-      '@fedify/fedify': 2.1.1
+      '@fedify/fedify': 2.1.2
       '@js-temporal/polyfill': 0.5.1
       '@logtape/logtape': 2.0.5
       postgres: 3.4.8
@@ -6821,7 +6837,24 @@ snapshots:
       jsonld: 9.0.0
       pkijs: 3.4.0
 
+  '@fedify/vocab-runtime@2.1.2':
+    dependencies:
+      '@logtape/logtape': 2.0.5
+      '@multiformats/base-x': 4.0.1
+      '@opentelemetry/api': 1.9.0
+      asn1js: 3.0.7
+      byte-encodings: 1.0.11
+      jsonld: 9.0.0
+      pkijs: 3.4.0
+
   '@fedify/vocab-tools@2.1.1':
+    dependencies:
+      '@cfworker/json-schema': 4.1.1
+      byte-encodings: 1.0.11
+      es-toolkit: 1.45.1
+      yaml: 2.8.3
+
+  '@fedify/vocab-tools@2.1.2':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       byte-encodings: 1.0.11
@@ -6842,9 +6875,30 @@ snapshots:
       jsonld: 9.0.0
       pkijs: 3.4.0
 
+  '@fedify/vocab@2.1.2':
+    dependencies:
+      '@fedify/vocab-runtime': 2.1.2
+      '@fedify/vocab-tools': 2.1.2
+      '@fedify/webfinger': 2.1.2
+      '@js-temporal/polyfill': 0.5.1
+      '@logtape/logtape': 2.0.5
+      '@multiformats/base-x': 4.0.1
+      '@opentelemetry/api': 1.9.0
+      asn1js: 3.0.7
+      es-toolkit: 1.43.0
+      jsonld: 9.0.0
+      pkijs: 3.4.0
+
   '@fedify/webfinger@2.1.1':
     dependencies:
       '@fedify/vocab-runtime': 2.1.1
+      '@logtape/logtape': 2.0.5
+      '@opentelemetry/api': 1.9.0
+      es-toolkit: 1.43.0
+
+  '@fedify/webfinger@2.1.2':
+    dependencies:
+      '@fedify/vocab-runtime': 2.1.2
       '@logtape/logtape': 2.0.5
       '@opentelemetry/api': 1.9.0
       es-toolkit: 1.43.0
@@ -7082,12 +7136,12 @@ snapshots:
   '@opentelemetry/core@2.5.0(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
 
   '@opentelemetry/core@2.5.1(@opentelemetry/api@1.9.0)':
     dependencies:
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
 
   '@opentelemetry/core@2.6.0(@opentelemetry/api@1.9.0)':
     dependencies:
@@ -7099,7 +7153,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7108,7 +7162,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
       '@types/connect': 3.4.38
     transitivePeerDependencies:
       - supports-color
@@ -7125,7 +7179,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7156,7 +7210,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7165,7 +7219,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.5.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
       forwarded-parse: 2.1.2
     transitivePeerDependencies:
       - supports-color
@@ -7175,7 +7229,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/redis-common': 0.38.2
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7183,7 +7237,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7191,7 +7245,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7200,7 +7254,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7215,7 +7269,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7224,7 +7278,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7232,7 +7286,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
       '@opentelemetry/sql-common': 0.41.2(@opentelemetry/api@1.9.0)
     transitivePeerDependencies:
       - supports-color
@@ -7241,7 +7295,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
       '@types/mysql': 2.15.27
     transitivePeerDependencies:
       - supports-color
@@ -7251,7 +7305,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
       '@opentelemetry/sql-common': 0.41.2(@opentelemetry/api@1.9.0)
       '@types/pg': 8.15.6
       '@types/pg-pool': 2.0.7
@@ -7263,7 +7317,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/redis-common': 0.38.2
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7271,7 +7325,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
       '@types/tedious': 4.0.14
     transitivePeerDependencies:
       - supports-color
@@ -7281,7 +7335,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.211.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
     transitivePeerDependencies:
       - supports-color
 
@@ -7309,7 +7363,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.5.1(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions': 1.39.0
+      '@opentelemetry/semantic-conventions': 1.40.0
 
   '@opentelemetry/resources@2.6.0(@opentelemetry/api@1.9.0)':
     dependencies:
