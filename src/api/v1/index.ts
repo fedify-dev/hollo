@@ -57,11 +57,17 @@ app.get(
   tokenRequired,
   scopeRequired(["read:accounts"]),
   (c) => {
+    const owner = c.get("token").accountOwner;
+    if (owner == null) {
+      return c.json(
+        { error: "This method requires an authenticated user" },
+        422,
+      );
+    }
     return c.json({
-      // TODO
-      "posting:default:visibility": "public",
-      "posting:default:sensitive": false,
-      "posting:default:language": null,
+      "posting:default:visibility": owner.visibility,
+      "posting:default:sensitive": owner.account.sensitive,
+      "posting:default:language": owner.language,
       "reading:expand:media": "default",
       "reading:expand:spoilers": false,
     });
