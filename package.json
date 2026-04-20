@@ -40,7 +40,7 @@
     "@logtape/sentry": "~2.0.5",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^2.6.0",
-    "@opentelemetry/core": "^2.6.0",
+    "@opentelemetry/core": "^2.7.0",
     "@opentelemetry/sdk-trace-base": "^2.6.0",
     "@sentry/core": "^10.48.0",
     "@sentry/node": "^10.48.0",
