@@ -38,6 +38,20 @@ To be released.
      -  Preview card scraping, media processing, and authentication helpers now
         load on demand instead of eagerly during route registration.
 
+ -  Moved remote replies scraping from synchronous post ingestion to a
+    rate-limited background worker.  Remote posts now enqueue reply collection
+    scraping jobs instead of fetching nested replies inline, which prevents
+    slow or very large remote reply collections from delaying federation
+    processing.  [[#445], [#446]]
+
+     -  Added per-origin throttling and `429 Too Many Requests` backoff for
+        remote replies scraping.
+     -  Added bounded scraping controls:
+        `REMOTE_REPLIES_SCRAPE_DEPTH`, `REMOTE_REPLIES_SCRAPE_MAX_ITEMS`,
+        `REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS`,
+        `REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS`, and
+        `REMOTE_REPLIES_SCRAPE_COOLDOWN_SECONDS`.
+
  -  Added automatic refresh of stale remote actor profiles.  When receiving
     activities like `Announce` or `Create(Note)`, Hollo now checks if the
     actor's cached data is stale and asynchronously refreshes their profile
@@ -137,6 +151,8 @@ To be released.
 [#425]: https://github.com/fedify-dev/hollo/issues/425
 [#435]: https://github.com/fedify-dev/hollo/issues/435
 [#436]: https://github.com/fedify-dev/hollo/pull/436
+[#445]: https://github.com/fedify-dev/hollo/issues/445
+[#446]: https://github.com/fedify-dev/hollo/pull/446
 [Fedify debugger]: https://fedify.dev/manual/debug
 
 
