@@ -27,7 +27,7 @@ data.get("/", async (c) => {
   const done = c.req.query("done");
   const error = c.req.query("error");
   const before = c.req.query("before");
-  const fileCount = Number.parseInt(c.req.query("fileCount") ?? "0");
+  const fileCount = Number(c.req.query("fileCount") ?? "0");
   const firstFile = c.req.query("firstFile");
   const lastFile = c.req.query("lastFile");
   const cleanupDataResult = c.req.query("cleanup-data-result");
@@ -187,7 +187,7 @@ data.get("/", async (c) => {
         {done === "clean_preview" &&
           (fileCount > 0 ? (
             <p>
-              Number of Items: {fileCount}
+              Number of Items: {fileCount.toLocaleString("en")}
               <br />
               First: {firstFile}
               <br />
@@ -356,7 +356,7 @@ data.post("/clean_preview", async (c) => {
         doneUrl.searchParams.set("before", beforeParameter);
         doneUrl.searchParams.set(
           "fileCount",
-          mediaWithThumbnailToClean.length.toLocaleString("en"),
+          String(mediaWithThumbnailToClean.length),
         );
         if (firstItem) {
           doneUrl.searchParams.set(

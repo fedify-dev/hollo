@@ -7,6 +7,18 @@ Version 0.9.0
 To be released.
 
 
+Version 0.8.1
+-------------
+
+Released on April 27, 2026.
+
+ -  Fixed thumbnail cleanup preview counts over 999 being truncated after the
+    localized count was passed through the redirect URL.  The preview now keeps
+    the raw count in the URL and formats it only when rendering.  [[#451]]
+
+[#451]: https://github.com/fedify-dev/hollo/issues/451
+
+
 Version 0.8.0
 -------------
 
