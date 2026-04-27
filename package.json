@@ -51,7 +51,7 @@
     "@opentelemetry/sdk-trace-base": "^2.7.0",
     "@sentry/core": "^10.48.0",
     "@sentry/node": "^10.48.0",
-    "@shikijs/markdown-it": "^4.0.1",
+    "@shikijs/markdown-it": "^4.0.2",
     "@supercharge/promise-pool": "^3.2.0",
     "argon2": "^0.44.0",
     "cheerio": "^1.2.0",
