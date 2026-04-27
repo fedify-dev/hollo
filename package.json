@@ -83,7 +83,7 @@
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.52.0",
     "@fedify/lint": "^2.1.10",
-    "@reporters/github": "^1.12.0",
+    "@reporters/github": "^1.13.1",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^25.5.0",
