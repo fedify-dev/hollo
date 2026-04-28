@@ -1,5 +1,6 @@
 import { statSync } from "node:fs";
 import { join } from "node:path";
+
 import type { PropsWithChildren } from "hono/jsx";
 
 import type { ThemeColor } from "../schema";
@@ -56,10 +57,7 @@ export function Layout(props: PropsWithChildren<LayoutProps>) {
             type={link.type}
           />
         ))}
-        <link
-          rel="stylesheet"
-          href={`/public/uno.css?v=${unoCssVersion()}`}
-        />
+        <link rel="stylesheet" href={`/public/uno.css?v=${unoCssVersion()}`} />
         <link
           rel="icon"
           type="image/png"

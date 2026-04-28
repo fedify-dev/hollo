@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { getSignedCookie, setSignedCookie } from "hono/cookie";
 import { z } from "zod";
 
+import { AuthCard } from "../components/AuthCard.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { LoginForm } from "../components/LoginForm.tsx";
 import { OtpForm } from "../components/OtpForm.tsx";
@@ -77,16 +78,17 @@ interface LoginPageProps {
 function LoginPage(props: LoginPageProps) {
   return (
     <Layout title="Sign in to Hollo">
-      <hgroup>
-        <h1>Sign in to Hollo</h1>
-        <p>To continue, sign in with your Hollo account.</p>
-      </hgroup>
-      <LoginForm
-        action="/login"
-        next={props.next}
-        values={props.values}
-        errors={props.errors}
-      />
+      <AuthCard
+        title="Sign in to Hollo"
+        subtitle="To continue, sign in with your Hollo account."
+      >
+        <LoginForm
+          action="/login"
+          next={props.next}
+          values={props.values}
+          errors={props.errors}
+        />
+      </AuthCard>
     </Layout>
   );
 }
@@ -148,11 +150,12 @@ interface OtpPageProps {
 function OtpPage(props: OtpPageProps) {
   return (
     <Layout title="Sign in to Hollo">
-      <hgroup>
-        <h1>Sign in to Hollo</h1>
-        <p>To continue, sign in with your Hollo account.</p>
-      </hgroup>
-      <OtpForm action="/login/otp" next={props.next} errors={props.errors} />
+      <AuthCard
+        title="Two-factor authentication"
+        subtitle="Enter the six-digit code from your authenticator app."
+      >
+        <OtpForm action="/login/otp" next={props.next} errors={props.errors} />
+      </AuthCard>
     </Layout>
   );
 }
