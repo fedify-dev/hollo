@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 
 import { stripQuoteInlineFallbacks } from "../html";
 import type { PreviewCard } from "../previewcard";
@@ -8,6 +8,8 @@ import {
   type Application,
   type Bookmark,
   bookmarks,
+  type Follow,
+  follows,
   type Like,
   likes,
   type Medium,
@@ -17,6 +19,8 @@ import {
   type PollOption,
   type PollVote,
   type Post,
+  type QuoteApprovalPolicy,
+  type QuoteState,
   pollOptions,
   pollVotes,
   posts,
@@ -29,19 +33,90 @@ import { serializeEmojis, serializeReactions } from "./emoji";
 import { serializeMedium } from "./medium";
 import { serializePoll } from "./poll";
 
+type StatusAccount = Account & {
+  successor: Account | null;
+  followers?: Follow[];
+};
+
+function getEffectiveQuoteState(
+  post: Post & { quoteTarget: Post | null },
+): QuoteState | "deleted" | null {
+  const state =
+    post.quoteState ?? (post.quoteTargetId == null ? null : "accepted");
+  if (state === "accepted" && post.quoteTarget == null) return "deleted";
+  return state;
+}
+
+function serializeQuoteApproval(
+  policy: QuoteApprovalPolicy,
+  currentAccountOwner: { id: string } | undefined | null,
+  post: Pick<Post, "accountId" | "visibility">,
+  viewerIsApprovedFollower: boolean,
+) {
+  const effectivePolicy =
+    post.visibility === "direct" || post.visibility === "private"
+      ? "nobody"
+      : policy;
+  const automatic =
+    effectivePolicy === "public"
+      ? ["public"]
+      : effectivePolicy === "followers"
+        ? ["followers"]
+        : [];
+  return {
+    automatic,
+    manual: [],
+    ...(currentAccountOwner == null
+      ? {}
+      : {
+          current_user:
+            currentAccountOwner.id === post.accountId ||
+            effectivePolicy === "public" ||
+            (effectivePolicy === "followers" && viewerIsApprovedFollower)
+              ? "automatic"
+              : "denied",
+        }),
+  };
+}
+
+function getViewerFollowerRelation(ownerId: Uuid | undefined | null) {
+  return {
+    where:
+      ownerId == null
+        ? sql`false`
+        : and(eq(follows.followerId, ownerId), isNotNull(follows.approved)),
+  };
+}
+
 export function getPostRelations(ownerId: Uuid | undefined | null) {
   return {
-    account: { with: { owner: true, successor: true } },
+    account: {
+      with: {
+        owner: true,
+        successor: true,
+        followers: getViewerFollowerRelation(ownerId),
+      },
+    },
     application: true,
     replyTarget: true,
     sharing: {
       with: {
-        account: { with: { successor: true } },
+        account: {
+          with: {
+            successor: true,
+            followers: getViewerFollowerRelation(ownerId),
+          },
+        },
         application: true,
         replyTarget: true,
         quoteTarget: {
           with: {
-            account: { with: { successor: true } },
+            account: {
+              with: {
+                successor: true,
+                followers: getViewerFollowerRelation(ownerId),
+              },
+            },
             application: true,
             replyTarget: true,
             media: true,
@@ -108,7 +183,12 @@ export function getPostRelations(ownerId: Uuid | undefined | null) {
     },
     quoteTarget: {
       with: {
-        account: { with: { successor: true } },
+        account: {
+          with: {
+            successor: true,
+            followers: getViewerFollowerRelation(ownerId),
+          },
+        },
         application: true,
         replyTarget: true,
         media: true,
@@ -169,17 +249,17 @@ export function getPostRelations(ownerId: Uuid | undefined | null) {
 
 export function serializePost(
   post: Post & {
-    account: Account & { successor: Account | null };
+    account: StatusAccount;
     application: Application | null;
     replyTarget: Post | null;
     sharing:
       | (Post & {
-          account: Account & { successor: Account | null };
+          account: StatusAccount;
           application: Application | null;
           replyTarget: Post | null;
           quoteTarget:
             | (Post & {
-                account: Account & { successor: Account | null };
+                account: StatusAccount;
                 application: Application | null;
                 replyTarget: Post | null;
                 media: Medium[];
@@ -220,7 +300,7 @@ export function serializePost(
       | null;
     quoteTarget:
       | (Post & {
-          account: Account & { successor: Account | null };
+          account: StatusAccount;
           application: Application | null;
           replyTarget: Post | null;
           media: Medium[];
@@ -260,6 +340,14 @@ export function serializePost(
   baseUrl: URL | string,
   // oxlint-disable-next-line typescript/no-explicit-any
 ): Record<string, any> {
+  const quoteState = getEffectiveQuoteState(post);
+  const quoteIsDisplayable =
+    quoteState === "accepted" && post.quoteTarget != null;
+  const viewerIsApprovedFollower =
+    currentAccountOwner != null &&
+    post.account.followers?.some(
+      (follow) => follow.followerId === currentAccountOwner.id,
+    ) === true;
   return {
     id: post.id,
     created_at: post.published ?? post.updated,
@@ -297,7 +385,7 @@ export function serializePost(
         ? false
         : post.pin != null && post.pin.accountId === currentAccountOwner.id,
     content: sanitizeHtml(
-      post.quoteTarget == null
+      !quoteIsDisplayable
         ? (post.contentHtml ?? "")
         : stripQuoteInlineFallbacks(post.contentHtml ?? ""),
     ),
@@ -311,32 +399,24 @@ export function serializePost(
           ),
     quote_id: post.quoteTargetId,
     quote:
-      post.quoteTarget != null
-        ? {
-            state: "accepted",
-            quoted_status: serializePost(
-              { ...post.quoteTarget, quoteTarget: null, sharing: null },
-              currentAccountOwner,
-              baseUrl,
-            ),
-          }
-        : post.quoteTargetId != null
-          ? { state: "deleted", quoted_status: null }
-          : null,
-    quote_approval:
-      post.visibility === "public" || post.visibility === "unlisted"
-        ? {
-            automatic: ["public"],
-            manual: [],
-            ...(currentAccountOwner != null
-              ? { current_user: "automatic" }
-              : {}),
-          }
+      quoteState == null
+        ? null
         : {
-            automatic: [],
-            manual: [],
-            ...(currentAccountOwner != null ? { current_user: "denied" } : {}),
+            state: quoteState,
+            quoted_status: quoteIsDisplayable
+              ? serializePost(
+                  { ...post.quoteTarget!, quoteTarget: null, sharing: null },
+                  currentAccountOwner,
+                  baseUrl,
+                )
+              : null,
           },
+    quote_approval: serializeQuoteApproval(
+      post.quoteApprovalPolicy,
+      currentAccountOwner,
+      post,
+      viewerIsApprovedFollower,
+    ),
     application:
       post.application == null
         ? null

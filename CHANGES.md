@@ -6,6 +6,39 @@ Version 0.9.0
 
 To be released.
 
+ -  Added FEP-044f quote authorization and policy support on top of the
+    Mastodon-compatible quote APIs.  [[#457]]
+
+     -  Added persistent quote states for `pending`, `accepted`, `rejected`,
+        `revoked`, and `unauthorized` quotes, plus quote target and
+        authorization IRIs for federation.
+     -  Hollo now enforces quote policy, quote target visibility, block
+        relationships, follower-only quote permissions, and direct-message
+        mention requirements when creating a quote through
+        `POST /api/v1/statuses`.
+     -  Implemented `quote_approval_policy` handling on status creation and
+        editing, and added `PUT /api/v1/statuses/:id/interaction_policy` for
+        updating a status' quote policy after publication.
+     -  `quotes_count` now includes only accepted quotes and is updated when
+        quotes are accepted, rejected, revoked, created, deleted, or received
+        through federation.
+     -  `GET /api/v1/statuses/:id/quotes` now lists only accepted quotes, and
+        quote revocation keeps quote target metadata while removing the quote
+        from accepted quote lists and counts.
+     -  Published outbound FEP-044f `quote`, `quoteAuthorization`, and
+        `interactionPolicy.canQuote` properties on ActivityPub objects, while
+        keeping the legacy `quoteUrl` property for compatibility.
+     -  Parsed inbound FEP-044f `quote` targets and quote approval policies
+        from remote objects, including support for the legacy `quoteUrl`
+        property.
+     -  Added federation handling for `QuoteRequest`, `Accept(QuoteRequest)`,
+        `Reject(QuoteRequest)`, and `Delete(QuoteAuthorization)`, allowing
+        Hollo to request quote authorization from remote servers, accept or
+        reject incoming quote requests, and revoke quotes when a remote quote
+        authorization is deleted.
+     -  Added dereferenceable local `QuoteAuthorization` ActivityPub objects
+        for accepted quotes.
+
  -  Added an ActivityPub `quote-inline` fallback to the `content` of explicit
     quote posts created through the Mastodon API.  Software that does not
     support quote posts can now still show the quoted post permalink, while
@@ -15,6 +48,10 @@ To be released.
     content and profile pages when Hollo can render the structured quoted
     post.  If the quoted post is unavailable, the fallback link remains
     visible so the quoted URL is not lost.
+
+ -  Upgraded Fedify to 2.2.0.
+
+[#457]: https://github.com/fedify-dev/hollo/pull/457
 
 
 Version 0.8.1

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
 import app from "../../index";
-import { follows, posts } from "../../schema";
+import { accounts, follows, instances, mentions, posts } from "../../schema";
 import { uuidv7 } from "../../uuid";
 
 describe.sequential("/api/v1/accounts/verify_credentials", () => {
@@ -211,6 +211,525 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
     expect(json.sensitive).toBe(false);
     expect(json.language).not.toBeNull();
     expect(json.poll).toBeNull(); // This one stays null as expected
+  });
+});
+
+describe.sequential("/api/v1/statuses quotes", () => {
+  let author: Awaited<ReturnType<typeof createAccount>>;
+  let quoter: Awaited<ReturnType<typeof createAccount>>;
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let authorToken: Awaited<ReturnType<typeof getAccessToken>>;
+  let quoterToken: Awaited<ReturnType<typeof getAccessToken>>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+
+    author = await createAccount({
+      generateKeyPair: true,
+      username: "quote-author",
+    });
+    quoter = await createAccount({
+      generateKeyPair: true,
+      username: "quote-quoter",
+    });
+    client = await createOAuthApplication({
+      scopes: ["read:statuses", "write:statuses"],
+    });
+    authorToken = await getAccessToken(client, author, [
+      "read:statuses",
+      "write:statuses",
+    ]);
+    quoterToken = await getAccessToken(client, quoter, [
+      "read:statuses",
+      "write:statuses",
+    ]);
+  });
+
+  async function createStatus(
+    token: typeof authorToken,
+    body: Record<string, unknown>,
+  ) {
+    return await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(token),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("denies quotes from other users when quote policy is nobody", async () => {
+    expect.assertions(5);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Please do not quote",
+      quote_approval_policy: "nobody",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+    expect(quoted.quote_approval.automatic).toEqual([]);
+
+    const deniedResponse = await createStatus(quoterToken, {
+      status: "I should not be able to quote this",
+      quoted_status_id: quoted.id,
+    });
+    expect(deniedResponse.status).toBe(422);
+
+    const selfQuoteResponse = await createStatus(authorToken, {
+      status: "Self quotes are allowed",
+      quoted_status_id: quoted.id,
+    });
+    expect(selfQuoteResponse.status).toBe(200);
+    const selfQuote = await selfQuoteResponse.json();
+    expect(selfQuote.quote.state).toBe("accepted");
+  });
+
+  it("edits quote policy through the interaction policy endpoint", async () => {
+    expect.assertions(5);
+
+    const createResponse = await createStatus(authorToken, {
+      status: "Followers can quote this later",
+      quote_approval_policy: "public",
+    });
+    expect(createResponse.status).toBe(200);
+    const created = await createResponse.json();
+    expect(created.quote_approval.automatic).toEqual(["public"]);
+
+    const updateResponse = await app.request(
+      `/api/v1/statuses/${created.id}/interaction_policy`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: bearerAuthorization(authorToken),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quote_approval_policy: "followers" }),
+      },
+    );
+    expect(updateResponse.status).toBe(200);
+    const updated = await updateResponse.json();
+    expect(updated.quote_approval.automatic).toEqual(["followers"]);
+    expect(updated.quote_approval.manual).toEqual([]);
+  });
+
+  it("does not fan out direct interaction policy updates to followers", async () => {
+    expect.assertions(3);
+
+    const mentionedAccountId = uuidv7();
+    const followerAccountId = uuidv7();
+    const directPostId = uuidv7();
+    const directPostIri = `https://hollo.test/@quote-author/${directPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values([
+      {
+        id: mentionedAccountId,
+        iri: "https://remote.test/@mentioned",
+        type: "Person",
+        name: "Mentioned",
+        handle: "@mentioned@remote.test",
+        bioHtml: "",
+        protected: false,
+        inboxUrl: "https://remote.test/@mentioned/inbox",
+        sharedInboxUrl: "https://remote.test/inbox",
+        instanceHost: "remote.test",
+      },
+      {
+        id: followerAccountId,
+        iri: "https://remote.test/@follower",
+        type: "Person",
+        name: "Follower",
+        handle: "@follower@remote.test",
+        bioHtml: "",
+        protected: false,
+        inboxUrl: "https://remote.test/@follower/inbox",
+        sharedInboxUrl: "https://remote.test/followers-inbox",
+        instanceHost: "remote.test",
+      },
+    ]);
+    await db.insert(follows).values({
+      iri: `https://remote.test/@follower#follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: followerAccountId,
+      approved: new Date(),
+    });
+    await db.insert(posts).values({
+      id: directPostId,
+      iri: directPostIri,
+      type: "Note",
+      accountId: author.id,
+      visibility: "direct",
+      quoteApprovalPolicy: "public",
+      content: "@mentioned@remote.test Private quote policy update",
+      contentHtml:
+        "<p>@mentioned@remote.test Private quote policy update</p>\n",
+      url: directPostIri,
+      published: new Date(),
+    });
+    await db.insert(mentions).values({
+      postId: directPostId,
+      accountId: mentionedAccountId,
+    });
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const response = await app.request(
+        `/api/v1/statuses/${directPostId}/interaction_policy`,
+        {
+          method: "PUT",
+          headers: {
+            authorization: bearerAuthorization(authorToken),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ quote_approval_policy: "nobody" }),
+        },
+      );
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => {
+        if (
+          !fetch.mock.calls.some(([input]) => {
+            const url = input instanceof Request ? input.url : input.toString();
+            return url === "https://remote.test/@mentioned/inbox";
+          })
+        ) {
+          throw new Error("Direct update was not sent to the mentioned actor");
+        }
+      });
+      expect(
+        fetch.mock.calls.some(([input]) => {
+          const url = input instanceof Request ? input.url : input.toString();
+          return url === "https://remote.test/followers-inbox";
+        }),
+      ).toBe(false);
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("reports quote approval as automatic for approved followers", async () => {
+    expect.assertions(4);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Followers can quote this",
+      quote_approval_policy: "followers",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+
+    const response = await app.request(`/api/v1/statuses/${quoted.id}`, {
+      headers: {
+        authorization: bearerAuthorization(quoterToken),
+      },
+    });
+    expect(response.status).toBe(200);
+    const status = await response.json();
+    expect(status.quote_approval.automatic).toEqual(["followers"]);
+    expect(status.quote_approval.current_user).toBe("automatic");
+  });
+
+  it("treats private quote approval as nobody for followers", async () => {
+    expect.assertions(4);
+
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Approved followers cannot quote this private status",
+      visibility: "private",
+      quote_approval_policy: "followers",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const response = await app.request(`/api/v1/statuses/${quoted.id}`, {
+      headers: {
+        authorization: bearerAuthorization(quoterToken),
+      },
+    });
+    expect(response.status).toBe(200);
+    const status = await response.json();
+    expect(status.quote_approval.automatic).toEqual([]);
+    expect(status.quote_approval.current_user).toBe("denied");
+  });
+
+  it("denies followers quoting private statuses", async () => {
+    expect.assertions(4);
+
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Followers cannot quote this private status",
+      visibility: "private",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const quoteResponse = await createStatus(quoterToken, {
+      status: "Quoting this private status",
+      quoted_status_id: quoted.id,
+      visibility: "public",
+    });
+    expect(quoteResponse.status).toBe(422);
+
+    const selfQuoteResponse = await createStatus(authorToken, {
+      status: "Self quoting this private status",
+      quoted_status_id: quoted.id,
+      visibility: "private",
+    });
+    expect(selfQuoteResponse.status).toBe(200);
+    const selfQuote = await selfQuoteResponse.json();
+    expect(selfQuote.quote.state).toBe("accepted");
+  });
+
+  it("allows direct self-quotes without self-mentions", async () => {
+    expect.assertions(3);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Self-quotable post",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const selfQuoteResponse = await createStatus(authorToken, {
+      status: "Direct self-quote",
+      quoted_status_id: quoted.id,
+      visibility: "direct",
+    });
+    expect(selfQuoteResponse.status).toBe(200);
+    const selfQuote = await selfQuoteResponse.json();
+    expect(selfQuote.quote.state).toBe("accepted");
+  });
+
+  it("returns revoked quote state when a quote is revoked", async () => {
+    expect.assertions(7);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Quoted post",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const quoteResponse = await createStatus(quoterToken, {
+      status: "Quoting this",
+      quoted_status_id: quoted.id,
+    });
+    expect(quoteResponse.status).toBe(200);
+    const quote = await quoteResponse.json();
+    expect(quote.quote.state).toBe("accepted");
+
+    const revokeResponse = await app.request(
+      `/api/v1/statuses/${quoted.id}/quotes/${quote.id}/revoke`,
+      {
+        method: "POST",
+        headers: {
+          authorization: bearerAuthorization(authorToken),
+        },
+      },
+    );
+    expect(revokeResponse.status).toBe(200);
+    const revoked = await revokeResponse.json();
+    expect(revoked.quote.state).toBe("revoked");
+    expect(revoked.quote.quoted_status).toBeNull();
+
+    const quotedAgainResponse = await app.request(
+      `/api/v1/statuses/${quoted.id}`,
+      {
+        headers: {
+          authorization: bearerAuthorization(authorToken),
+        },
+      },
+    );
+    const quotedAgain = await quotedAgainResponse.json();
+    expect(quotedAgain.quotes_count).toBe(0);
+  });
+
+  it("sends a QuoteAuthorization deletion when revoking a remote quote", async () => {
+    expect.assertions(7);
+
+    const remoteAccountId = uuidv7();
+    const quotedPostId = uuidv7();
+    const quotingPostId = uuidv7();
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotingPostIri = `https://remote.test/@quoter/${quotingPostId}`;
+    const quoteAuthorizationIri = `${quotedPostIri}/quote_authorizations/${quotingPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/@quoter",
+      type: "Person",
+      name: "Remote quoter",
+      handle: "@quoter@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@quoter/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostIri,
+        type: "Note",
+        accountId: author.id,
+        visibility: "public",
+        content: "Quoted post",
+        contentHtml: "<p>Quoted post</p>\n",
+        url: quotedPostIri,
+        quotesCount: 1,
+        published: new Date(),
+      },
+      {
+        id: quotingPostId,
+        iri: quotingPostIri,
+        type: "Note",
+        accountId: remoteAccountId,
+        quoteTargetId: quotedPostId,
+        quoteTargetIri: quotedPostIri,
+        quoteState: "accepted",
+        quoteAuthorizationIri,
+        visibility: "public",
+        content: "Remote quote",
+        contentHtml: "<p>Remote quote</p>\n",
+        url: quotingPostIri,
+        published: new Date(),
+      },
+    ]);
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const revokeResponse = await app.request(
+        `/api/v1/statuses/${quotedPostId}/quotes/${quotingPostId}/revoke`,
+        {
+          method: "POST",
+          headers: {
+            authorization: bearerAuthorization(authorToken),
+          },
+        },
+      );
+
+      expect(revokeResponse.status).toBe(200);
+      const revoked = await revokeResponse.json();
+      expect(revoked.quote.state).toBe("revoked");
+
+      const isRemoteInboxCall = ([input]: [
+        string | URL | Request,
+        RequestInit?,
+      ]) => {
+        const url = input instanceof Request ? input.url : input.toString();
+        return url === "https://remote.test/inbox";
+      };
+      await vi.waitFor(() => {
+        if (!fetch.mock.calls.some(isRemoteInboxCall)) {
+          throw new Error("Quote authorization deletion was not sent");
+        }
+      });
+      const matchingCall = fetch.mock.calls.find(isRemoteInboxCall);
+      expect(matchingCall).toBeDefined();
+      const request = matchingCall?.[0];
+      expect(request).toBeInstanceOf(Request);
+      const activity =
+        request instanceof Request ? await request.clone().json() : null;
+      expect(activity.type).toBe("Delete");
+      expect(activity.object.type).toBe("QuoteAuthorization");
+      expect(activity.object.id).toBe(quoteAuthorizationIri);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("includes the quote target in pending QuoteRequest instruments", async () => {
+    expect.assertions(6);
+
+    const remoteAccountId = uuidv7();
+    const quotedPostId = uuidv7();
+    const quotedPostIri = `https://remote.test/@author/${quotedPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/@author",
+      type: "Person",
+      name: "Remote author",
+      handle: "@author@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@author/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: remoteAccountId,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      content: "Remote quoted post",
+      contentHtml: "<p>Remote quoted post</p>\n",
+      url: quotedPostIri,
+      published: new Date(),
+    });
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const quoteResponse = await createStatus(quoterToken, {
+        status: "Requesting quote authorization",
+        quoted_status_id: quotedPostId,
+      });
+      expect(quoteResponse.status).toBe(200);
+      const quote = await quoteResponse.json();
+      expect(quote.quote.state).toBe("pending");
+
+      let quoteRequest: unknown;
+      await vi.waitFor(async () => {
+        for (const [input] of fetch.mock.calls) {
+          const request = input instanceof Request ? input : null;
+          const activity =
+            request == null ? null : await request.clone().json();
+          if (activity?.type === "QuoteRequest") {
+            quoteRequest = activity;
+            return;
+          }
+        }
+        throw new Error("QuoteRequest was not sent");
+      });
+
+      expect(quoteRequest).toBeDefined();
+      const instrument = (
+        quoteRequest as { instrument?: Record<string, unknown> }
+      ).instrument;
+      expect(instrument?.quote).toBe(quotedPostIri);
+      expect(instrument?.quoteUrl).toBe(quotedPostIri);
+      expect(JSON.stringify(instrument)).toContain(quotedPostIri);
+    } finally {
+      fetch.mockRestore();
+    }
   });
 });
 
