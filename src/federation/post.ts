@@ -11,6 +11,8 @@ import {
   Emoji,
   Hashtag,
   Image,
+  InteractionPolicy,
+  InteractionRule,
   isActor,
   LanguageString,
   Link,
@@ -33,6 +35,8 @@ import {
   gte,
   inArray,
   isNotNull,
+  isNull,
+  or,
   sql,
 } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
@@ -60,6 +64,7 @@ import {
   type PollOption,
   type PollVote,
   type Post,
+  type QuoteApprovalPolicy,
   pollOptions,
   polls,
   pollVotes,
@@ -100,6 +105,27 @@ export function isPost(object?: vocab.Object | Link | null): object is ASPost {
     object instanceof Question ||
     object instanceof ChatMessage
   );
+}
+
+function getQuoteApprovalPolicy(
+  object: ASPost,
+  account: Account,
+): QuoteApprovalPolicy {
+  const automaticApprovals =
+    object.interactionPolicy?.canQuote?.automaticApprovals ?? [];
+  if (automaticApprovals.length < 1) return "public";
+  if (
+    automaticApprovals.some((url) => url.href === vocab.PUBLIC_COLLECTION.href)
+  ) {
+    return "public";
+  }
+  if (
+    account.followersUrl != null &&
+    automaticApprovals.some((url) => url.href === account.followersUrl)
+  ) {
+    return "followers";
+  }
+  return "nobody";
 }
 
 export async function persistPost(
@@ -206,17 +232,24 @@ export async function persistPost(
     }
   }
   let quoteTargetId: Uuid | null = null;
+  let quoteTargetIri: string | null = null;
+  let quoteTargetAccountId: Uuid | null = null;
+  if (objectLink == null && object.quoteId != null) {
+    objectLink = object.quoteId;
+  }
   if (objectLink == null && object.quoteUrl != null) {
     objectLink = object.quoteUrl;
   }
   if (objectLink != null) {
+    quoteTargetIri = objectLink.href;
     const result = await db
-      .select({ id: posts.id })
+      .select({ id: posts.id, accountId: posts.accountId })
       .from(posts)
       .where(eq(posts.iri, objectLink.href))
       .limit(1);
     if (result != null && result.length > 0) {
       quoteTargetId = result[0].id;
+      quoteTargetAccountId = result[0].accountId;
       logger.debug("The quote target is already persisted: {quoteTargetId}", {
         quoteTargetId,
       });
@@ -232,6 +265,7 @@ export async function persistPost(
           quoteTarget: quoteTargetObj,
         });
         quoteTargetId = quoteTargetObj?.id ?? null;
+        quoteTargetAccountId = quoteTargetObj?.accountId ?? null;
       }
     }
   }
@@ -260,6 +294,15 @@ export async function persistPost(
     replyTargetId,
     sharingId: null,
     quoteTargetId,
+    quoteTargetIri,
+    quoteState:
+      quoteTargetId == null
+        ? null
+        : quoteTargetAccountId === account.id ||
+            object.quoteAuthorizationId != null
+          ? "accepted"
+          : "unauthorized",
+    quoteAuthorizationIri: object.quoteAuthorizationId?.href,
     visibility: to.has(vocab.PUBLIC_COLLECTION.href)
       ? "public"
       : cc.has(vocab.PUBLIC_COLLECTION.href)
@@ -279,6 +322,7 @@ export async function persistPost(
     tags,
     emojis,
     sensitive: object.sensitive ?? false,
+    quoteApprovalPolicy: getQuoteApprovalPolicy(object, account),
     url: object.url instanceof Link ? object.url.href?.href : object.url?.href,
     sharesCount: shares?.totalItems ?? 0,
     likesCount: likes?.totalItems ?? 0,
@@ -712,7 +756,12 @@ export async function updatePostStats(
   const quotesCount = db
     .select({ cnt: count() })
     .from(posts)
-    .where(eq(posts.quoteTargetId, id));
+    .where(
+      and(
+        eq(posts.quoteTargetId, id),
+        or(eq(posts.quoteState, "accepted"), isNull(posts.quoteState)),
+      ),
+    );
   await db
     .update(posts)
     .set({
@@ -766,6 +815,7 @@ export function toObject(
     post.contentHtml,
     post.quoteTarget,
   );
+  const quoteTargetIri = post.quoteTargetIri ?? post.quoteTarget?.iri;
   return new cls({
     id: new URL(post.iri),
     attribution: new URL(post.account.iri),
@@ -877,7 +927,15 @@ export function toObject(
             height: medium.height,
           }),
     ),
-    quoteUrl: post.quoteTarget == null ? null : new URL(post.quoteTarget.iri),
+    quote: quoteTargetIri == null ? null : new URL(quoteTargetIri),
+    quoteUrl: quoteTargetIri == null ? null : new URL(quoteTargetIri),
+    quoteAuthorization:
+      post.quoteAuthorizationIri == null
+        ? null
+        : new URL(post.quoteAuthorizationIri),
+    interactionPolicy: new InteractionPolicy({
+      canQuote: getCanQuoteRule(post, ctx),
+    }),
     published: toTemporalInstant(post.published),
     url: post.url ? new URL(post.url) : null,
     updated: toTemporalInstant(
@@ -895,6 +953,29 @@ export function toObject(
       post.poll == null || post.poll.expires > new Date()
         ? null
         : toTemporalInstant(post.poll.expires),
+  });
+}
+
+function getCanQuoteRule(
+  post: Post & { account: Account & { owner: AccountOwner | null } },
+  ctx: Context<unknown>,
+): InteractionRule {
+  const policy =
+    post.visibility === "private" || post.visibility === "direct"
+      ? "nobody"
+      : post.quoteApprovalPolicy;
+  if (policy === "public") {
+    return new InteractionRule({
+      automaticApproval: vocab.PUBLIC_COLLECTION,
+    });
+  }
+  if (policy === "followers" && post.account.owner != null) {
+    return new InteractionRule({
+      automaticApproval: ctx.getFollowersUri(post.account.owner.handle),
+    });
+  }
+  return new InteractionRule({
+    automaticApproval: new URL(post.account.iri),
   });
 }
 

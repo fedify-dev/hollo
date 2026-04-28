@@ -214,6 +214,149 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
   });
 });
 
+describe.sequential("/api/v1/statuses quotes", () => {
+  let author: Awaited<ReturnType<typeof createAccount>>;
+  let quoter: Awaited<ReturnType<typeof createAccount>>;
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let authorToken: Awaited<ReturnType<typeof getAccessToken>>;
+  let quoterToken: Awaited<ReturnType<typeof getAccessToken>>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+
+    author = await createAccount({
+      generateKeyPair: true,
+      username: "quote-author",
+    });
+    quoter = await createAccount({
+      generateKeyPair: true,
+      username: "quote-quoter",
+    });
+    client = await createOAuthApplication({
+      scopes: ["read:statuses", "write:statuses"],
+    });
+    authorToken = await getAccessToken(client, author, [
+      "read:statuses",
+      "write:statuses",
+    ]);
+    quoterToken = await getAccessToken(client, quoter, [
+      "read:statuses",
+      "write:statuses",
+    ]);
+  });
+
+  async function createStatus(
+    token: typeof authorToken,
+    body: Record<string, unknown>,
+  ) {
+    return await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(token),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("denies quotes from other users when quote policy is nobody", async () => {
+    expect.assertions(5);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Please do not quote",
+      quote_approval_policy: "nobody",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+    expect(quoted.quote_approval.automatic).toEqual([]);
+
+    const deniedResponse = await createStatus(quoterToken, {
+      status: "I should not be able to quote this",
+      quoted_status_id: quoted.id,
+    });
+    expect(deniedResponse.status).toBe(422);
+
+    const selfQuoteResponse = await createStatus(authorToken, {
+      status: "Self quotes are allowed",
+      quoted_status_id: quoted.id,
+    });
+    expect(selfQuoteResponse.status).toBe(200);
+    const selfQuote = await selfQuoteResponse.json();
+    expect(selfQuote.quote.state).toBe("accepted");
+  });
+
+  it("edits quote policy through the interaction policy endpoint", async () => {
+    expect.assertions(5);
+
+    const createResponse = await createStatus(authorToken, {
+      status: "Followers can quote this later",
+      quote_approval_policy: "public",
+    });
+    expect(createResponse.status).toBe(200);
+    const created = await createResponse.json();
+    expect(created.quote_approval.automatic).toEqual(["public"]);
+
+    const updateResponse = await app.request(
+      `/api/v1/statuses/${created.id}/interaction_policy`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: bearerAuthorization(authorToken),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quote_approval_policy: "followers" }),
+      },
+    );
+    expect(updateResponse.status).toBe(200);
+    const updated = await updateResponse.json();
+    expect(updated.quote_approval.automatic).toEqual(["followers"]);
+    expect(updated.quote_approval.manual).toEqual([]);
+  });
+
+  it("returns revoked quote state when a quote is revoked", async () => {
+    expect.assertions(7);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Quoted post",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const quoteResponse = await createStatus(quoterToken, {
+      status: "Quoting this",
+      quoted_status_id: quoted.id,
+    });
+    expect(quoteResponse.status).toBe(200);
+    const quote = await quoteResponse.json();
+    expect(quote.quote.state).toBe("accepted");
+
+    const revokeResponse = await app.request(
+      `/api/v1/statuses/${quoted.id}/quotes/${quote.id}/revoke`,
+      {
+        method: "POST",
+        headers: {
+          authorization: bearerAuthorization(authorToken),
+        },
+      },
+    );
+    expect(revokeResponse.status).toBe(200);
+    const revoked = await revokeResponse.json();
+    expect(revoked.quote.state).toBe("revoked");
+    expect(revoked.quote.quoted_status).toBeNull();
+
+    const quotedAgainResponse = await app.request(
+      `/api/v1/statuses/${quoted.id}`,
+      {
+        headers: {
+          authorization: bearerAuthorization(authorToken),
+        },
+      },
+    );
+    const quotedAgain = await quotedAgainResponse.json();
+    expect(quotedAgain.quotes_count).toBe(0);
+  });
+});
+
 describe.sequential("/api/v1/statuses visibility", () => {
   let viewer: Awaited<ReturnType<typeof createAccount>>;
   let approvedAuthor: Awaited<ReturnType<typeof createAccount>>;

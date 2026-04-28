@@ -603,6 +603,13 @@
       "when": 1777191395619,
       "tag": "0085_optimize_follower_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1777358526000,
+      "tag": "0086_quote_controls",
+      "breakpoints": true
     }
   ]
 }

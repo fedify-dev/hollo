@@ -598,4 +598,87 @@ describe("toObject", () => {
 
     expect(json).toMatchObject({ content: contentHtml });
   });
+
+  it("emits FEP-044f quote and quote policy fields", async () => {
+    const account = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: "https://remote.test/objects/fep-quote-target",
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@quote-author/${quotePostId}`,
+        type: "Note",
+        accountId: account.id as Uuid,
+        quoteTargetId: quotedPostId,
+        quoteTargetIri: "https://remote.test/objects/fep-quote-target",
+        quoteState: "accepted",
+        visibility: "public",
+        contentHtml: "<p>My take</p>",
+        content: "My take",
+        published: new Date(),
+      },
+    ]);
+
+    const json = await getObjectJson(quotePostId);
+
+    expect(json).toMatchObject({
+      quote: "https://remote.test/objects/fep-quote-target",
+      quoteUrl: "https://remote.test/objects/fep-quote-target",
+      interactionPolicy: {
+        canQuote: {
+          automaticApproval: "as:Public",
+        },
+      },
+    });
+  });
+});
+
+describe("persistPost quotes", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+
+  it("persists quote targets from the FEP-044f quote property", async () => {
+    const author = await seedRemoteAccount("quote-author");
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = "https://remote.test/objects/quoted-with-fep";
+
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id,
+      visibility: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/quote-with-fep"),
+        attribution: createPerson(author),
+        quote: new URL(quotedPostIri),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Quote post</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteTargetId).toBe(quotedPostId);
+    expect(persisted?.quoteTargetIri).toBe(quotedPostIri);
+    expect(persisted?.quoteState).toBe("accepted");
+  });
 });

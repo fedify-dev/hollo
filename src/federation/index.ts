@@ -13,6 +13,7 @@ import {
   Like,
   Move,
   Note,
+  QuoteRequest,
   Reject,
   Remove,
   Undo,
@@ -22,7 +23,7 @@ import { getLogger } from "@logtape/logtape";
 import { eq } from "drizzle-orm";
 
 import { db } from "../db";
-import { accounts, follows } from "../schema";
+import { accounts, follows, posts } from "../schema";
 import { updateAccountStats } from "./account";
 import "./actor";
 import { federation } from "./federation";
@@ -47,6 +48,10 @@ import {
   onPostUnpinned,
   onPostUnshared,
   onPostUpdated,
+  onQuoteAuthorizationDeleted,
+  onQuoteRequestAccepted,
+  onQuoteRequestRejected,
+  onQuoteRequested,
   onUnblocked,
   onUnfollowed,
   onUnliked,
@@ -81,8 +86,23 @@ federation
     return anyOwner == null ? null : { username: anyOwner.handle };
   })
   .on(Follow, onFollowed)
-  .on(Accept, onFollowAccepted)
-  .on(Reject, onFollowRejected)
+  .on(Accept, async (ctx, accept) => {
+    const object = await accept.getObject({ crossOrigin: "trust" });
+    if (object instanceof QuoteRequest) {
+      await onQuoteRequestAccepted(ctx, accept);
+    } else {
+      await onFollowAccepted(ctx, accept);
+    }
+  })
+  .on(Reject, async (ctx, reject) => {
+    const object = await reject.getObject({ crossOrigin: "trust" });
+    if (object instanceof QuoteRequest) {
+      await onQuoteRequestRejected(ctx, reject);
+    } else {
+      await onFollowRejected(ctx, reject);
+    }
+  })
+  .on(QuoteRequest, onQuoteRequested)
   .on(Create, async (ctx, create) => {
     const object = await create.getObject();
     if (
@@ -124,6 +144,12 @@ federation
     if (actorId == null || objectId == null) return;
     if (objectId.href === actorId.href) {
       await onAccountDeleted(ctx, del);
+    } else if (
+      (await db.query.posts.findFirst({
+        where: eq(posts.quoteAuthorizationIri, objectId.href),
+      })) != null
+    ) {
+      await onQuoteAuthorizationDeleted(ctx, del);
     } else {
       await onPostDeleted(ctx, del);
     }

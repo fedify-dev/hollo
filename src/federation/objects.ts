@@ -1,5 +1,5 @@
-import { Emoji, Flag, Note } from "@fedify/vocab";
-import { and, eq, inArray, like } from "drizzle-orm";
+import { Emoji, Flag, Note, QuoteAuthorization } from "@fedify/vocab";
+import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
 
 import { db } from "../db";
 import {
@@ -81,6 +81,71 @@ federation.setObjectDispatcher(
     });
     if (emoji == null) return null;
     return toEmoji(ctx, emoji);
+  },
+);
+
+federation.setObjectDispatcher(
+  QuoteAuthorization,
+  "/@{username}/{id}/quote_authorizations/{quoteId}",
+  async (ctx, values) => {
+    if (!values.id?.match(/^[-a-f0-9]+$/)) return null;
+    if (!values.quoteId?.match(/^[-a-f0-9]+$/)) return null;
+    const owner = await db.query.accountOwners.findFirst({
+      where: like(accountOwners.handle, values.username),
+      with: { account: true },
+    });
+    if (owner == null) return null;
+    if (!isUuid(values.id) || !isUuid(values.quoteId)) return null;
+    const targetPost = await db.query.posts.findFirst({
+      where: and(
+        eq(posts.id, values.id),
+        eq(posts.accountId, owner.account.id),
+      ),
+      with: {
+        account: { with: { owner: true } },
+        mentions: { with: { account: true } },
+      },
+    });
+    if (targetPost == null) return null;
+    if (targetPost.visibility === "private") {
+      const keyOwner = await ctx.getSignedKeyOwner();
+      if (keyOwner?.id == null) return null;
+      const found = await db.query.follows.findFirst({
+        where: and(
+          inArray(
+            follows.followerId,
+            db
+              .select({ id: accounts.id })
+              .from(accounts)
+              .where(eq(accounts.iri, keyOwner.id.href)),
+          ),
+          eq(follows.followingId, owner.id),
+        ),
+      });
+      if (found == null) return null;
+    } else if (targetPost.visibility === "direct") {
+      const keyOwner = await ctx.getSignedKeyOwner();
+      const keyOwnerId = keyOwner?.id;
+      if (keyOwnerId == null) return null;
+      const found = targetPost.mentions.some(
+        (m) => m.account.iri === keyOwnerId.href,
+      );
+      if (!found) return null;
+    }
+    const quotePost = await db.query.posts.findFirst({
+      where: and(
+        eq(posts.id, values.quoteId),
+        eq(posts.quoteTargetId, targetPost.id),
+        or(eq(posts.quoteState, "accepted"), isNull(posts.quoteState)),
+      ),
+    });
+    if (quotePost == null) return null;
+    return new QuoteAuthorization({
+      id: new URL(`${targetPost.iri}/quote_authorizations/${quotePost.id}`),
+      attribution: new URL(targetPost.account.iri),
+      interactingObject: new URL(quotePost.iri),
+      interactionTarget: new URL(targetPost.iri),
+    });
   },
 );
 

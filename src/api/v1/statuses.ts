@@ -40,6 +40,7 @@ import {
   toAnnounce,
   toCreate,
   toDelete,
+  toObject,
   toUpdate,
 } from "../../federation/post";
 import { appendPostToTimelines } from "../../federation/timeline";
@@ -52,9 +53,11 @@ import {
 } from "../../oauth/middleware";
 import { fetchPreviewCard, type PreviewCard } from "../../previewcard";
 import {
+  accountOwners,
   blocks,
   bookmarks,
   customEmojis,
+  follows,
   type Like,
   likes,
   type Mention,
@@ -71,6 +74,7 @@ import {
   pollOptions,
   polls,
   posts,
+  type QuoteApprovalPolicy,
   reactions,
 } from "../../schema";
 import { isUuid, type Uuid, uuid, uuidv7 } from "../../uuid";
@@ -81,6 +85,8 @@ import {
 
 const app = new Hono<{ Variables: Variables }>();
 const logger = getLogger(["hollo", "api", "v1", "statuses"]);
+
+const quoteApprovalPolicySchema = z.enum(["public", "followers", "nobody"]);
 
 function getPostOrderingKey(postIri: string): string {
   return `post:${postIri}`;
@@ -141,6 +147,109 @@ function buildMuteAndBlockConditions(viewerAccountId: Uuid | null | undefined) {
   );
 }
 
+function normalizeQuoteApprovalPolicy(
+  policy: QuoteApprovalPolicy | null | undefined,
+  visibility: "public" | "unlisted" | "private" | "direct",
+): QuoteApprovalPolicy {
+  if (visibility === "private" || visibility === "direct") return "nobody";
+  return policy ?? "public";
+}
+
+async function isApprovedFollower(
+  followerId: Uuid,
+  followingId: Uuid,
+): Promise<boolean> {
+  const follow = await db.query.follows.findFirst({
+    where: and(
+      eq(follows.followerId, followerId),
+      eq(follows.followingId, followingId),
+      isNotNull(follows.approved),
+    ),
+  });
+  return follow != null;
+}
+
+async function isBlockedBetween(accountId: Uuid, otherAccountId: Uuid) {
+  const block = await db.query.blocks.findFirst({
+    where: or(
+      and(
+        eq(blocks.accountId, accountId),
+        eq(blocks.blockedAccountId, otherAccountId),
+      ),
+      and(
+        eq(blocks.accountId, otherAccountId),
+        eq(blocks.blockedAccountId, accountId),
+      ),
+    ),
+  });
+  return block != null;
+}
+
+async function validateQuoteTarget(
+  quoteTargetId: Uuid,
+  owner: { id: Uuid },
+  mentionedIds: Uuid[],
+  requestedVisibility: "public" | "unlisted" | "private" | "direct",
+): Promise<
+  | {
+      ok: true;
+      quoteTarget: typeof posts.$inferSelect;
+      visibility: "public" | "unlisted" | "private" | "direct";
+    }
+  | { ok: false; status: 404 | 422; error: string }
+> {
+  const visibilityScope = await getPostVisibilityScope(owner.id);
+  const quoteTarget = await db.query.posts.findFirst({
+    where: and(
+      eq(posts.id, quoteTargetId),
+      buildPostVisibilityConditions(visibilityScope),
+    ),
+  });
+  if (quoteTarget == null) {
+    return { ok: false, status: 404, error: "Quote target not found" };
+  }
+  if (quoteTarget.visibility === "direct") {
+    return { ok: false, status: 422, error: "Cannot quote a direct message" };
+  }
+
+  let visibility = requestedVisibility;
+  if (
+    quoteTarget.visibility === "private" &&
+    (visibility === "public" || visibility === "unlisted")
+  ) {
+    visibility = "private";
+  }
+  if (
+    visibility === "direct" &&
+    !mentionedIds.includes(quoteTarget.accountId)
+  ) {
+    return {
+      ok: false,
+      status: 422,
+      error: "Cannot quote without mentioning the quoted status author",
+    };
+  }
+  if (await isBlockedBetween(owner.id, quoteTarget.accountId)) {
+    return { ok: false, status: 422, error: "Quote target is not quotable" };
+  }
+  if (quoteTarget.accountId !== owner.id) {
+    const policy = normalizeQuoteApprovalPolicy(
+      quoteTarget.quoteApprovalPolicy,
+      quoteTarget.visibility,
+    );
+    if (policy === "nobody") {
+      return { ok: false, status: 422, error: "Quote target is not quotable" };
+    }
+    if (
+      policy === "followers" &&
+      !(await isApprovedFollower(owner.id, quoteTarget.accountId))
+    ) {
+      return { ok: false, status: 422, error: "Quote target is not quotable" };
+    }
+  }
+  return { ok: true, quoteTarget, visibility };
+}
+
 const statusSchema = z.object({
   status: z.string().min(1).optional().nullable(),
   media_ids: z.array(uuid).optional().nullable(),
@@ -162,7 +271,7 @@ const statusSchema = z.object({
   sensitive: z.boolean().default(false),
   spoiler_text: z.string().optional().nullable(),
   language: z.string().min(2).optional().nullable(),
-  quote_approval_policy: z.string().optional().nullable(),
+  quote_approval_policy: quoteApprovalPolicySchema.optional().nullable(),
 });
 
 const createStatusSchema = statusSchema.extend({
@@ -239,6 +348,7 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
     previewCard = await fetchPreviewCard(content.previewLink);
   }
   let quoteTargetId: Uuid | null = null;
+  let quoteTarget: typeof posts.$inferSelect | null = null;
   if (data.quoted_status_id != null) quoteTargetId = data.quoted_status_id;
   else if (data.quote_id != null) quoteTargetId = data.quote_id;
   else if (content?.quoteTarget != null) {
@@ -252,18 +362,31 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   }
   let effectiveVisibility = data.visibility ?? owner.visibility;
   if (quoteTargetId != null) {
-    const quoteTarget = await db.query.posts.findFirst({
-      where: eq(posts.id, quoteTargetId),
-    });
-    if (quoteTarget == null) {
-      return c.json({ error: "Quote target not found" }, 404);
+    const validation = await validateQuoteTarget(
+      quoteTargetId,
+      owner,
+      mentionedIds,
+      effectiveVisibility,
+    );
+    if (!validation.ok) {
+      return c.json({ error: validation.error }, validation.status);
     }
-    if (quoteTarget.visibility === "direct") {
-      return c.json({ error: "Cannot quote a direct message" }, 422);
-    }
-    if (quoteTarget.visibility === "private") {
-      effectiveVisibility = "private";
-    }
+    quoteTarget = validation.quoteTarget;
+    effectiveVisibility = validation.visibility;
+  }
+  const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
+    data.quote_approval_policy,
+    effectiveVisibility,
+  );
+  let quoteState: "accepted" | "pending" | null = null;
+  if (quoteTarget != null) {
+    const localQuoteTargetOwner =
+      quoteTarget.accountId === owner.id
+        ? owner
+        : await db.query.accountOwners.findFirst({
+            where: eq(accountOwners.id, quoteTarget.accountId),
+          });
+    quoteState = localQuoteTargetOwner == null ? "pending" : "accepted";
   }
   await db.transaction(async (tx) => {
     let poll: Poll | null = null;
@@ -298,6 +421,9 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
         applicationId: token.applicationId,
         replyTargetId: data.in_reply_to_id,
         quoteTargetId,
+        quoteTargetIri: quoteTarget?.iri ?? null,
+        quoteState,
+        quoteApprovalPolicy,
         sharingId: null,
         visibility: effectiveVisibility,
         summary,
@@ -339,7 +465,10 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
         )
         .returning();
     }
-    if (quoteTargetId != null) {
+    if (
+      quoteTargetId != null &&
+      (quoteState == null || quoteState === "accepted")
+    ) {
       await tx
         .update(posts)
         .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
@@ -379,6 +508,32 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
       preferSharedInbox: true,
       excludeBaseUris: [new URL(c.req.url)],
     });
+  }
+  if (post.quoteState === "pending" && post.quoteTarget != null) {
+    await fedCtx.sendActivity(
+      { username: handle },
+      {
+        id: new URL(post.quoteTarget.account.iri),
+        inboxId: new URL(post.quoteTarget.account.inboxUrl),
+        endpoints:
+          post.quoteTarget.account.sharedInboxUrl == null
+            ? null
+            : {
+                sharedInbox: new URL(post.quoteTarget.account.sharedInboxUrl),
+              },
+      },
+      new vocab.QuoteRequest({
+        id: new URL("#quote-request", post.iri),
+        actor: new URL(owner.account.iri),
+        object: new URL(post.quoteTarget.iri),
+        instrument: toObject(post, fedCtx),
+      }),
+      {
+        orderingKey,
+        preferSharedInbox: true,
+        excludeBaseUris: [new URL(c.req.url)],
+      },
+    );
   }
   return c.json(serializePost(post, owner, c.req.url));
 });
@@ -433,6 +588,16 @@ app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   if (content?.previewLink != null) {
     previewCard = await fetchPreviewCard(content.previewLink);
   }
+  const existingPost = await db.query.posts.findFirst({
+    where: and(eq(posts.id, id), eq(posts.accountId, owner.id)),
+  });
+  if (existingPost == null) {
+    return c.json({ error: "Record not found" }, 404);
+  }
+  const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
+    data.quote_approval_policy ?? existingPost.quoteApprovalPolicy,
+    existingPost.visibility,
+  );
   await db.transaction(async (tx) => {
     const result = await tx
       .update(posts)
@@ -445,9 +610,10 @@ app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
         tags,
         emojis,
         previewCard,
+        quoteApprovalPolicy,
         updated: new Date(),
       })
-      .where(eq(posts.id, id))
+      .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)))
       .returning();
     if (result.length < 1) return c.json({ error: "Record not found" }, 404);
     await tx.delete(mentions).where(eq(mentions.postId, id));
@@ -483,6 +649,78 @@ app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   });
   return c.json(serializePost(post!, owner, c.req.url));
 });
+
+const interactionPolicySchema = z.object({
+  quote_approval_policy: quoteApprovalPolicySchema,
+});
+
+app.put(
+  "/:id/interaction_policy",
+  tokenRequired,
+  scopeRequired(["write:statuses"]),
+  async (c) => {
+    const token = c.get("token");
+    const owner = token.accountOwner;
+    if (owner == null) {
+      return c.json(
+        { error: "This method requires an authenticated user" },
+        422,
+      );
+    }
+    const id = c.req.param("id");
+    if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
+
+    const result = await requestBody(c.req, interactionPolicySchema);
+    if (!result.success) {
+      logger.debug("Invalid request: {error}", { error: result.error.issues });
+      return c.json({ error: "invalid_request", zod_error: result.error }, 422);
+    }
+
+    const post = await db.query.posts.findFirst({
+      where: and(eq(posts.id, id), eq(posts.accountId, owner.id)),
+    });
+    if (post == null) return c.json({ error: "Record not found" }, 404);
+
+    const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
+      result.data.quote_approval_policy,
+      post.visibility,
+    );
+    await db
+      .update(posts)
+      .set({ quoteApprovalPolicy, updated: new Date() })
+      .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)));
+
+    const updatedPost = await db.query.posts.findFirst({
+      where: eq(posts.id, id),
+      with: getPostRelations(owner.id),
+    });
+    if (updatedPost == null) return c.json({ error: "Record not found" }, 404);
+
+    const fedCtx = federation.createContext(c.req.raw, undefined);
+    const activity = toUpdate(updatedPost, fedCtx);
+    const orderingKey = getPostOrderingKey(updatedPost.iri);
+    await fedCtx.sendActivity(
+      { username: owner.handle },
+      getRecipients(updatedPost),
+      activity,
+      {
+        orderingKey,
+        excludeBaseUris: [new URL(c.req.url)],
+      },
+    );
+    await fedCtx.sendActivity(
+      { username: owner.handle },
+      "followers",
+      activity,
+      {
+        orderingKey,
+        preferSharedInbox: true,
+        excludeBaseUris: [new URL(c.req.url)],
+      },
+    );
+    return c.json(serializePost(updatedPost, owner, c.req.url));
+  },
+);
 
 app.get("/:id", async (c) => {
   const token = await getAccessToken(c);
@@ -528,7 +766,10 @@ app.delete(
     if (post == null) return c.json({ error: "Record not found" }, 404);
     await db.transaction(async (tx) => {
       await tx.delete(posts).where(eq(posts.id, id));
-      if (post.quoteTargetId != null) {
+      if (
+        post.quoteTargetId != null &&
+        (post.quoteState == null || post.quoteState === "accepted")
+      ) {
         await tx
           .update(posts)
           .set({
@@ -1455,6 +1696,7 @@ app.get("/:id/quotes", async (c) => {
   const quotes = await db.query.posts.findMany({
     where: and(
       eq(posts.quoteTargetId, id),
+      or(eq(posts.quoteState, "accepted"), isNull(posts.quoteState)),
       isNull(posts.sharingId),
       buildPostVisibilityConditions(visibilityScope),
       buildMuteAndBlockConditions(owner?.id),
@@ -1495,15 +1737,16 @@ app.post(
       return c.json({ error: "Record not found" }, 404);
     }
 
-    // Verify the target post is owned by the current user
     const targetPost = await db.query.posts.findFirst({
-      where: and(eq(posts.id, id), eq(posts.accountId, owner.id)),
+      where: eq(posts.id, id),
     });
     if (targetPost == null) {
       return c.json({ error: "Record not found" }, 404);
     }
+    if (targetPost.accountId !== owner.id) {
+      return c.json({ error: "This status is not yours" }, 403);
+    }
 
-    // Verify the quoting post actually quotes the target post
     const quotingPost = await db.query.posts.findFirst({
       where: and(eq(posts.id, quotingStatusId), eq(posts.quoteTargetId, id)),
     });
@@ -1511,21 +1754,29 @@ app.post(
       return c.json({ error: "Record not found" }, 404);
     }
 
-    // Revoke: set quoteTargetId to null and decrement quotesCount
     await db.transaction(async (tx) => {
       await tx
         .update(posts)
-        .set({ quoteTargetId: null })
-        .where(eq(posts.id, quotingStatusId));
-      await tx
-        .update(posts)
         .set({
-          quotesCount: sql`GREATEST(coalesce(${posts.quotesCount}, 0) - 1, 0)`,
+          quoteState: "revoked",
+          quoteTargetIri: quotingPost.quoteTargetIri ?? targetPost.iri,
+          quoteAuthorizationIri: null,
+          updated: new Date(),
         })
-        .where(eq(posts.id, id));
+        .where(eq(posts.id, quotingStatusId));
+      if (
+        quotingPost.quoteState == null ||
+        quotingPost.quoteState === "accepted"
+      ) {
+        await tx
+          .update(posts)
+          .set({
+            quotesCount: sql`GREATEST(coalesce(${posts.quotesCount}, 0) - 1, 0)`,
+          })
+          .where(eq(posts.id, id));
+      }
     });
 
-    // Return the updated quoting status with revoked quote state
     const updatedPost = await db.query.posts.findFirst({
       where: eq(posts.id, quotingStatusId),
       with: getPostRelations(owner.id),

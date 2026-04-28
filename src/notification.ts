@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "./db";
 import type { Account, AccountOwner, Poll, Post } from "./schema";
@@ -557,6 +557,7 @@ export async function createQuotedUpdateNotifications(
       where: and(
         eq(posts.accountId, author.id),
         eq(posts.quoteTargetId, editedPost.id),
+        or(eq(posts.quoteState, "accepted"), isNull(posts.quoteState)),
       ),
     });
 

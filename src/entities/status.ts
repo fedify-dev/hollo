@@ -17,6 +17,8 @@ import {
   type PollOption,
   type PollVote,
   type Post,
+  type QuoteApprovalPolicy,
+  type QuoteState,
   pollOptions,
   pollVotes,
   posts,
@@ -28,6 +30,45 @@ import { serializeAccount } from "./account";
 import { serializeEmojis, serializeReactions } from "./emoji";
 import { serializeMedium } from "./medium";
 import { serializePoll } from "./poll";
+
+function getEffectiveQuoteState(
+  post: Post & { quoteTarget: Post | null },
+): QuoteState | "deleted" | null {
+  const state =
+    post.quoteState ?? (post.quoteTargetId == null ? null : "accepted");
+  if (state === "accepted" && post.quoteTarget == null) return "deleted";
+  return state;
+}
+
+function serializeQuoteApproval(
+  policy: QuoteApprovalPolicy,
+  currentAccountOwner: { id: string } | undefined | null,
+  post: Pick<Post, "accountId" | "visibility">,
+) {
+  const effectivePolicy =
+    post.visibility === "private" || post.visibility === "direct"
+      ? "nobody"
+      : policy;
+  const automatic =
+    effectivePolicy === "public"
+      ? ["public"]
+      : effectivePolicy === "followers"
+        ? ["followers"]
+        : [];
+  return {
+    automatic,
+    manual: [],
+    ...(currentAccountOwner == null
+      ? {}
+      : {
+          current_user:
+            currentAccountOwner.id === post.accountId ||
+            effectivePolicy === "public"
+              ? "automatic"
+              : "denied",
+        }),
+  };
+}
 
 export function getPostRelations(ownerId: Uuid | undefined | null) {
   return {
@@ -260,6 +301,9 @@ export function serializePost(
   baseUrl: URL | string,
   // oxlint-disable-next-line typescript/no-explicit-any
 ): Record<string, any> {
+  const quoteState = getEffectiveQuoteState(post);
+  const quoteIsDisplayable =
+    quoteState === "accepted" && post.quoteTarget != null;
   return {
     id: post.id,
     created_at: post.published ?? post.updated,
@@ -297,7 +341,7 @@ export function serializePost(
         ? false
         : post.pin != null && post.pin.accountId === currentAccountOwner.id,
     content: sanitizeHtml(
-      post.quoteTarget == null
+      !quoteIsDisplayable
         ? (post.contentHtml ?? "")
         : stripQuoteInlineFallbacks(post.contentHtml ?? ""),
     ),
@@ -311,32 +355,23 @@ export function serializePost(
           ),
     quote_id: post.quoteTargetId,
     quote:
-      post.quoteTarget != null
-        ? {
-            state: "accepted",
-            quoted_status: serializePost(
-              { ...post.quoteTarget, quoteTarget: null, sharing: null },
-              currentAccountOwner,
-              baseUrl,
-            ),
-          }
-        : post.quoteTargetId != null
-          ? { state: "deleted", quoted_status: null }
-          : null,
-    quote_approval:
-      post.visibility === "public" || post.visibility === "unlisted"
-        ? {
-            automatic: ["public"],
-            manual: [],
-            ...(currentAccountOwner != null
-              ? { current_user: "automatic" }
-              : {}),
-          }
+      quoteState == null
+        ? null
         : {
-            automatic: [],
-            manual: [],
-            ...(currentAccountOwner != null ? { current_user: "denied" } : {}),
+            state: quoteState,
+            quoted_status: quoteIsDisplayable
+              ? serializePost(
+                  { ...post.quoteTarget!, quoteTarget: null, sharing: null },
+                  currentAccountOwner,
+                  baseUrl,
+                )
+              : null,
           },
+    quote_approval: serializeQuoteApproval(
+      post.quoteApprovalPolicy,
+      currentAccountOwner,
+      post,
+    ),
     application:
       post.application == null
         ? null

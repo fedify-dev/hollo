@@ -18,13 +18,15 @@ import {
   type Move,
   Note,
   Question,
-  type Reject,
+  QuoteAuthorization,
+  QuoteRequest,
+  Reject,
   type Remove,
   type Undo,
   type Update,
 } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import {
@@ -378,6 +380,228 @@ export async function onFollowRejected(
   }
 }
 
+async function getQuoteRequestFromActivity(
+  activity: Accept | Reject,
+): Promise<QuoteRequest | null> {
+  const object = await activity.getObject({ crossOrigin: "trust" });
+  return object instanceof QuoteRequest ? object : null;
+}
+
+async function updateQuoteRequestState(
+  request: QuoteRequest,
+  state: "accepted" | "rejected",
+  quoteAuthorizationIri: string | null,
+): Promise<void> {
+  const quoteIri = request.instrumentId?.href;
+  if (quoteIri == null) return;
+  const quote = await db.query.posts.findFirst({
+    where: eq(posts.iri, quoteIri),
+  });
+  if (quote == null) return;
+  const target =
+    request.objectId == null
+      ? null
+      : await db.query.posts.findFirst({
+          where: eq(posts.iri, request.objectId.href),
+        });
+  await db.transaction(async (tx) => {
+    await tx
+      .update(posts)
+      .set({
+        quoteState: state,
+        quoteAuthorizationIri,
+        quoteTargetId: target?.id ?? quote.quoteTargetId,
+        quoteTargetIri:
+          request.objectId?.href ?? quote.quoteTargetIri ?? target?.iri ?? null,
+        updated: new Date(),
+      })
+      .where(eq(posts.id, quote.id));
+    if (
+      state === "accepted" &&
+      target != null &&
+      quote.quoteState !== "accepted"
+    ) {
+      await tx
+        .update(posts)
+        .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
+        .where(eq(posts.id, target.id));
+    }
+  });
+}
+
+export async function onQuoteRequestAccepted(
+  _ctx: InboxContext<void>,
+  accept: Accept,
+): Promise<void> {
+  const request = await getQuoteRequestFromActivity(accept);
+  if (request == null) return;
+  await updateQuoteRequestState(
+    request,
+    "accepted",
+    accept.resultId?.href ?? null,
+  );
+}
+
+export async function onQuoteRequestRejected(
+  _ctx: InboxContext<void>,
+  reject: Reject,
+): Promise<void> {
+  const request = await getQuoteRequestFromActivity(reject);
+  if (request == null) return;
+  await updateQuoteRequestState(request, "rejected", null);
+}
+
+export async function onQuoteAuthorizationDeleted(
+  _ctx: InboxContext<void>,
+  del: Delete,
+): Promise<void> {
+  const object = await del.getObject({ crossOrigin: "trust" });
+  const authorizationIri =
+    object instanceof QuoteAuthorization ? object.id?.href : del.objectId?.href;
+  const quoteIri =
+    object instanceof QuoteAuthorization
+      ? object.interactingObjectId?.href
+      : null;
+  const quote =
+    authorizationIri == null
+      ? quoteIri == null
+        ? null
+        : await db.query.posts.findFirst({ where: eq(posts.iri, quoteIri) })
+      : await db.query.posts.findFirst({
+          where: eq(posts.quoteAuthorizationIri, authorizationIri),
+        });
+  if (quote == null) return;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(posts)
+      .set({
+        quoteState: "revoked",
+        quoteAuthorizationIri: null,
+        updated: new Date(),
+      })
+      .where(eq(posts.id, quote.id));
+    if (
+      quote.quoteTargetId != null &&
+      (quote.quoteState == null || quote.quoteState === "accepted")
+    ) {
+      await tx
+        .update(posts)
+        .set({
+          quotesCount: sql`GREATEST(coalesce(${posts.quotesCount}, 0) - 1, 0)`,
+        })
+        .where(eq(posts.id, quote.quoteTargetId));
+    }
+  });
+}
+
+function getQuoteAuthorizationIri(target: Post, quote: Post): string {
+  return `${target.iri}/quote_authorizations/${quote.id}`;
+}
+
+async function canAutomaticallyAcceptQuoteRequest(
+  target: Post,
+  quote: Post,
+): Promise<boolean> {
+  if (target.accountId === quote.accountId) return true;
+  if (target.visibility === "direct") return false;
+  const policy =
+    target.visibility === "private" ? "nobody" : target.quoteApprovalPolicy;
+  if (policy === "public") return true;
+  if (policy === "nobody") return false;
+  const follow = await db.query.follows.findFirst({
+    where: and(
+      eq(follows.followerId, quote.accountId),
+      eq(follows.followingId, target.accountId),
+      isNotNull(follows.approved),
+    ),
+  });
+  return follow != null;
+}
+
+export async function onQuoteRequested(
+  ctx: InboxContext<void>,
+  request: QuoteRequest,
+): Promise<void> {
+  if (request.objectId == null) return;
+  const target = await db.query.posts.findFirst({
+    where: eq(posts.iri, request.objectId.href),
+    with: { account: { with: { owner: true } } },
+  });
+  if (target?.account.owner == null) return;
+  const instrument = await request.getInstrument({ crossOrigin: "trust" });
+  if (!isPost(instrument)) return;
+  const persistedQuote = await persistPost(
+    db,
+    instrument,
+    ctx.origin,
+    getPersistOptions(ctx),
+  );
+  if (persistedQuote == null) return;
+
+  const accepted = await canAutomaticallyAcceptQuoteRequest(
+    target,
+    persistedQuote,
+  );
+  const authorizationIri = getQuoteAuthorizationIri(target, persistedQuote);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(posts)
+      .set({
+        quoteTargetId: target.id,
+        quoteTargetIri: target.iri,
+        quoteState: accepted ? "accepted" : "rejected",
+        quoteAuthorizationIri: accepted ? authorizationIri : null,
+        updated: new Date(),
+      })
+      .where(eq(posts.id, persistedQuote.id));
+    if (accepted && persistedQuote.quoteState !== "accepted") {
+      await tx
+        .update(posts)
+        .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
+        .where(eq(posts.id, target.id));
+    } else if (accepted) {
+      await updatePostStats(tx, { id: target.id });
+    }
+  });
+
+  if (
+    request.actorId != null &&
+    request.actorId.href !== persistedQuote.account.iri
+  ) {
+    return;
+  }
+  const recipient = {
+    id: new URL(persistedQuote.account.iri),
+    inboxId: new URL(persistedQuote.account.inboxUrl),
+    endpoints:
+      persistedQuote.account.sharedInboxUrl == null
+        ? null
+        : {
+            sharedInbox: new URL(persistedQuote.account.sharedInboxUrl),
+          },
+  };
+  const response = accepted
+    ? new Accept({
+        actor: new URL(target.account.iri),
+        object: request,
+        result: new QuoteAuthorization({
+          id: new URL(authorizationIri),
+          attribution: new URL(target.account.iri),
+          interactingObject: new URL(persistedQuote.iri),
+          interactionTarget: new URL(target.iri),
+        }),
+      })
+    : new Reject({
+        actor: new URL(target.account.iri),
+        object: request,
+      });
+  await ctx.sendActivity(
+    { username: target.account.owner.handle },
+    recipient,
+    response,
+  );
+}
+
 export async function onBlocked(
   ctx: InboxContext<void>,
   block: Block,
@@ -476,7 +700,10 @@ export async function onPostCreated(
   if (post?.replyTargetId != null) {
     await updatePostStats(db, { id: post.replyTargetId });
   }
-  if (post?.quoteTargetId != null) {
+  if (
+    post?.quoteTargetId != null &&
+    (post.quoteState == null || post.quoteState === "accepted")
+  ) {
     await updatePostStats(db, { id: post.quoteTargetId });
   }
 
@@ -527,7 +754,10 @@ export async function onPostCreated(
     }
 
     // Create quote notification if this post quotes another post
-    if (post.quoteTargetId != null) {
+    if (
+      post.quoteTargetId != null &&
+      (post.quoteState == null || post.quoteState === "accepted")
+    ) {
       const quoteTarget = await db.query.posts.findFirst({
         where: eq(posts.id, post.quoteTargetId),
         with: {
@@ -602,7 +832,10 @@ export async function onPostUpdated(
   // Create quoted_update notifications for users who quoted this post
   if (existingPost != null) {
     const quotePosts = await db.query.posts.findMany({
-      where: eq(posts.quoteTargetId, existingPost.id),
+      where: and(
+        eq(posts.quoteTargetId, existingPost.id),
+        or(eq(posts.quoteState, "accepted"), isNull(posts.quoteState)),
+      ),
       with: {
         account: { with: { owner: true } },
       },

@@ -1,4 +1,14 @@
-import { and, eq, exists, ilike, lt, not, notExists } from "drizzle-orm";
+import {
+  and,
+  eq,
+  exists,
+  ilike,
+  isNull,
+  lt,
+  not,
+  notExists,
+  or,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import db from "../db";
@@ -149,6 +159,10 @@ export async function getMediaWithDeletableThumbnails(
             .where(
               and(
                 eq(posts.id, quotingPosts.quoteTargetId),
+                or(
+                  eq(quotingPosts.quoteState, "accepted"),
+                  isNull(quotingPosts.quoteState),
+                ),
                 exists(
                   db
                     .select()
