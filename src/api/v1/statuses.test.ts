@@ -537,6 +537,77 @@ describe.sequential("/api/v1/statuses quotes", () => {
       fetch.mockRestore();
     }
   });
+
+  it("includes the quote target in pending QuoteRequest instruments", async () => {
+    expect.assertions(6);
+
+    const remoteAccountId = uuidv7();
+    const quotedPostId = uuidv7();
+    const quotedPostIri = `https://remote.test/@author/${quotedPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/@author",
+      type: "Person",
+      name: "Remote author",
+      handle: "@author@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@author/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: remoteAccountId,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      content: "Remote quoted post",
+      contentHtml: "<p>Remote quoted post</p>\n",
+      url: quotedPostIri,
+      published: new Date(),
+    });
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const quoteResponse = await createStatus(quoterToken, {
+        status: "Requesting quote authorization",
+        quoted_status_id: quotedPostId,
+      });
+      expect(quoteResponse.status).toBe(200);
+      const quote = await quoteResponse.json();
+      expect(quote.quote.state).toBe("pending");
+
+      let quoteRequest: unknown;
+      await vi.waitFor(async () => {
+        for (const [input] of fetch.mock.calls) {
+          const request = input instanceof Request ? input : null;
+          const activity =
+            request == null ? null : await request.clone().json();
+          if (activity?.type === "QuoteRequest") {
+            quoteRequest = activity;
+            return;
+          }
+        }
+        throw new Error("QuoteRequest was not sent");
+      });
+
+      expect(quoteRequest).toBeDefined();
+      const instrument = (
+        quoteRequest as { instrument?: Record<string, unknown> }
+      ).instrument;
+      expect(instrument?.quote).toBe(quotedPostIri);
+      expect(instrument?.quoteUrl).toBe(quotedPostIri);
+      expect(JSON.stringify(instrument)).toContain(quotedPostIri);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
 });
 
 describe.sequential("/api/v1/statuses visibility", () => {

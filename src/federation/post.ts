@@ -838,6 +838,7 @@ export function toObject(
     replies: Post[];
   },
   ctx: Context<unknown>,
+  opts: { includeInactiveQuoteTarget?: boolean } = {},
 ): ASPost {
   const cls =
     post.type === "Question"
@@ -857,14 +858,15 @@ export function toObject(
                 replies: new Collection({ totalItems: o.votesCount }),
               }),
           );
-  const contentHtml = addQuoteInlineFallback(
-    post.contentHtml,
-    post.quoteTarget,
-  );
-  const quoteTargetIri =
-    post.quoteState == null || post.quoteState === "accepted"
-      ? (post.quoteTargetIri ?? post.quoteTarget?.iri)
-      : null;
+  const shouldPublishQuoteTarget =
+    opts.includeInactiveQuoteTarget ||
+    post.quoteState == null ||
+    post.quoteState === "accepted";
+  const quoteTarget = shouldPublishQuoteTarget ? post.quoteTarget : null;
+  const contentHtml = addQuoteInlineFallback(post.contentHtml, quoteTarget);
+  const quoteTargetIri = shouldPublishQuoteTarget
+    ? (post.quoteTargetIri ?? post.quoteTarget?.iri)
+    : null;
   return new cls({
     id: new URL(post.iri),
     attribution: new URL(post.account.iri),
@@ -921,18 +923,18 @@ export function toObject(
       ...Object.entries(post.emojis).map(([shortcode, url]) =>
         toEmoji(ctx, { shortcode, url }),
       ),
-      ...(post.quoteTarget == null
+      ...(quoteTarget == null
         ? []
         : [
             new Link({
               mediaType:
                 'application/ld+json; profile="https://www.w3.org/ns/activitystreams"',
-              href: new URL(post.quoteTarget.iri),
+              href: new URL(quoteTarget.iri),
               name:
-                post.quoteTarget.url != null &&
-                post.content?.includes(post.quoteTarget.url)
-                  ? post.quoteTarget.url
-                  : post.quoteTarget.iri,
+                quoteTarget.url != null &&
+                post.content?.includes(quoteTarget.url)
+                  ? quoteTarget.url
+                  : quoteTarget.iri,
             }),
           ]),
     ],

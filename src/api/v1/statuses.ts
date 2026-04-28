@@ -522,7 +522,9 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
         id: new URL("#quote-request", post.iri),
         actor: new URL(owner.account.iri),
         object: new URL(post.quoteTarget.iri),
-        instrument: toObject(post, fedCtx),
+        instrument: toObject(post, fedCtx, {
+          includeInactiveQuoteTarget: true,
+        }),
       }),
       {
         orderingKey,

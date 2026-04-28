@@ -653,7 +653,7 @@ describe("toObject", () => {
   it.each(["pending", "rejected", "revoked", "unauthorized"] as const)(
     "omits quote fields for %s quotes",
     async (quoteState) => {
-      expect.assertions(2);
+      expect.assertions(3);
 
       const account = await createAccount({ username: "quote-author" });
       const quotedPostId = crypto.randomUUID() as Uuid;
@@ -689,6 +689,7 @@ describe("toObject", () => {
 
       expect(json).not.toHaveProperty("quote");
       expect(json).not.toHaveProperty("quoteUrl");
+      expect(JSON.stringify(json)).not.toContain("inactive-quote-target");
     },
   );
 
