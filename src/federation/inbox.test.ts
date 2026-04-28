@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanDatabase } from "../../tests/helpers";
 import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
-import { accounts, follows, posts } from "../schema";
+import { accounts, blocks, follows, instances, posts } from "../schema";
 import type { Uuid } from "../uuid";
 import {
   onFollowAccepted,
@@ -548,6 +548,83 @@ describe("quote request lifecycle", () => {
     );
     expect(quoted?.quotesCount).toBe(1);
     expect(sendActivity).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a QuoteRequest from a blocked account", async () => {
+    expect.assertions(4);
+
+    const author = await createAccount({ username: "quote-author" });
+    const blockedAccountId = crypto.randomUUID() as Uuid;
+    const blockedAccountIri = "https://remote.test/@blocked";
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotePostIri = "https://remote.test/@blocked/quote-1";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db
+      .insert(instances)
+      .values({ host: "remote.test" })
+      .onConflictDoNothing();
+    await db.insert(accounts).values({
+      id: blockedAccountId,
+      iri: blockedAccountIri,
+      type: "Person",
+      name: "blocked",
+      handle: "@blocked@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: `${blockedAccountIri}/inbox`,
+      instanceHost: "remote.test",
+    });
+    await db.insert(blocks).values({
+      accountId: author.id as Uuid,
+      blockedAccountId,
+    });
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id as Uuid,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+
+    const request = new QuoteRequest({
+      actor: new URL(blockedAccountIri),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL(blockedAccountIri),
+          name: "blocked",
+          preferredUsername: "blocked",
+          inbox: new URL(`${blockedAccountIri}/inbox`),
+        }),
+        quote: new URL(quotedPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Blocked quote</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("rejected");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
+    expect(sendActivity).toHaveBeenCalledOnce();
   });
 
   it("ignores a QuoteRequest whose actor does not match the quote", async () => {

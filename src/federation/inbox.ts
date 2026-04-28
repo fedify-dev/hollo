@@ -551,6 +551,19 @@ async function canAutomaticallyAcceptQuoteRequest(
 ): Promise<boolean> {
   if (target.accountId === quote.accountId) return true;
   if (target.visibility === "direct") return false;
+  const block = await db.query.blocks.findFirst({
+    where: or(
+      and(
+        eq(blocks.accountId, target.accountId),
+        eq(blocks.blockedAccountId, quote.accountId),
+      ),
+      and(
+        eq(blocks.accountId, quote.accountId),
+        eq(blocks.blockedAccountId, target.accountId),
+      ),
+    ),
+  });
+  if (block != null) return false;
   const policy =
     target.visibility === "private" ? "nobody" : target.quoteApprovalPolicy;
   if (policy === "public") return true;
