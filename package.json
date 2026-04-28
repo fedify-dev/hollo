@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "skills-npm",
     "prod": "pnpm run migrate && node --env-file-if-exists=.env --dns-result-order=ipv6first dist/bin/server.js",
     "dev": "pnpm run migrate && tsx watch --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
     "worker": "NODE_TYPE=worker node --env-file-if-exists=.env --dns-result-order=ipv6first dist/bin/server.js",
@@ -94,6 +95,7 @@
     "linkedom": "^0.18.12",
     "oxfmt": "^0.46.0",
     "oxlint": "^1.61.0",
+    "skills-npm": "^1.1.1",
     "timekeeper": "^2.3.1",
     "tsdown": "^0.21.10",
     "typescript": "^6.0.3",

@@ -6,6 +6,7 @@ fedify-hollo-*.tgz
 node_modules/
 tmp/
 mise.local.toml
+**/skills/npm-*
 
 coverage/**
 !coverage/.gitkeep
