@@ -617,8 +617,7 @@ async function canAutomaticallyAcceptQuoteRequest(
     ),
   });
   if (block != null) return false;
-  const policy =
-    target.visibility === "private" ? "nobody" : target.quoteApprovalPolicy;
+  const policy = target.quoteApprovalPolicy;
   if (policy === "public") return true;
   if (policy === "nobody") return false;
   const follow = await db.query.follows.findFirst({

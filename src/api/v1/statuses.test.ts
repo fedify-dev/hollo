@@ -341,6 +341,35 @@ describe.sequential("/api/v1/statuses quotes", () => {
     expect(status.quote_approval.current_user).toBe("automatic");
   });
 
+  it("preserves private quote approval for approved followers", async () => {
+    expect.assertions(4);
+
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Approved followers can quote this private status",
+      visibility: "private",
+      quote_approval_policy: "followers",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const response = await app.request(`/api/v1/statuses/${quoted.id}`, {
+      headers: {
+        authorization: bearerAuthorization(quoterToken),
+      },
+    });
+    expect(response.status).toBe(200);
+    const status = await response.json();
+    expect(status.quote_approval.automatic).toEqual(["followers"]);
+    expect(status.quote_approval.current_user).toBe("automatic");
+  });
+
   it("allows approved followers to quote private statuses", async () => {
     expect.assertions(4);
 

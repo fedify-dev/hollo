@@ -188,6 +188,40 @@ describe("quote request lifecycle", () => {
     await cleanDatabase();
   });
 
+  async function seedRemoteAccount(username: string): Promise<Uuid> {
+    const id = crypto.randomUUID() as Uuid;
+    const iri = `https://remote.test/@${username}`;
+
+    await db
+      .insert(instances)
+      .values({
+        host: "remote.test",
+        software: "mastodon",
+        softwareVersion: null,
+      })
+      .onConflictDoNothing();
+    await db.insert(accounts).values({
+      id,
+      iri,
+      type: "Person",
+      name: username,
+      handle: `@${username}@remote.test`,
+      bioHtml: "",
+      emojis: {},
+      fieldHtmls: {},
+      aliases: [],
+      protected: false,
+      inboxUrl: `${iri}/inbox`,
+      followersUrl: `${iri}/followers`,
+      sharedInboxUrl: "https://remote.test/inbox",
+      featuredUrl: `${iri}/featured`,
+      instanceHost: "remote.test",
+      published: new Date(),
+    });
+
+    return id;
+  }
+
   async function seedPendingQuote() {
     const author = await createAccount({ username: "quote-author" });
     const quoter = await createAccount({ username: "quote-quoter" });
@@ -654,6 +688,72 @@ describe("quote request lifecycle", () => {
     );
     expect(quoted?.quotesCount).toBe(1);
     expect(sendActivity).toHaveBeenCalledTimes(2);
+  });
+
+  it("accepts a private QuoteRequest from an approved follower", async () => {
+    expect.assertions(4);
+
+    const author = await createAccount({ username: "quote-author" });
+    const quoterIri = "https://remote.test/@quoter";
+    const quoterId = await seedRemoteAccount("quoter");
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotePostIri = "https://remote.test/@quoter/quote-private";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(follows).values({
+      iri: `${quoterIri}#follows/${crypto.randomUUID()}`,
+      followingId: author.id as Uuid,
+      followerId: quoterId,
+      approved: new Date(),
+    });
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id as Uuid,
+      visibility: "private",
+      quoteApprovalPolicy: "followers",
+      contentHtml: "<p>Private quoted post</p>",
+      content: "Private quoted post",
+      published: new Date(),
+    });
+
+    const request = new QuoteRequest({
+      actor: new URL(quoterIri),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL(quoterIri),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL(`${quoterIri}/inbox`),
+        }),
+        quote: new URL(quotedPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote of a private post</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(quote?.quoteAuthorizationIri).toBe(
+      `${quotedPostIri}/quote_authorizations/${quote?.id}`,
+    );
+    expect(quoted?.quotesCount).toBe(1);
+    expect(sendActivity).toHaveBeenCalledOnce();
   });
 
   it("rejects a QuoteRequest from a blocked account", async () => {
