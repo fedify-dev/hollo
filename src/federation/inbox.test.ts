@@ -545,4 +545,75 @@ describe("quote request lifecycle", () => {
     expect(quoted?.quotesCount).toBe(0);
     expect(sendActivity).not.toHaveBeenCalled();
   });
+
+  it("ignores a QuoteRequest whose quote targets another object", async () => {
+    expect.assertions(4);
+
+    const author = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const otherPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const otherPostIri = `https://hollo.test/@quote-author/${otherPostId}`;
+    const quotePostIri = "https://remote.test/@quoter/quote-1";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostIri,
+        type: "Note",
+        accountId: author.id as Uuid,
+        visibility: "public",
+        quoteApprovalPolicy: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        published: new Date(),
+      },
+      {
+        id: otherPostId,
+        iri: otherPostIri,
+        type: "Note",
+        accountId: author.id as Uuid,
+        visibility: "public",
+        quoteApprovalPolicy: "public",
+        contentHtml: "<p>Other post</p>",
+        content: "Other post",
+        published: new Date(),
+      },
+    ]);
+
+    const request = new QuoteRequest({
+      actor: new URL("https://remote.test/@quoter"),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@quoter"),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL("https://remote.test/@quoter/inbox"),
+        }),
+        quote: new URL(otherPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, quotedPostId),
+    });
+    expect(quote?.quoteTargetIri).toBe(otherPostIri);
+    expect(quote?.quoteState).toBe("unauthorized");
+    expect(quoted?.quotesCount).toBe(0);
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
 });

@@ -590,6 +590,7 @@ export async function onQuoteRequested(
     getPersistOptions(ctx),
   );
   if (persistedQuote == null) return;
+  if (persistedQuote.quoteTargetIri !== target.iri) return;
 
   const accepted = await canAutomaticallyAcceptQuoteRequest(
     target,
