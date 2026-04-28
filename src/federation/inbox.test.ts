@@ -393,6 +393,42 @@ describe("quote request lifecycle", () => {
     expect(quoted?.quotesCount).toBe(0);
   });
 
+  it("marks an accepted quote revoked from a deleted authorization IRI", async () => {
+    expect.assertions(2);
+
+    const seeded = await seedPendingQuote();
+    const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    await db
+      .update(posts)
+      .set({
+        quoteState: "accepted",
+        quoteAuthorizationIri: authorizationIri,
+        quotesCount: 1,
+      })
+      .where(eq(posts.id, seeded.quotePostId));
+    await db
+      .update(posts)
+      .set({ quotesCount: 1 })
+      .where(eq(posts.id, seeded.quotedPostId));
+
+    await onQuoteAuthorizationDeleted(
+      ctx,
+      new Delete({
+        actor: new URL("https://hollo.test/@quote-author"),
+        object: new URL(authorizationIri),
+      }),
+    );
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("revoked");
+    expect(quoted?.quotesCount).toBe(0);
+  });
+
   it("ignores quote authorization deletion from another actor", async () => {
     expect.assertions(3);
 

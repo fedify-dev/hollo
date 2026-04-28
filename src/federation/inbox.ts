@@ -497,7 +497,10 @@ export async function onQuoteAuthorizationDeleted(
   _ctx: InboxContext<void>,
   del: Delete,
 ): Promise<void> {
-  const object = await del.getObject({ crossOrigin: "trust" });
+  const object = await del.getObject({
+    crossOrigin: "trust",
+    suppressError: true,
+  });
   const authorizationIri =
     object instanceof QuoteAuthorization ? object.id?.href : del.objectId?.href;
   const quoteIri =
