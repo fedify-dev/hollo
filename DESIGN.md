@@ -310,10 +310,18 @@ twenty hues by name.
 
 ### Forms
 
-Forms use a small helper component family (planned: *Field*, *Label*,
-*Input*, *Hint*, *Error*).  These compose plain HTML controls with the
-appropriate UnoCSS classes; they never wrap a third-party input
-library.
+Forms use the small helper components in *src/components/forms.tsx*:
+
+ -  *Field* — wraps a control with a label, optional hint, and error
+ -  *TextField*, *TextareaField*, *SelectField* — labelled controls
+ -  *CheckboxField* — checkbox with adjacent label and hint
+ -  *FieldSection* — card-shaped *fieldset* with a legend
+ -  *SubmitButton* — primary/secondary/danger submit variants
+
+These compose plain HTML controls with the agreed UnoCSS classes; they
+never wrap a third-party input library.  Reach for them first; only
+hand-roll a new control when the form needs geometry the helpers can't
+express (the OTP field, for example, intentionally diverges).
 
 ### Prose content
 
