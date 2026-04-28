@@ -583,6 +583,12 @@ export async function onQuoteRequested(
   ) {
     return;
   }
+  const existingQuote =
+    instrument.id == null
+      ? null
+      : await db.query.posts.findFirst({
+          where: eq(posts.iri, instrument.id.href),
+        });
   const persistedQuote = await persistPost(
     db,
     instrument,
@@ -592,10 +598,13 @@ export async function onQuoteRequested(
   if (persistedQuote == null) return;
   if (persistedQuote.quoteTargetIri !== target.iri) return;
 
-  const accepted = await canAutomaticallyAcceptQuoteRequest(
-    target,
-    persistedQuote,
-  );
+  const wasAccepted =
+    existingQuote?.quoteState === "accepted" &&
+    (existingQuote.quoteTargetId === target.id ||
+      existingQuote.quoteTargetIri === target.iri);
+  const accepted =
+    wasAccepted ||
+    (await canAutomaticallyAcceptQuoteRequest(target, persistedQuote));
   const authorizationIri = getQuoteAuthorizationIri(target, persistedQuote);
   await db.transaction(async (tx) => {
     await tx
@@ -608,7 +617,7 @@ export async function onQuoteRequested(
         updated: new Date(),
       })
       .where(eq(posts.id, persistedQuote.id));
-    if (accepted && persistedQuote.quoteState !== "accepted") {
+    if (accepted && !wasAccepted) {
       await tx
         .update(posts)
         .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
