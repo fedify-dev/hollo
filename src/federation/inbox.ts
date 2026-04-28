@@ -466,11 +466,16 @@ export async function onQuoteAuthorizationDeleted(
     authorizationIri == null
       ? quoteIri == null
         ? null
-        : await db.query.posts.findFirst({ where: eq(posts.iri, quoteIri) })
+        : await db.query.posts.findFirst({
+            where: eq(posts.iri, quoteIri),
+            with: { quoteTarget: { with: { account: true } } },
+          })
       : await db.query.posts.findFirst({
           where: eq(posts.quoteAuthorizationIri, authorizationIri),
+          with: { quoteTarget: { with: { account: true } } },
         });
   if (quote == null) return;
+  if (del.actorId?.href !== quote.quoteTarget?.account.iri) return;
   await db.transaction(async (tx) => {
     await tx
       .update(posts)
@@ -530,6 +535,12 @@ export async function onQuoteRequested(
   if (target?.account.owner == null) return;
   const instrument = await request.getInstrument({ crossOrigin: "trust" });
   if (!isPost(instrument)) return;
+  if (
+    request.actorId != null &&
+    request.actorId.href !== instrument.attributionId?.href
+  ) {
+    return;
+  }
   const persistedQuote = await persistPost(
     db,
     instrument,
@@ -564,12 +575,6 @@ export async function onQuoteRequested(
     }
   });
 
-  if (
-    request.actorId != null &&
-    request.actorId.href !== persistedQuote.account.iri
-  ) {
-    return;
-  }
   const recipient = {
     id: new URL(persistedQuote.account.iri),
     inboxId: new URL(persistedQuote.account.inboxUrl),

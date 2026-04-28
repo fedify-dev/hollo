@@ -316,6 +316,48 @@ describe("quote request lifecycle", () => {
     expect(quoted?.quotesCount).toBe(0);
   });
 
+  it("ignores quote authorization deletion from another actor", async () => {
+    expect.assertions(3);
+
+    const seeded = await seedPendingQuote();
+    const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    await db
+      .update(posts)
+      .set({
+        quoteState: "accepted",
+        quoteAuthorizationIri: authorizationIri,
+        quotesCount: 1,
+      })
+      .where(eq(posts.id, seeded.quotePostId));
+    await db
+      .update(posts)
+      .set({ quotesCount: 1 })
+      .where(eq(posts.id, seeded.quotedPostId));
+
+    await onQuoteAuthorizationDeleted(
+      ctx,
+      new Delete({
+        actor: new URL("https://hollo.test/@quote-quoter"),
+        object: new QuoteAuthorization({
+          id: new URL(authorizationIri),
+          attribution: new URL("https://hollo.test/@quote-author"),
+          interactingObject: new URL(seeded.quotePostIri),
+          interactionTarget: new URL(seeded.quotedPostIri),
+        }),
+      }),
+    );
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(quote?.quoteAuthorizationIri).toBe(authorizationIri);
+    expect(quoted?.quotesCount).toBe(1);
+  });
+
   it("accepts an allowed QuoteRequest for a local post", async () => {
     expect.assertions(4);
 
@@ -370,5 +412,60 @@ describe("quote request lifecycle", () => {
     expect(quote?.quoteTargetId).toBe(quotedPostId);
     expect(quoted?.quotesCount).toBe(1);
     expect(sendActivity).toHaveBeenCalledOnce();
+  });
+
+  it("ignores a QuoteRequest whose actor does not match the quote", async () => {
+    expect.assertions(3);
+
+    const author = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotePostIri = "https://remote.test/@quoter/quote-1";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id as Uuid,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+
+    const request = new QuoteRequest({
+      actor: new URL("https://remote.test/@attacker"),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@quoter"),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL("https://remote.test/@quoter/inbox"),
+        }),
+        quote: new URL(quotedPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, quotedPostId),
+    });
+    expect(quote).toBeUndefined();
+    expect(quoted?.quotesCount).toBe(0);
+    expect(sendActivity).not.toHaveBeenCalled();
   });
 });
