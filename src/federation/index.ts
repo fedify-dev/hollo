@@ -13,6 +13,7 @@ import {
   Like,
   Move,
   Note,
+  QuoteAuthorization,
   QuoteRequest,
   Reject,
   Remove,
@@ -62,6 +63,36 @@ import "./objects";
 import { isPost } from "./post";
 
 const inboxLogger = getLogger(["hollo", "federation", "inbox"]);
+
+export async function onDeleted(
+  ctx: Parameters<typeof onPostDeleted>[0],
+  del: Delete,
+) {
+  const actorId = del.actorId;
+  const objectId = del.objectId;
+  if (actorId == null) return;
+  if (objectId == null) {
+    const object = await del.getObject({
+      crossOrigin: "trust",
+      suppressError: true,
+    });
+    if (object instanceof QuoteAuthorization) {
+      await onQuoteAuthorizationDeleted(ctx, del);
+    }
+    return;
+  }
+  if (objectId.href === actorId.href) {
+    await onAccountDeleted(ctx, del);
+  } else if (
+    (await db.query.posts.findFirst({
+      where: eq(posts.quoteAuthorizationIri, objectId.href),
+    })) != null
+  ) {
+    await onQuoteAuthorizationDeleted(ctx, del);
+  } else {
+    await onPostDeleted(ctx, del);
+  }
+}
 
 export const onUnverifiedActivity: UnverifiedActivityHandler<void> = (
   _ctx,
@@ -130,22 +161,7 @@ federation
       inboxLogger.debug("Unsupported object on Update: {object}", { object });
     }
   })
-  .on(Delete, async (ctx, del) => {
-    const actorId = del.actorId;
-    const objectId = del.objectId;
-    if (actorId == null || objectId == null) return;
-    if (objectId.href === actorId.href) {
-      await onAccountDeleted(ctx, del);
-    } else if (
-      (await db.query.posts.findFirst({
-        where: eq(posts.quoteAuthorizationIri, objectId.href),
-      })) != null
-    ) {
-      await onQuoteAuthorizationDeleted(ctx, del);
-    } else {
-      await onPostDeleted(ctx, del);
-    }
-  })
+  .on(Delete, onDeleted)
   .on(Add, onPostPinned)
   .on(Remove, onPostUnpinned)
   .on(Block, onBlocked)

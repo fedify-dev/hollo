@@ -1,5 +1,5 @@
-import type { UnverifiedActivityReason } from "@fedify/fedify";
-import { Delete, Follow } from "@fedify/vocab";
+import type { InboxContext, UnverifiedActivityReason } from "@fedify/fedify";
+import { Delete, Follow, QuoteAuthorization } from "@fedify/vocab";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -8,7 +8,11 @@ import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
 import * as Schema from "../schema";
 import type { Uuid } from "../uuid";
-import { onOutboxPermanentFailure, onUnverifiedActivity } from "./index";
+import {
+  onDeleted,
+  onOutboxPermanentFailure,
+  onUnverifiedActivity,
+} from "./index";
 
 async function createRemoteAccount(
   username: string,
@@ -385,5 +389,79 @@ describe("onUnverifiedActivity", () => {
     );
 
     expect(response).toBeUndefined();
+  });
+});
+
+describe("onDeleted", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+
+  it("routes embedded QuoteAuthorization deletes to quote revocation", async () => {
+    expect.assertions(3);
+
+    const author = await createAccount({ username: "quote-author" });
+    const quoter = await createAccount({ username: "quote-quoter" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotePostIri = `https://hollo.test/@quote-quoter/${quotePostId}`;
+    const authorizationIri = `${quotedPostIri}/quote_authorizations/${quotePostId}`;
+    const sendActivity = async () => undefined;
+    const ctx = {
+      origin: "https://hollo.test",
+      recipient: "quote-quoter",
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(Schema.posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostIri,
+        type: "Note",
+        accountId: author.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        quotesCount: 1,
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: quotePostIri,
+        type: "Note",
+        accountId: quoter.id as Uuid,
+        quoteTargetId: quotedPostId,
+        quoteTargetIri: quotedPostIri,
+        quoteState: "accepted",
+        quoteAuthorizationIri: authorizationIri,
+        visibility: "public",
+        contentHtml: "<p>Quote post</p>",
+        content: "Quote post",
+        published: new Date(),
+      },
+    ]);
+
+    await onDeleted(
+      ctx,
+      new Delete({
+        actor: new URL("https://hollo.test/@quote-author"),
+        object: new QuoteAuthorization({
+          attribution: new URL("https://hollo.test/@quote-author"),
+          interactingObject: new URL(quotePostIri),
+          interactionTarget: new URL(quotedPostIri),
+        }),
+      }),
+    );
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(Schema.posts.id, quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(Schema.posts.id, quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("revoked");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
   });
 });
