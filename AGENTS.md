@@ -126,6 +126,7 @@ Key architectural components
 | *src/federation/index.ts*   | Federation setup with inbox listeners     |
 | *src/oauth/middleware.ts*   | Authentication middleware                 |
 | *src/entities/status.ts*    | Status entity serialization               |
+| *DESIGN.md*                 | Design system and front-end conventions   |
 
 
 Technology stack
@@ -186,6 +187,24 @@ export function MyComponent({ name }: { name: string }) {
 // Incorrect - React style
 import React from 'react';  // Don't do this
 ~~~~
+
+### Design system and front-end conventions
+
+When working on any user-facing page (admin dashboard, profile, post,
+auth, OAuth screens, etc.), read *DESIGN.md* first.  It defines:
+
+ -  the visual design principles (simplicity, modernness, content first,
+    lightweight SSR, accessibility),
+ -  the color system (achromatic neutrals plus per-account theme color
+    via CSS custom properties on `<html>`),
+ -  typography, spacing, iconography, and component recipes,
+ -  the UnoCSS toolchain conventions (preset choices, prose application
+    areas, theme token injection, variant groups).
+
+Treat *DESIGN.md* as the single source of truth for front-end decisions
+that aren't directly answered by the source code.  Never introduce ad-hoc
+CSS or inline styling that contradicts it; if the document is missing
+guidance on a real case, update *DESIGN.md* in the same change.
 
 ### Database guidelines
 
