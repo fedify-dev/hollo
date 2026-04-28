@@ -7,6 +7,7 @@ import {
   QuoteAuthorization,
   QuoteRequest,
   Reject,
+  Update,
 } from "@fedify/vocab";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -229,6 +230,11 @@ describe("quote request lifecycle", () => {
 
     const seeded = await seedPendingQuote();
     const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
     const accept = new Accept({
       actor: new URL("https://hollo.test/@quote-author"),
       object: new QuoteRequest({
@@ -238,7 +244,7 @@ describe("quote request lifecycle", () => {
       result: new URL(authorizationIri),
     });
 
-    await onQuoteRequestAccepted(ctx, accept);
+    await onQuoteRequestAccepted(requestCtx, accept);
 
     const quote = await db.query.posts.findFirst({
       where: eq(posts.id, seeded.quotePostId),
@@ -251,18 +257,82 @@ describe("quote request lifecycle", () => {
     expect(quoted?.quotesCount).toBe(1);
   });
 
+  it("ignores Accept<QuoteRequest> without a QuoteAuthorization result", async () => {
+    expect.assertions(4);
+
+    const seeded = await seedPendingQuote();
+    const accept = new Accept({
+      actor: new URL("https://hollo.test/@quote-author"),
+      object: new QuoteRequest({
+        object: new URL(seeded.quotedPostIri),
+        instrument: new URL(seeded.quotePostIri),
+      }),
+    });
+
+    const accepted = await onQuoteRequestAccepted(ctx, accept);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotedPostId),
+    });
+    expect(accepted).toBe(false);
+    expect(quote?.quoteState).toBe("pending");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
+  });
+
+  it("federates the quote update after Accept<QuoteRequest>", async () => {
+    expect.assertions(7);
+
+    const seeded = await seedPendingQuote();
+    const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+    const accept = new Accept({
+      actor: new URL("https://hollo.test/@quote-author"),
+      object: new QuoteRequest({
+        object: new URL(seeded.quotedPostIri),
+        instrument: new URL(seeded.quotePostIri),
+      }),
+      result: new URL(authorizationIri),
+    });
+
+    const accepted = await onQuoteRequestAccepted(requestCtx, accept);
+
+    expect(accepted).toBe(true);
+    expect(sendActivity).toHaveBeenCalledOnce();
+    const [sender, recipient, activity] = sendActivity.mock
+      .calls[0] as unknown as [unknown, unknown, unknown];
+    expect(sender).toEqual({ username: "quote-quoter" });
+    expect(recipient).toBe("followers");
+    expect(activity).toBeInstanceOf(Update);
+    const object = await (activity as Update).getObject();
+    expect(object).toBeInstanceOf(Note);
+    expect((object as Note).quoteAuthorizationId?.href).toBe(authorizationIri);
+  });
+
   it("marks a pending quote accepted from Accept<QuoteRequest IRI>", async () => {
     expect.assertions(3);
 
     const seeded = await seedPendingQuote();
     const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
     const accept = new Accept({
       actor: new URL("https://hollo.test/@quote-author"),
       object: new URL(`${seeded.quotePostIri}#quote-request`),
       result: new URL(authorizationIri),
     });
 
-    await onQuoteRequestAccepted(ctx, accept);
+    await onQuoteRequestAccepted(requestCtx, accept);
 
     const quote = await db.query.posts.findFirst({
       where: eq(posts.id, seeded.quotePostId),

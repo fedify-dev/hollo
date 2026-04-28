@@ -66,6 +66,7 @@ import {
   updateAccountStats,
 } from "./account";
 import {
+  getRecipients,
   isPost,
   persistPollVote,
   persistPost,
@@ -465,18 +466,67 @@ async function updateQuoteRequestState(
   return true;
 }
 
+async function sendQuoteUpdate(
+  ctx: InboxContext<void>,
+  quoteIri: string,
+): Promise<void> {
+  const quote = await db.query.posts.findFirst({
+    where: eq(posts.iri, quoteIri),
+    with: {
+      account: { with: { owner: true } },
+      replyTarget: true,
+      quoteTarget: true,
+      media: true,
+      poll: { with: { options: true } },
+      mentions: { with: { account: true } },
+      replies: true,
+    },
+  });
+  if (quote?.account.owner == null) return;
+  const activity = toUpdate(quote, ctx);
+  const orderingKey = `post:${quote.iri}`;
+  const recipients = getRecipients(quote);
+  if (recipients.length > 0) {
+    await ctx.sendActivity(
+      { username: quote.account.owner.handle },
+      recipients,
+      activity,
+      {
+        orderingKey,
+        excludeBaseUris: [new URL(ctx.origin)],
+      },
+    );
+  }
+  if (quote.visibility !== "direct") {
+    await ctx.sendActivity(
+      { username: quote.account.owner.handle },
+      "followers",
+      activity,
+      {
+        orderingKey,
+        preferSharedInbox: true,
+        excludeBaseUris: [new URL(ctx.origin)],
+      },
+    );
+  }
+}
+
 export async function onQuoteRequestAccepted(
-  _ctx: InboxContext<void>,
+  ctx: InboxContext<void>,
   accept: Accept,
 ): Promise<boolean> {
   const request = await getQuoteRequestReferenceFromActivity(accept);
   if (request == null) return false;
-  return await updateQuoteRequestState(
+  const quoteAuthorizationIri = accept.resultId?.href;
+  if (quoteAuthorizationIri == null) return false;
+  const accepted = await updateQuoteRequestState(
     request,
     accept.actorId?.href ?? null,
     "accepted",
-    accept.resultId?.href ?? null,
+    quoteAuthorizationIri,
   );
+  if (accepted) await sendQuoteUpdate(ctx, request.quoteIri);
+  return accepted;
 }
 
 export async function onQuoteRequestRejected(
