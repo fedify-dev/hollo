@@ -16,6 +16,8 @@ To be released.
     post.  If the quoted post is unavailable, the fallback link remains
     visible so the quoted URL is not lost.
 
+ -  Upgraded Fedify to 2.2.0.
+
 
 Version 0.8.1
 -------------
