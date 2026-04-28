@@ -1743,10 +1743,12 @@ app.post(
 
     const quotingPost = await db.query.posts.findFirst({
       where: and(eq(posts.id, quotingStatusId), eq(posts.quoteTargetId, id)),
+      with: { account: { with: { owner: true } } },
     });
     if (quotingPost == null) {
       return c.json({ error: "Record not found" }, 404);
     }
+    const quoteAuthorizationIri = quotingPost.quoteAuthorizationIri;
 
     await db.transaction(async (tx) => {
       await tx
@@ -1770,6 +1772,38 @@ app.post(
           .where(eq(posts.id, id));
       }
     });
+
+    if (quotingPost.account.owner == null && quoteAuthorizationIri != null) {
+      const fedCtx = federation.createContext(c.req.raw, undefined);
+      await fedCtx.sendActivity(
+        { username: owner.handle },
+        {
+          id: new URL(quotingPost.account.iri),
+          inboxId: new URL(quotingPost.account.inboxUrl),
+          endpoints:
+            quotingPost.account.sharedInboxUrl == null
+              ? null
+              : {
+                  sharedInbox: new URL(quotingPost.account.sharedInboxUrl),
+                },
+        },
+        new vocab.Delete({
+          id: new URL("#delete", quoteAuthorizationIri),
+          actor: new URL(owner.account.iri),
+          object: new vocab.QuoteAuthorization({
+            id: new URL(quoteAuthorizationIri),
+            attribution: new URL(owner.account.iri),
+            interactingObject: new URL(quotingPost.iri),
+            interactionTarget: new URL(targetPost.iri),
+          }),
+        }),
+        {
+          orderingKey: getPostOrderingKey(quotingPost.iri),
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
 
     const updatedPost = await db.query.posts.findFirst({
       where: eq(posts.id, quotingStatusId),

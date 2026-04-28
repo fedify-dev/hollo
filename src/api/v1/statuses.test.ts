@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
 import app from "../../index";
-import { follows, posts } from "../../schema";
+import { accounts, follows, instances, posts } from "../../schema";
 import { uuidv7 } from "../../uuid";
 
 describe.sequential("/api/v1/accounts/verify_credentials", () => {
@@ -410,6 +410,103 @@ describe.sequential("/api/v1/statuses quotes", () => {
     );
     const quotedAgain = await quotedAgainResponse.json();
     expect(quotedAgain.quotes_count).toBe(0);
+  });
+
+  it("sends a QuoteAuthorization deletion when revoking a remote quote", async () => {
+    expect.assertions(7);
+
+    const remoteAccountId = uuidv7();
+    const quotedPostId = uuidv7();
+    const quotingPostId = uuidv7();
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotingPostIri = `https://remote.test/@quoter/${quotingPostId}`;
+    const quoteAuthorizationIri = `${quotedPostIri}/quote_authorizations/${quotingPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/@quoter",
+      type: "Person",
+      name: "Remote quoter",
+      handle: "@quoter@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@quoter/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostIri,
+        type: "Note",
+        accountId: author.id,
+        visibility: "public",
+        content: "Quoted post",
+        contentHtml: "<p>Quoted post</p>\n",
+        url: quotedPostIri,
+        quotesCount: 1,
+        published: new Date(),
+      },
+      {
+        id: quotingPostId,
+        iri: quotingPostIri,
+        type: "Note",
+        accountId: remoteAccountId,
+        quoteTargetId: quotedPostId,
+        quoteTargetIri: quotedPostIri,
+        quoteState: "accepted",
+        quoteAuthorizationIri,
+        visibility: "public",
+        content: "Remote quote",
+        contentHtml: "<p>Remote quote</p>\n",
+        url: quotingPostIri,
+        published: new Date(),
+      },
+    ]);
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const revokeResponse = await app.request(
+        `/api/v1/statuses/${quotedPostId}/quotes/${quotingPostId}/revoke`,
+        {
+          method: "POST",
+          headers: {
+            authorization: bearerAuthorization(authorToken),
+          },
+        },
+      );
+
+      expect(revokeResponse.status).toBe(200);
+      const revoked = await revokeResponse.json();
+      expect(revoked.quote.state).toBe("revoked");
+
+      const isRemoteInboxCall = ([input]: [
+        string | URL | Request,
+        RequestInit?,
+      ]) => {
+        const url = input instanceof Request ? input.url : input.toString();
+        return url === "https://remote.test/inbox";
+      };
+      await vi.waitFor(() => {
+        if (!fetch.mock.calls.some(isRemoteInboxCall)) {
+          throw new Error("Quote authorization deletion was not sent");
+        }
+      });
+      const matchingCall = fetch.mock.calls.find(isRemoteInboxCall);
+      expect(matchingCall).toBeDefined();
+      const request = matchingCall?.[0];
+      expect(request).toBeInstanceOf(Request);
+      const activity =
+        request instanceof Request ? await request.clone().json() : null;
+      expect(activity.type).toBe("Delete");
+      expect(activity.object.type).toBe("QuoteAuthorization");
+      expect(activity.object.id).toBe(quoteAuthorizationIri);
+    } finally {
+      fetch.mockRestore();
+    }
   });
 });
 
