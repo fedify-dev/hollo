@@ -894,7 +894,7 @@ describe("quote request lifecycle", () => {
     expect(sendActivity).toHaveBeenCalledTimes(2);
   });
 
-  it("accepts a private QuoteRequest from an approved follower", async () => {
+  it("rejects a private QuoteRequest from an approved follower", async () => {
     expect.assertions(4);
 
     const author = await createAccount({ username: "quote-author" });
@@ -952,11 +952,9 @@ describe("quote request lifecycle", () => {
     const quoted = await db.query.posts.findFirst({
       where: eq(posts.id, quotedPostId),
     });
-    expect(quote?.quoteState).toBe("accepted");
-    expect(quote?.quoteAuthorizationIri).toBe(
-      `${quotedPostIri}/quote_authorizations/${quote?.id}`,
-    );
-    expect(quoted?.quotesCount).toBe(1);
+    expect(quote?.quoteState).toBe("rejected");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
     expect(sendActivity).toHaveBeenCalledOnce();
   });
 

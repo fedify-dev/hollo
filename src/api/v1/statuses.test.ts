@@ -439,7 +439,7 @@ describe.sequential("/api/v1/statuses quotes", () => {
     expect(status.quote_approval.current_user).toBe("automatic");
   });
 
-  it("preserves private quote approval for approved followers", async () => {
+  it("treats private quote approval as nobody for followers", async () => {
     expect.assertions(4);
 
     await db.insert(follows).values({
@@ -450,7 +450,7 @@ describe.sequential("/api/v1/statuses quotes", () => {
     });
 
     const quotedResponse = await createStatus(authorToken, {
-      status: "Approved followers can quote this private status",
+      status: "Approved followers cannot quote this private status",
       visibility: "private",
       quote_approval_policy: "followers",
     });
@@ -464,11 +464,11 @@ describe.sequential("/api/v1/statuses quotes", () => {
     });
     expect(response.status).toBe(200);
     const status = await response.json();
-    expect(status.quote_approval.automatic).toEqual(["followers"]);
-    expect(status.quote_approval.current_user).toBe("automatic");
+    expect(status.quote_approval.automatic).toEqual([]);
+    expect(status.quote_approval.current_user).toBe("denied");
   });
 
-  it("allows approved followers to quote private statuses", async () => {
+  it("denies followers quoting private statuses", async () => {
     expect.assertions(4);
 
     await db.insert(follows).values({
@@ -479,7 +479,7 @@ describe.sequential("/api/v1/statuses quotes", () => {
     });
 
     const quotedResponse = await createStatus(authorToken, {
-      status: "Followers can quote this private status",
+      status: "Followers cannot quote this private status",
       visibility: "private",
     });
     expect(quotedResponse.status).toBe(200);
@@ -490,10 +490,16 @@ describe.sequential("/api/v1/statuses quotes", () => {
       quoted_status_id: quoted.id,
       visibility: "public",
     });
-    expect(quoteResponse.status).toBe(200);
-    const quote = await quoteResponse.json();
-    expect(quote.visibility).toBe("private");
-    expect(quote.quote.state).toBe("accepted");
+    expect(quoteResponse.status).toBe(422);
+
+    const selfQuoteResponse = await createStatus(authorToken, {
+      status: "Self quoting this private status",
+      quoted_status_id: quoted.id,
+      visibility: "private",
+    });
+    expect(selfQuoteResponse.status).toBe(200);
+    const selfQuote = await selfQuoteResponse.json();
+    expect(selfQuote.quote.state).toBe("accepted");
   });
 
   it("returns revoked quote state when a quote is revoked", async () => {

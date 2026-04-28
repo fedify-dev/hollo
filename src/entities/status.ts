@@ -53,7 +53,10 @@ function serializeQuoteApproval(
   post: Pick<Post, "accountId" | "visibility">,
   viewerIsApprovedFollower: boolean,
 ) {
-  const effectivePolicy = post.visibility === "direct" ? "nobody" : policy;
+  const effectivePolicy =
+    post.visibility === "direct" || post.visibility === "private"
+      ? "nobody"
+      : policy;
   const automatic =
     effectivePolicy === "public"
       ? ["public"]

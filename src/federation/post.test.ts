@@ -693,7 +693,7 @@ describe("toObject", () => {
     },
   );
 
-  it("emits private follower quote policies", async () => {
+  it("emits author-only quote policy for private statuses", async () => {
     expect.assertions(1);
 
     const account = await createAccount({ username: "quote-author" });
@@ -706,8 +706,8 @@ describe("toObject", () => {
       accountId: account.id as Uuid,
       visibility: "private",
       quoteApprovalPolicy: "followers",
-      contentHtml: "<p>Followers can quote this</p>",
-      content: "Followers can quote this",
+      contentHtml: "<p>Followers cannot quote this</p>",
+      content: "Followers cannot quote this",
       published: new Date(),
     });
 
@@ -719,7 +719,7 @@ describe("toObject", () => {
     expect(json).toMatchObject({
       interactionPolicy: {
         canQuote: {
-          automaticApproval: "https://hollo.test/@quote-author/followers",
+          automaticApproval: "https://hollo.test/@quote-author",
         },
       },
     });

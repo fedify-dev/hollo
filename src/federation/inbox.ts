@@ -604,7 +604,9 @@ async function canAutomaticallyAcceptQuoteRequest(
   quote: Post,
 ): Promise<boolean> {
   if (target.accountId === quote.accountId) return true;
-  if (target.visibility === "direct") return false;
+  if (target.visibility === "direct" || target.visibility === "private") {
+    return false;
+  }
   const block = await db.query.blocks.findFirst({
     where: or(
       and(

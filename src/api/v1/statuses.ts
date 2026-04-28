@@ -209,6 +209,12 @@ async function validateQuoteTarget(
   if (quoteTarget.visibility === "direct") {
     return { ok: false, status: 422, error: "Cannot quote a direct message" };
   }
+  if (
+    quoteTarget.visibility === "private" &&
+    quoteTarget.accountId !== owner.id
+  ) {
+    return { ok: false, status: 422, error: "Quote target is not quotable" };
+  }
 
   let visibility = requestedVisibility;
   if (
