@@ -15,7 +15,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanDatabase } from "../../tests/helpers";
 import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
-import { accounts, blocks, follows, instances, posts } from "../schema";
+import {
+  accounts,
+  blocks,
+  follows,
+  instances,
+  notifications,
+  posts,
+} from "../schema";
 import type { Uuid } from "../uuid";
 import {
   onFollowAccepted,
@@ -687,6 +694,144 @@ describe("quote request lifecycle", () => {
     expect(quote?.quoteState).toBe("accepted");
     expect(quote?.quoteTargetId).toBe(quotedPostId);
     expect(quoted?.quotesCount).toBe(1);
+    expect(sendActivity).toHaveBeenCalledOnce();
+  });
+
+  it("ignores a QuoteRequest for an existing quote owned by another actor", async () => {
+    expect.assertions(5);
+
+    const author = await createAccount({ username: "quote-author" });
+    const localQuoter = await createAccount({ username: "local-quoter" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const localQuotePostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const localQuotePostIri = `https://hollo.test/@local-quoter/${localQuotePostId}`;
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostIri,
+        type: "Note",
+        accountId: author.id as Uuid,
+        visibility: "public",
+        quoteApprovalPolicy: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        published: new Date(),
+      },
+      {
+        id: localQuotePostId,
+        iri: localQuotePostIri,
+        type: "Note",
+        accountId: localQuoter.id as Uuid,
+        quoteTargetIri: quotedPostIri,
+        quoteState: "unauthorized",
+        visibility: "public",
+        contentHtml: "<p>Local quote</p>",
+        content: "Local quote",
+        published: new Date(),
+      },
+    ]);
+
+    const request = new QuoteRequest({
+      actor: new URL("https://remote.test/@attacker"),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(localQuotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@attacker"),
+          name: "attacker",
+          preferredUsername: "attacker",
+          inbox: new URL("https://remote.test/@attacker/inbox"),
+        }),
+        quote: new URL(quotedPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Forged quote request</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, localQuotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("unauthorized");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quote?.accountId).toBe(localQuoter.id);
+    expect(quoted?.quotesCount).toBe(0);
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it("creates a quote notification for accepted QuoteRequests", async () => {
+    expect.assertions(5);
+
+    const author = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotePostIri = "https://remote.test/@quoter/quote-notified";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id as Uuid,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+
+    const request = new QuoteRequest({
+      actor: new URL("https://remote.test/@quoter"),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@quoter"),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL("https://remote.test/@quoter/inbox"),
+        }),
+        quote: new URL(quotedPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+      with: { account: true },
+    });
+    if (quote == null) throw new Error("Failed to persist quote");
+    const notification = await db.query.notifications.findFirst({
+      where: and(
+        eq(notifications.type, "quote"),
+        eq(notifications.accountOwnerId, author.id as Uuid),
+        eq(notifications.actorAccountId, quote.accountId),
+        eq(notifications.targetPostId, quote.id),
+      ),
+    });
+
+    expect(quote.quoteState).toBe("accepted");
+    expect(quote.account.iri).toBe("https://remote.test/@quoter");
+    expect(notification).toBeDefined();
+    expect(notification?.targetPostId).toBe(quote.id);
     expect(sendActivity).toHaveBeenCalledOnce();
   });
 

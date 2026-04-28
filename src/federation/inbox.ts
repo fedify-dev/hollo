@@ -643,10 +643,9 @@ export async function onQuoteRequested(
   if (target?.account.owner == null) return;
   const instrument = await request.getInstrument({ crossOrigin: "trust" });
   if (!isPost(instrument)) return;
-  if (
-    request.actorId != null &&
-    request.actorId.href !== instrument.attributionId?.href
-  ) {
+  const quoteActorIri = instrument.attributionId?.href;
+  if (quoteActorIri == null) return;
+  if (request.actorId != null && request.actorId.href !== quoteActorIri) {
     return;
   }
   const existingQuote =
@@ -662,6 +661,8 @@ export async function onQuoteRequested(
     getPersistOptions(ctx),
   );
   if (persistedQuote == null) return;
+  if (persistedQuote.account.owner != null) return;
+  if (persistedQuote.account.iri !== quoteActorIri) return;
   if (persistedQuote.quoteTargetIri !== target.iri) return;
 
   const wasAccepted =
@@ -692,6 +693,13 @@ export async function onQuoteRequested(
       await updatePostStats(tx, { id: target.id });
     }
   });
+  if (accepted) {
+    await createQuoteNotification(
+      persistedQuote.account,
+      persistedQuote,
+      target,
+    );
+  }
 
   const recipient = {
     id: new URL(persistedQuote.account.iri),
