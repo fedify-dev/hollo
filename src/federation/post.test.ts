@@ -1,6 +1,8 @@
 import type { Context, InboxContext } from "@fedify/fedify";
 import {
   Announce,
+  InteractionPolicy,
+  InteractionRule,
   Note,
   Person,
   PUBLIC_COLLECTION,
@@ -680,5 +682,66 @@ describe("persistPost quotes", () => {
     expect(persisted?.quoteTargetId).toBe(quotedPostId);
     expect(persisted?.quoteTargetIri).toBe(quotedPostIri);
     expect(persisted?.quoteState).toBe("accepted");
+  });
+
+  it("defaults quote approval to public when no interaction policy exists", async () => {
+    const author = await seedRemoteAccount("quote-author");
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/default-quote-policy"),
+        attribution: createPerson(author),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Default quote policy</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteApprovalPolicy).toBe("public");
+  });
+
+  it("does not treat manual-only quote approval as public", async () => {
+    const author = await seedRemoteAccount("quote-author");
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/manual-quote-policy"),
+        attribution: createPerson(author),
+        interactionPolicy: new InteractionPolicy({
+          canQuote: new InteractionRule({
+            manualApproval: PUBLIC_COLLECTION,
+          }),
+        }),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Manual quote policy</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteApprovalPolicy).toBe("nobody");
+  });
+
+  it("persists followers-only automatic quote approval", async () => {
+    const author = await seedRemoteAccount("quote-author");
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/followers-quote-policy"),
+        attribution: createPerson(author),
+        interactionPolicy: new InteractionPolicy({
+          canQuote: new InteractionRule({
+            automaticApproval: new URL(author.followersUrl!),
+          }),
+        }),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Followers quote policy</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteApprovalPolicy).toBe("followers");
   });
 });

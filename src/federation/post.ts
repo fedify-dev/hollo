@@ -111,9 +111,10 @@ function getQuoteApprovalPolicy(
   object: ASPost,
   account: Account,
 ): QuoteApprovalPolicy {
-  const automaticApprovals =
-    object.interactionPolicy?.canQuote?.automaticApprovals ?? [];
-  if (automaticApprovals.length < 1) return "public";
+  const canQuote = object.interactionPolicy?.canQuote;
+  if (canQuote == null) return "public";
+  const automaticApprovals = canQuote.automaticApprovals;
+  if (automaticApprovals.length < 1) return "nobody";
   if (
     automaticApprovals.some((url) => url.href === vocab.PUBLIC_COLLECTION.href)
   ) {
