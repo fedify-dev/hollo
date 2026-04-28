@@ -37,6 +37,7 @@ import {
 } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
+import { escape } from "es-toolkit";
 // @ts-expect-error: No type definitions available
 import { isSSRFSafeURL } from "ssrfcheck";
 
@@ -78,6 +79,11 @@ import { appendPostToTimelines } from "./timeline";
 const logger = getLogger(["hollo", "federation", "post"]);
 
 export type ASPost = Article | Note | Question | ChatMessage;
+
+const HREF_ATTRIBUTE_REGEXP =
+  /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/giu;
+const CLASS_ATTRIBUTE_REGEXP =
+  /\bclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/giu;
 
 export type PersistedSharingPost = Post & {
   account: Account & { owner: AccountOwner | null };
@@ -756,6 +762,10 @@ export function toObject(
                 replies: new Collection({ totalItems: o.votesCount }),
               }),
           );
+  const contentHtml = addQuoteInlineFallback(
+    post.contentHtml,
+    post.quoteTarget,
+  );
   return new cls({
     id: new URL(post.iri),
     attribution: new URL(post.account.iri),
@@ -781,14 +791,11 @@ export function toObject(
           ? [post.summary]
           : [post.summary, new LanguageString(post.summary, post.language)],
     contents:
-      post.contentHtml == null
+      contentHtml == null
         ? []
         : post.language == null
-          ? [post.contentHtml]
-          : [
-              post.contentHtml,
-              new LanguageString(post.contentHtml, post.language),
-            ],
+          ? [contentHtml]
+          : [contentHtml, new LanguageString(contentHtml, post.language)],
     source:
       post.content == null
         ? null
@@ -889,6 +896,87 @@ export function toObject(
         ? null
         : toTemporalInstant(post.poll.expires),
   });
+}
+
+function addQuoteInlineFallback(
+  contentHtml: string | null,
+  quoteTarget: Post | null,
+): string | null {
+  if (quoteTarget == null) return contentHtml;
+
+  const quoteUrl = quoteTarget.url ?? quoteTarget.iri;
+  const quoteInline =
+    `<p class="quote-inline">RE: ` +
+    `<a href="${escape(quoteUrl)}">${escape(quoteUrl)}</a></p>`;
+  if (contentHtml == null || contentHtml === "") return quoteInline;
+  if (contentHasQuoteInlineClass(contentHtml)) return contentHtml;
+  if (contentLinksQuoteTarget(contentHtml, quoteTarget)) return contentHtml;
+  return `${contentHtml}${quoteInline}`;
+}
+
+function contentHasQuoteInlineClass(contentHtml: string): boolean {
+  return [...contentHtml.matchAll(CLASS_ATTRIBUTE_REGEXP)].some((match) =>
+    decodeHtmlEntities(match[1] ?? match[2] ?? match[3] ?? "")
+      .split(/\s+/)
+      .includes("quote-inline"),
+  );
+}
+
+function contentLinksQuoteTarget(
+  contentHtml: string,
+  quoteTarget: Post,
+): boolean {
+  const targets = [quoteTarget.url, quoteTarget.iri]
+    .filter((url) => url != null)
+    .map(toComparableUrl);
+  const links = [...contentHtml.matchAll(HREF_ATTRIBUTE_REGEXP)].map((match) =>
+    toComparableUrl(decodeHtmlEntities(match[1] ?? match[2] ?? match[3] ?? "")),
+  );
+  return links.some((link) => targets.includes(link));
+}
+
+function toComparableUrl(url: string): string {
+  try {
+    return new URL(url).href;
+  } catch {
+    return url;
+  }
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value.replaceAll(
+    /&(?:#(\d+)|#x([\da-f]+)|amp|lt|gt|quot|apos);/gi,
+    (entity, decimal: string | undefined, hexadecimal: string | undefined) => {
+      const codePoint =
+        decimal == null
+          ? hexadecimal == null
+            ? null
+            : Number.parseInt(hexadecimal, 16)
+          : Number.parseInt(decimal, 10);
+      if (codePoint != null) {
+        try {
+          return String.fromCodePoint(codePoint);
+        } catch {
+          return entity;
+        }
+      }
+
+      switch (entity.toLowerCase()) {
+        case "&amp;":
+          return "&";
+        case "&lt;":
+          return "<";
+        case "&gt;":
+          return ">";
+        case "&quot;":
+          return '"';
+        case "&apos;":
+          return "'";
+        default:
+          return entity;
+      }
+    },
+  );
 }
 
 export function toCreate(

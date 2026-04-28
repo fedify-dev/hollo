@@ -1,4 +1,4 @@
-import type { InboxContext } from "@fedify/fedify";
+import type { Context, InboxContext } from "@fedify/fedify";
 import {
   Announce,
   Note,
@@ -15,7 +15,7 @@ import db from "../db";
 import { accounts, follows, instances, posts, timelinePosts } from "../schema";
 import type { Uuid } from "../uuid";
 import { onPostShared } from "./inbox";
-import { persistPost, persistSharingPost } from "./post";
+import { persistPost, persistSharingPost, toObject } from "./post";
 
 async function seedRemoteAccount(username: string) {
   const id = crypto.randomUUID() as Uuid;
@@ -377,5 +377,225 @@ describe("persistPost", () => {
     const jobs = await db.query.remoteReplyScrapeJobs.findMany();
     expect(post?.repliesCount).toBe(3);
     expect(jobs.map((job) => job.repliesIri)).toEqual([repliesIri]);
+  });
+});
+
+describe("toObject", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+
+  async function getObjectJson(postId: Uuid) {
+    const post = await db.query.posts.findFirst({
+      where: eq(posts.id, postId),
+      with: {
+        account: { with: { owner: true } },
+        replyTarget: true,
+        quoteTarget: true,
+        media: true,
+        poll: { with: { options: true } },
+        mentions: { with: { account: true } },
+        replies: true,
+      },
+    });
+    if (post == null) throw new Error("Failed to load post");
+    return await toObject(post, {} as Context<unknown>).toJsonLd();
+  }
+
+  it("adds a quote-inline fallback to explicit quote content", async () => {
+    const account = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quoteTargetUrl = "https://remote.test/@quoted/1";
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: "https://remote.test/objects/1",
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        url: quoteTargetUrl,
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@quote-author/${quotePostId}`,
+        type: "Note",
+        accountId: account.id as Uuid,
+        quoteTargetId: quotedPostId,
+        visibility: "public",
+        contentHtml: "<p>My take</p>\n",
+        content: "My take",
+        published: new Date(),
+      },
+    ]);
+
+    const json = await getObjectJson(quotePostId);
+
+    expect(json).toMatchObject({
+      content:
+        '<p>My take</p>\n<p class="quote-inline">RE: ' +
+        `<a href="${quoteTargetUrl}">${quoteTargetUrl}</a></p>`,
+    });
+  });
+
+  it("emits quote-inline fallback content for quote-only posts", async () => {
+    const account = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quoteTargetUrl = "https://remote.test/@quoted/2";
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: "https://remote.test/objects/2",
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        url: quoteTargetUrl,
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@quote-author/${quotePostId}`,
+        type: "Note",
+        accountId: account.id as Uuid,
+        quoteTargetId: quotedPostId,
+        visibility: "public",
+        contentHtml: null,
+        content: null,
+        published: new Date(),
+      },
+    ]);
+
+    const json = await getObjectJson(quotePostId);
+
+    expect(json).toMatchObject({
+      content:
+        `<p class="quote-inline">RE: ` +
+        `<a href="${quoteTargetUrl}">${quoteTargetUrl}</a></p>`,
+    });
+  });
+
+  it("does not duplicate quote-inline fallback when content links the quote target", async () => {
+    const account = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quoteTargetUrl = "https://remote.test/@quoted/3";
+    const contentHtml = `<p>Read <a href="${quoteTargetUrl}">${quoteTargetUrl}</a></p>`;
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: "https://remote.test/objects/3",
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        url: quoteTargetUrl,
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@quote-author/${quotePostId}`,
+        type: "Note",
+        accountId: account.id as Uuid,
+        quoteTargetId: quotedPostId,
+        visibility: "public",
+        contentHtml,
+        content: "Read the quoted post",
+        published: new Date(),
+      },
+    ]);
+
+    const json = await getObjectJson(quotePostId);
+
+    expect(json).toMatchObject({ content: contentHtml });
+  });
+
+  it("adds a quote-inline fallback when quote-inline appears only as body text", async () => {
+    const account = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quoteTargetUrl = "https://remote.test/@quoted/4";
+    const contentHtml = "<p>The phrase quote-inline is just text.</p>";
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: "https://remote.test/objects/4",
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        url: quoteTargetUrl,
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@quote-author/${quotePostId}`,
+        type: "Note",
+        accountId: account.id as Uuid,
+        quoteTargetId: quotedPostId,
+        visibility: "public",
+        contentHtml,
+        content: "The phrase quote-inline is just text.",
+        published: new Date(),
+      },
+    ]);
+
+    const json = await getObjectJson(quotePostId);
+
+    expect(json).toMatchObject({
+      content:
+        `${contentHtml}<p class="quote-inline">RE: ` +
+        `<a href="${quoteTargetUrl}">${quoteTargetUrl}</a></p>`,
+    });
+  });
+
+  it("does not duplicate quote-inline fallback for an escaped query string target link", async () => {
+    const account = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quoteTargetUrl = "https://remote.test/@quoted/5?first=1&second=2";
+    const contentHtml =
+      '<p>Read <a href="https://remote.test/@quoted/5?first=1&#38;second=2">' +
+      "the quoted post</a></p>";
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: "https://remote.test/objects/5",
+        type: "Note",
+        accountId: account.id as Uuid,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        url: quoteTargetUrl,
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@quote-author/${quotePostId}`,
+        type: "Note",
+        accountId: account.id as Uuid,
+        quoteTargetId: quotedPostId,
+        visibility: "public",
+        contentHtml,
+        content: "Read the quoted post",
+        published: new Date(),
+      },
+    ]);
+
+    const json = await getObjectJson(quotePostId);
+
+    expect(json).toMatchObject({ content: contentHtml });
   });
 });

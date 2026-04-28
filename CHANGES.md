@@ -6,6 +6,11 @@ Version 0.9.0
 
 To be released.
 
+ -  Added an ActivityPub `quote-inline` fallback to the `content` of explicit
+    quote posts created through the Mastodon API.  Software that does not
+    support quote posts can now still show the quoted post permalink, while
+    quote-aware software can hide the fallback paragraph by class name.
+
 
 Version 0.8.1
 -------------
