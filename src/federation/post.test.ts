@@ -650,6 +650,48 @@ describe("toObject", () => {
     });
   });
 
+  it.each(["pending", "rejected", "revoked", "unauthorized"] as const)(
+    "omits quote fields for %s quotes",
+    async (quoteState) => {
+      expect.assertions(2);
+
+      const account = await createAccount({ username: "quote-author" });
+      const quotedPostId = crypto.randomUUID() as Uuid;
+      const quotePostId = crypto.randomUUID() as Uuid;
+
+      await db.insert(posts).values([
+        {
+          id: quotedPostId,
+          iri: "https://remote.test/objects/inactive-quote-target",
+          type: "Note",
+          accountId: account.id as Uuid,
+          visibility: "public",
+          contentHtml: "<p>Quoted post</p>",
+          content: "Quoted post",
+          published: new Date(),
+        },
+        {
+          id: quotePostId,
+          iri: `https://hollo.test/@quote-author/${quotePostId}`,
+          type: "Note",
+          accountId: account.id as Uuid,
+          quoteTargetId: quotedPostId,
+          quoteTargetIri: "https://remote.test/objects/inactive-quote-target",
+          quoteState,
+          visibility: "public",
+          contentHtml: "<p>My inactive quote</p>",
+          content: "My inactive quote",
+          published: new Date(),
+        },
+      ]);
+
+      const json = await getObjectJson(quotePostId);
+
+      expect(json).not.toHaveProperty("quote");
+      expect(json).not.toHaveProperty("quoteUrl");
+    },
+  );
+
   it("emits private follower quote policies", async () => {
     expect.assertions(1);
 

@@ -861,7 +861,10 @@ export function toObject(
     post.contentHtml,
     post.quoteTarget,
   );
-  const quoteTargetIri = post.quoteTargetIri ?? post.quoteTarget?.iri;
+  const quoteTargetIri =
+    post.quoteState == null || post.quoteState === "accepted"
+      ? (post.quoteTargetIri ?? post.quoteTarget?.iri)
+      : null;
   return new cls({
     id: new URL(post.iri),
     attribution: new URL(post.account.iri),
