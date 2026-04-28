@@ -6,6 +6,7 @@ import {
   Note,
   Person,
   PUBLIC_COLLECTION,
+  QuoteAuthorization,
   type RemoteDocument,
 } from "@fedify/vocab";
 import { and, eq } from "drizzle-orm";
@@ -682,6 +683,50 @@ describe("persistPost quotes", () => {
     expect(persisted?.quoteTargetId).toBe(quotedPostId);
     expect(persisted?.quoteTargetIri).toBe(quotedPostIri);
     expect(persisted?.quoteState).toBe("accepted");
+  });
+
+  it("does not accept quotes with forged quote authorization", async () => {
+    expect.assertions(3);
+
+    const author = await seedRemoteAccount("quote-author");
+    const quoter = await seedRemoteAccount("quote-quoter");
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = "https://remote.test/objects/quoted-forged-auth";
+    const quotePostIri = "https://remote.test/objects/quote-forged-auth";
+    const quoteAuthorizationIri = `${quotedPostIri}/quote_authorizations/forged`;
+
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id,
+      visibility: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL(quotePostIri),
+        attribution: createPerson(quoter),
+        quote: new URL(quotedPostIri),
+        quoteAuthorization: new QuoteAuthorization({
+          id: new URL(quoteAuthorizationIri),
+          attribution: new URL(quoter.iri),
+          interactingObject: new URL(quotePostIri),
+          interactionTarget: new URL(quotedPostIri),
+        }),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Quote post</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteTargetId).toBe(quotedPostId);
+    expect(persisted?.quoteState).toBe("unauthorized");
+    expect(persisted?.quoteAuthorizationIri).toBeNull();
   });
 
   it("defaults quote approval to public when no interaction policy exists", async () => {

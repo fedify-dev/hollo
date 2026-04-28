@@ -20,6 +20,7 @@ import {
   Note,
   OrderedCollection,
   Question,
+  QuoteAuthorization,
   type Recipient,
   Source,
   Tombstone,
@@ -129,6 +130,34 @@ function getQuoteApprovalPolicy(
   return "nobody";
 }
 
+async function getVerifiedQuoteAuthorizationIri(
+  object: ASPost,
+  quoteTargetIri: string | null,
+  quoteTargetAccountIri: string | null,
+  options: PersistAccountOptions,
+): Promise<string | null> {
+  const authorizationId = object.quoteAuthorizationId;
+  if (
+    authorizationId == null ||
+    quoteTargetIri == null ||
+    quoteTargetAccountIri == null ||
+    object.id == null
+  ) {
+    return null;
+  }
+  const authorization = await object.getQuoteAuthorization({
+    ...options,
+    crossOrigin: "trust",
+    suppressError: true,
+  });
+  if (!(authorization instanceof QuoteAuthorization)) return null;
+  if (authorization.id?.href !== authorizationId.href) return null;
+  if (authorization.attributionId?.href !== quoteTargetAccountIri) return null;
+  if (authorization.interactingObjectId?.href !== object.id.href) return null;
+  if (authorization.interactionTargetId?.href !== quoteTargetIri) return null;
+  return authorizationId.href;
+}
+
 export async function persistPost(
   db: PgDatabase<
     PostgresJsQueryResultHKT,
@@ -235,6 +264,7 @@ export async function persistPost(
   let quoteTargetId: Uuid | null = null;
   let quoteTargetIri: string | null = null;
   let quoteTargetAccountId: Uuid | null = null;
+  let quoteTargetAccountIri: string | null = null;
   if (objectLink == null && object.quoteId != null) {
     objectLink = object.quoteId;
   }
@@ -243,14 +273,14 @@ export async function persistPost(
   }
   if (objectLink != null) {
     quoteTargetIri = objectLink.href;
-    const result = await db
-      .select({ id: posts.id, accountId: posts.accountId })
-      .from(posts)
-      .where(eq(posts.iri, objectLink.href))
-      .limit(1);
-    if (result != null && result.length > 0) {
-      quoteTargetId = result[0].id;
-      quoteTargetAccountId = result[0].accountId;
+    const found = await db.query.posts.findFirst({
+      where: eq(posts.iri, objectLink.href),
+      with: { account: true },
+    });
+    if (found != null) {
+      quoteTargetId = found.id;
+      quoteTargetAccountId = found.accountId;
+      quoteTargetAccountIri = found.account.iri;
       logger.debug("The quote target is already persisted: {quoteTargetId}", {
         quoteTargetId,
       });
@@ -267,6 +297,7 @@ export async function persistPost(
         });
         quoteTargetId = quoteTargetObj?.id ?? null;
         quoteTargetAccountId = quoteTargetObj?.accountId ?? null;
+        quoteTargetAccountIri = quoteTargetObj?.account.iri ?? null;
       }
     }
   }
@@ -281,6 +312,12 @@ export async function persistPost(
       : await extractPreviewLink(object.content.toString());
   const previewCard =
     previewLink == null ? null : await fetchPreviewCard(previewLink);
+  const quoteAuthorizationIri = await getVerifiedQuoteAuthorizationIri(
+    object,
+    quoteTargetIri,
+    quoteTargetAccountIri,
+    options,
+  );
   const published = toDate(object.published);
   const updated = toDate(object.updated) ?? published ?? new Date();
   const values = {
@@ -299,11 +336,10 @@ export async function persistPost(
     quoteState:
       quoteTargetId == null
         ? null
-        : quoteTargetAccountId === account.id ||
-            object.quoteAuthorizationId != null
+        : quoteTargetAccountId === account.id || quoteAuthorizationIri != null
           ? "accepted"
           : "unauthorized",
-    quoteAuthorizationIri: object.quoteAuthorizationId?.href,
+    quoteAuthorizationIri,
     visibility: to.has(vocab.PUBLIC_COLLECTION.href)
       ? "public"
       : cc.has(vocab.PUBLIC_COLLECTION.href)
