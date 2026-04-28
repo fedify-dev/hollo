@@ -671,6 +671,10 @@ export async function onQuoteRequested(
     existingQuote?.quoteState === "accepted" &&
     (existingQuote.quoteTargetId === target.id ||
       existingQuote.quoteTargetIri === target.iri);
+  const previousAcceptedTargetId =
+    existingQuote?.quoteState === "accepted"
+      ? existingQuote.quoteTargetId
+      : null;
   const accepted =
     wasAccepted ||
     (await canAutomaticallyAcceptQuoteRequest(target, persistedQuote));
@@ -693,6 +697,12 @@ export async function onQuoteRequested(
         .where(eq(posts.id, target.id));
     } else if (accepted) {
       await updatePostStats(tx, { id: target.id });
+    }
+    if (
+      previousAcceptedTargetId != null &&
+      previousAcceptedTargetId !== target.id
+    ) {
+      await updatePostStats(tx, { id: previousAcceptedTargetId });
     }
   });
   if (accepted) {

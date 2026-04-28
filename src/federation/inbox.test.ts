@@ -894,6 +894,101 @@ describe("quote request lifecycle", () => {
     expect(sendActivity).toHaveBeenCalledTimes(2);
   });
 
+  it("recomputes quote counts when accepted quotes are retargeted", async () => {
+    expect.assertions(6);
+
+    const author = await createAccount({ username: "quote-author" });
+    const oldPostId = crypto.randomUUID() as Uuid;
+    const newPostId = crypto.randomUUID() as Uuid;
+    const oldPostIri = `https://hollo.test/@quote-author/${oldPostId}`;
+    const newPostIri = `https://hollo.test/@quote-author/${newPostId}`;
+    const quotePostIri = "https://remote.test/@quoter/quote-retargeted";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(posts).values([
+      {
+        id: oldPostId,
+        iri: oldPostIri,
+        type: "Note",
+        accountId: author.id as Uuid,
+        visibility: "public",
+        quoteApprovalPolicy: "public",
+        contentHtml: "<p>Old quoted post</p>",
+        content: "Old quoted post",
+        published: new Date(),
+      },
+      {
+        id: newPostId,
+        iri: newPostIri,
+        type: "Note",
+        accountId: author.id as Uuid,
+        visibility: "public",
+        quoteApprovalPolicy: "public",
+        contentHtml: "<p>New quoted post</p>",
+        content: "New quoted post",
+        published: new Date(),
+      },
+    ]);
+
+    const oldRequest = new QuoteRequest({
+      actor: new URL("https://remote.test/@quoter"),
+      object: new URL(oldPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@quoter"),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL("https://remote.test/@quoter/inbox"),
+        }),
+        quote: new URL(oldPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote</p>",
+      }),
+    });
+    const newRequest = new QuoteRequest({
+      actor: new URL("https://remote.test/@quoter"),
+      object: new URL(newPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@quoter"),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL("https://remote.test/@quoter/inbox"),
+        }),
+        quote: new URL(newPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote retargeted</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, oldRequest);
+    await onQuoteRequested(requestCtx, newRequest);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    const oldPost = await db.query.posts.findFirst({
+      where: eq(posts.id, oldPostId),
+    });
+    const newPost = await db.query.posts.findFirst({
+      where: eq(posts.id, newPostId),
+    });
+    expect(quote?.quoteTargetId).toBe(newPostId);
+    expect(quote?.quoteState).toBe("accepted");
+    expect(quote?.quoteAuthorizationIri).toBe(
+      `${newPostIri}/quote_authorizations/${quote?.id}`,
+    );
+    expect(oldPost?.quotesCount).toBe(0);
+    expect(newPost?.quotesCount).toBe(1);
+    expect(sendActivity).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects a private QuoteRequest from an approved follower", async () => {
     expect.assertions(4);
 
