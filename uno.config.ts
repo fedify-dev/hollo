@@ -4,7 +4,6 @@ import {
   presetTypography,
   presetWebFonts,
   presetWind4,
-  transformerVariantGroup,
 } from "unocss";
 
 export default defineConfig({
@@ -34,10 +33,17 @@ export default defineConfig({
       },
     }),
   ],
-  transformers: [transformerVariantGroup()],
   preflights: [
     {
       getCSS: () => `
+        :root {
+          --un-bg-opacity: 100%;
+          --un-text-opacity: 100%;
+          --un-border-opacity: 100%;
+          --un-ring-opacity: 100%;
+          --un-divide-opacity: 100%;
+          --un-placeholder-opacity: 100%;
+        }
         @media (prefers-color-scheme: dark) {
           .shiki, .shiki span {
             color: var(--shiki-dark) !important;
@@ -53,18 +59,18 @@ export default defineConfig({
   theme: {
     colors: {
       brand: {
-        50: "rgb(var(--theme-50) / <alpha-value>)",
-        100: "rgb(var(--theme-100) / <alpha-value>)",
-        200: "rgb(var(--theme-200) / <alpha-value>)",
-        300: "rgb(var(--theme-300) / <alpha-value>)",
-        400: "rgb(var(--theme-400) / <alpha-value>)",
-        500: "rgb(var(--theme-500) / <alpha-value>)",
-        600: "rgb(var(--theme-600) / <alpha-value>)",
-        700: "rgb(var(--theme-700) / <alpha-value>)",
-        800: "rgb(var(--theme-800) / <alpha-value>)",
-        900: "rgb(var(--theme-900) / <alpha-value>)",
-        950: "rgb(var(--theme-950) / <alpha-value>)",
-        DEFAULT: "rgb(var(--theme-500) / <alpha-value>)",
+        50: "rgb(var(--theme-50))",
+        100: "rgb(var(--theme-100))",
+        200: "rgb(var(--theme-200))",
+        300: "rgb(var(--theme-300))",
+        400: "rgb(var(--theme-400))",
+        500: "rgb(var(--theme-500))",
+        600: "rgb(var(--theme-600))",
+        700: "rgb(var(--theme-700))",
+        800: "rgb(var(--theme-800))",
+        900: "rgb(var(--theme-900))",
+        950: "rgb(var(--theme-950))",
+        DEFAULT: "rgb(var(--theme-500))",
       },
     },
   },

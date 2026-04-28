@@ -39,7 +39,7 @@ export function DashboardLayout(
   return (
     <Layout {...layoutProps}>
       <div class="min-h-screen flex flex-col">
-        <header class="border-b border-neutral-200 bg-white dark:(border-neutral-800 bg-neutral-900)">
+        <header class="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
           <div class="mx-auto max-w-5xl px-4 py-3 flex flex-wrap items-center gap-4 sm:gap-6">
             <a
               href="/"
@@ -71,7 +71,7 @@ export function DashboardLayout(
                     class={
                       active
                         ? "font-semibold text-neutral-900 dark:text-neutral-100"
-                        : "text-neutral-600 hover:text-neutral-900 dark:(text-neutral-400 hover:text-neutral-100)"
+                        : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
                     }
                     aria-current={active ? "page" : undefined}
                   >
@@ -87,7 +87,7 @@ export function DashboardLayout(
             >
               <button
                 type="submit"
-                class="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 transition-colors hover:(border-neutral-400 bg-neutral-100) dark:(border-neutral-700 text-neutral-300 hover:(border-neutral-600 bg-neutral-800))"
+                class="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
               >
                 Logout
               </button>

@@ -1,7 +1,19 @@
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import type { PropsWithChildren } from "hono/jsx";
 
 import type { ThemeColor } from "../schema";
 import { themeColorVariables } from "../theme/colors";
+
+const UNO_CSS_PATH = join(import.meta.dirname, "..", "public", "uno.css");
+
+function unoCssVersion(): string {
+  try {
+    return Math.floor(statSync(UNO_CSS_PATH).mtimeMs).toString(36);
+  } catch {
+    return "0";
+  }
+}
 
 export interface LayoutProps {
   title: string;
@@ -44,7 +56,10 @@ export function Layout(props: PropsWithChildren<LayoutProps>) {
             type={link.type}
           />
         ))}
-        <link rel="stylesheet" href="/public/uno.css" />
+        <link
+          rel="stylesheet"
+          href={`/public/uno.css?v=${unoCssVersion()}`}
+        />
         <link
           rel="icon"
           type="image/png"
@@ -60,7 +75,7 @@ export function Layout(props: PropsWithChildren<LayoutProps>) {
           media="(prefers-color-scheme: dark)"
         />
       </head>
-      <body class="min-h-screen bg-neutral-50 text-neutral-900 font-sans antialiased dark:(bg-neutral-950 text-neutral-100)">
+      <body class="min-h-screen bg-neutral-50 text-neutral-900 font-sans antialiased dark:bg-neutral-950 dark:text-neutral-100">
         {props.children}
       </body>
     </html>
