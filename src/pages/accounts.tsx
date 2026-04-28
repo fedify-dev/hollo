@@ -554,315 +554,399 @@ accounts.get("/:id/migrate", async (c) => {
   // Check if we need to auto-refresh (job in progress)
   const shouldAutoRefresh =
     activeJob?.status === "pending" || activeJob?.status === "processing";
+  const sectionClass =
+    "rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900";
+  const inputClass =
+    "rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:ring-brand-900";
+  const primaryButtonClass =
+    "rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60";
+  const secondaryButtonClass =
+    "rounded-md border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800";
+  const csvLinkClass =
+    "inline-flex items-center gap-1 text-sm text-brand-700 underline-offset-2 hover:underline dark:text-brand-400";
+  const dataRows = [
+    {
+      label: "Follows",
+      count: followsCount,
+      href: "migrate/following_accounts.csv",
+    },
+    { label: "Lists", count: listsCount, href: "migrate/lists.csv" },
+    {
+      label: "You mute",
+      count: mutesCount,
+      href: "migrate/muted_accounts.csv",
+    },
+    {
+      label: "You block",
+      count: blocksCount,
+      href: "migrate/blocked_accounts.csv",
+    },
+    {
+      label: "Bookmarks",
+      count: bookmarksCount,
+      href: "migrate/bookmarks.csv",
+    },
+  ];
   return c.html(
     <DashboardLayout
       title={`Hollo: Migrate ${username} from/to`}
       selectedMenu="accounts"
+      themeColor={accountOwner.themeColor}
     >
-      <hgroup>
-        <h1>Migrate {username} from/to</h1>
-        <p>
-          You can migrate your account from one instance to another by filling
-          out the form below.
+      <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <a
+            href="/accounts"
+            class="hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Accounts
+          </a>
         </p>
-      </hgroup>
+        <h1 class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Migrate{" "}
+          <span class="font-mono text-brand-700 dark:text-brand-400">
+            {username}
+          </span>
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Move data and aliases between fediverse accounts.
+        </p>
+      </header>
 
-      <article>
-        <header>
-          <hgroup>
-            <h2>Aliases</h2>
-            <p>
-              Configure aliases for your account. This purposes to migrate your
-              old account to <tt>{accountOwner.account.handle}</tt>.
+      <div class="space-y-6">
+        <section class={sectionClass}>
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Aliases
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              Add aliases that point to{" "}
+              <code class="font-mono text-brand-700 dark:text-brand-400">
+                {accountOwner.account.handle}
+              </code>{" "}
+              when migrating an old account here.
             </p>
-          </hgroup>
-        </header>
-        {aliases && (
-          <ul>
-            {aliases.map(({ iri, handle }) => (
-              <li>
-                {handle == null ? (
-                  <>
-                    <tt>{iri}</tt> (The server is not available.)
-                  </>
-                ) : (
-                  <>
-                    <tt>{handle}</tt> (<tt>{iri}</tt>)
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <form method="post" action="migrate/from">
-          <fieldset role="group">
-            <input
-              type="text"
-              name="handle"
-              placeholder="@hollo@hollo.social"
-              required
-              {...(aliasesError === "from"
-                ? { "aria-invalid": "true", value: aliasesHandle }
-                : {})}
-            />
-            <button type="submit">Add</button>
-          </fieldset>
-          <small>
-            A fediverse handle (e.g., <tt>@hollo@hollo.social</tt>) or an actor
-            URI (e.g., <tt>https://hollo.social/@hollo</tt>) is allowed.
-          </small>
-        </form>
-      </article>
-
-      <article>
-        <header>
-          <hgroup>
-            <h2>Migrating {username} to new account</h2>
-            <p>
-              Migrate <tt>{accountOwner.account.handle}</tt> to your new
-              account. Note that this action is <strong>irreversible</strong>.
-            </p>
-          </hgroup>
-        </header>
-        <form method="post" action="migrate/to">
-          <fieldset role="group">
-            <input
-              type="text"
-              name="handle"
-              placeholder={HOLLO_OFFICIAL_ACCOUNT}
-              required
-              {...(aliasesError === "to"
-                ? { "aria-invalid": "true", value: aliasesHandle }
-                : { value: accountOwner.account.successor?.handle })}
-              {...(accountOwner.account.successorId == null
-                ? {}
-                : { disabled: true })}
-            />
-            {accountOwner.account.successorId == null ? (
-              <button type="submit">Migrate</button>
-            ) : (
-              <button type="submit" disabled>
-                Migrated
+          </header>
+          {aliases && aliases.length > 0 && (
+            <ul class="mb-4 space-y-1 text-sm">
+              {aliases.map(({ iri, handle }) => (
+                <li class="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-1.5 font-mono text-neutral-800 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-200">
+                  {handle == null ? (
+                    <>
+                      {iri}{" "}
+                      <span class="font-sans text-xs text-neutral-500 dark:text-neutral-400">
+                        (server unavailable)
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {handle}{" "}
+                      <span class="font-sans text-xs text-neutral-500 dark:text-neutral-400">
+                        ({iri})
+                      </span>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <form method="post" action="migrate/from">
+            <div class="flex gap-2">
+              <input
+                type="text"
+                name="handle"
+                placeholder="@hollo@hollo.social"
+                required
+                aria-invalid={aliasesError === "from" ? "true" : undefined}
+                value={aliasesError === "from" ? aliasesHandle : undefined}
+                class={`${inputClass} flex-1 ${
+                  aliasesError === "from"
+                    ? "border-red-500"
+                    : "border-neutral-300 dark:border-neutral-700"
+                }`}
+              />
+              <button type="submit" class={primaryButtonClass}>
+                Add alias
               </button>
-            )}
-          </fieldset>
-          <small>
-            A fediverse handle (e.g., <tt>@hollo@hollo.social</tt>) or an actor
-            URI (e.g., <tt>https://hollo.social/@hollo</tt>) is allowed.{" "}
-            <strong>
-              The new account must have an alias to this old account.
-            </strong>
-          </small>
-        </form>
-      </article>
-
-      <article>
-        <header>
-          <hgroup>
-            <h2>Export data</h2>
-            <p>
-              Export your account data into CSV files. Note that these files are
-              compatible with Mastodon.
+            </div>
+            <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              A fediverse handle (e.g.{" "}
+              <code class="font-mono">@hollo@hollo.social</code>) or an actor
+              URI (e.g.{" "}
+              <code class="font-mono">https://hollo.social/@hollo</code>) is
+              allowed.
             </p>
-          </hgroup>
-        </header>
-        <table>
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Entries</th>
-              <th>Download</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Follows</td>
-              <td>{followsCount.toLocaleString("en-US")}</td>
-              <td>
-                <a href="migrate/following_accounts.csv">CSV</a>
-              </td>
-            </tr>
-            <tr>
-              <td>Lists</td>
-              <td>{listsCount.toLocaleString("en-US")}</td>
-              <td>
-                <a href="migrate/lists.csv">CSV</a>
-              </td>
-            </tr>
-            <tr>
-              <td>You mute</td>
-              <td>{mutesCount.toLocaleString("en-US")}</td>
-              <td>
-                <a href="migrate/muted_accounts.csv">CSV</a>
-              </td>
-            </tr>
-            <tr>
-              <td>You block</td>
-              <td>{blocksCount.toLocaleString("en-US")}</td>
-              <td>
-                <a href="migrate/blocked_accounts.csv">CSV</a>
-              </td>
-            </tr>
-            <tr>
-              <td>Bookmarks</td>
-              <td>{bookmarksCount.toLocaleString("en-US")}</td>
-              <td>
-                <a href="migrate/bookmarks.csv">CSV</a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </article>
+          </form>
+        </section>
 
-      {/* Import Progress Section */}
-      {activeJob && (
-        <article id="import-progress">
-          <header>
-            <hgroup>
-              <h2>
+        <section class={sectionClass}>
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Move {username} to a new account
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              Move{" "}
+              <code class="font-mono text-brand-700 dark:text-brand-400">
+                {accountOwner.account.handle}
+              </code>{" "}
+              to a new account.{" "}
+              <strong class="font-semibold text-red-700 dark:text-red-400">
+                This action is irreversible.
+              </strong>
+            </p>
+          </header>
+          <form method="post" action="migrate/to">
+            <div class="flex gap-2">
+              <input
+                type="text"
+                name="handle"
+                placeholder={HOLLO_OFFICIAL_ACCOUNT}
+                required
+                aria-invalid={aliasesError === "to" ? "true" : undefined}
+                value={
+                  aliasesError === "to"
+                    ? aliasesHandle
+                    : accountOwner.account.successor?.handle
+                }
+                disabled={accountOwner.account.successorId != null}
+                class={`${inputClass} flex-1 ${
+                  aliasesError === "to"
+                    ? "border-red-500"
+                    : "border-neutral-300 dark:border-neutral-700"
+                }`}
+              />
+              <button
+                type="submit"
+                disabled={accountOwner.account.successorId != null}
+                class={primaryButtonClass}
+              >
+                {accountOwner.account.successorId == null ? "Move" : "Moved"}
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              The new account must have an alias to this old account.
+            </p>
+          </form>
+        </section>
+
+        <section class={sectionClass}>
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Export data
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              Download your data as Mastodon-compatible CSV files.
+            </p>
+          </header>
+          <div class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <table class="w-full text-sm">
+              <thead class="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+                <tr>
+                  <th class="px-3 py-2 text-left font-semibold">Category</th>
+                  <th class="px-3 py-2 text-right font-semibold">Entries</th>
+                  <th class="px-3 py-2 text-right font-semibold">Download</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-900">
+                {dataRows.map((row) => (
+                  <tr>
+                    <td class="px-3 py-2 text-neutral-800 dark:text-neutral-200">
+                      {row.label}
+                    </td>
+                    <td class="px-3 py-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">
+                      {row.count.toLocaleString("en-US")}
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <a href={row.href} class={csvLinkClass}>
+                        <span class="i-lucide-download" aria-hidden="true" />
+                        CSV
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {activeJob && (
+          <section id="import-progress" class={sectionClass}>
+            <header class="mb-3">
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 {activeJob.status === "pending"
-                  ? "Import Queued"
+                  ? "Import queued"
                   : activeJob.status === "processing"
-                    ? "Import in Progress"
+                    ? "Import in progress"
                     : activeJob.status === "completed"
-                      ? "Import Completed"
+                      ? "Import completed"
                       : activeJob.status === "cancelled"
-                        ? "Import Cancelled"
-                        : "Import Failed"}
+                        ? "Import cancelled"
+                        : "Import failed"}
               </h2>
-              <p>
+              <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                 Importing {activeJob.category.replace(/_/g, " ")}
                 {activeJob.status === "pending" && " (waiting to start)"}
                 {activeJob.status === "processing" && "..."}
               </p>
-            </hgroup>
-          </header>
+            </header>
 
-          <progress
-            value={activeJob.processedItems}
-            max={activeJob.totalItems}
-          />
+            <div class="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+              <div
+                class="h-full bg-brand-600 transition-all"
+                style={`width: ${
+                  activeJob.totalItems > 0
+                    ? Math.round(
+                        (activeJob.processedItems / activeJob.totalItems) * 100,
+                      )
+                    : 0
+                }%`}
+              />
+            </div>
 
-          <p>
-            <strong>{activeJob.processedItems.toLocaleString("en-US")}</strong>{" "}
-            / {activeJob.totalItems.toLocaleString("en-US")} items processed
-            {activeJob.processedItems > 0 && (
+            <p class="mt-3 text-sm text-neutral-700 dark:text-neutral-300">
+              <strong class="font-semibold text-neutral-900 dark:text-neutral-100">
+                {activeJob.processedItems.toLocaleString("en-US")}
+              </strong>{" "}
+              / {activeJob.totalItems.toLocaleString("en-US")} items processed
+              {activeJob.processedItems > 0 && (
+                <>
+                  {" "}
+                  (
+                  <strong class="font-semibold text-green-700 dark:text-green-400">
+                    {activeJob.successfulItems.toLocaleString("en-US")}
+                  </strong>{" "}
+                  successful
+                  {activeJob.failedItems > 0 && (
+                    <>
+                      ,{" "}
+                      <strong class="font-semibold text-red-700 dark:text-red-400">
+                        {activeJob.failedItems.toLocaleString("en-US")}
+                      </strong>{" "}
+                      failed
+                    </>
+                  )}
+                  )
+                </>
+              )}
+            </p>
+
+            {shouldAutoRefresh && (
               <>
-                {" "}
-                (
-                <strong style={{ color: "var(--pico-ins-color)" }}>
-                  {activeJob.successfulItems.toLocaleString("en-US")}
-                </strong>{" "}
-                successful
-                {activeJob.failedItems > 0 && (
-                  <>
-                    ,{" "}
-                    <strong style={{ color: "var(--pico-del-color)" }}>
-                      {activeJob.failedItems.toLocaleString("en-US")}
-                    </strong>{" "}
-                    failed
-                  </>
-                )}
-                )
+                <form
+                  method="post"
+                  action={`migrate/import/${activeJob.id}/cancel`}
+                  class="mt-4"
+                >
+                  <button type="submit" class={secondaryButtonClass}>
+                    Cancel import
+                  </button>
+                </form>
+                <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                  This page refreshes every 5 seconds. You can navigate away
+                  safely — the import keeps running in the background.
+                </p>
+                <script
+                  dangerouslySetInnerHTML={{
+                    __html: "setTimeout(() => location.reload(), 5000);",
+                  }}
+                />
               </>
             )}
-          </p>
 
-          {shouldAutoRefresh && (
-            <>
-              <form
-                method="post"
-                action={`migrate/import/${activeJob.id}/cancel`}
-              >
-                <button type="submit" class="secondary">
-                  Cancel Import
-                </button>
-              </form>
-              <small>
-                This page refreshes automatically every 5 seconds. You can
-                navigate away safely &mdash; the import will continue in the
-                background.
-              </small>
-              <script
-                dangerouslySetInnerHTML={{
-                  __html: "setTimeout(() => location.reload(), 5000);",
-                }}
-              />
-            </>
-          )}
-
-          {activeJob.status === "completed" && (
-            <p style={{ color: "var(--pico-ins-color)" }}>
-              Import completed successfully!
-            </p>
-          )}
-
-          {activeJob.status === "cancelled" && (
-            <p style={{ color: "var(--pico-del-color)" }}>
-              Import was cancelled.
-            </p>
-          )}
-
-          {activeJob.status === "failed" && activeJob.errorMessage && (
-            <p style={{ color: "var(--pico-del-color)" }}>
-              Error: {activeJob.errorMessage}
-            </p>
-          )}
-        </article>
-      )}
-
-      <article id="import-data">
-        <header>
-          <hgroup>
-            <h2>Import data</h2>
-            {importDataResult == null ? (
-              <p>
-                Import your account data from CSV files, which are exported from
-                other Hollo or Mastodon instances. The existing data won't be
-                overwritten, but the new data will be <strong>merged</strong>{" "}
-                with the existing data.
+            {activeJob.status === "completed" && (
+              <p class="mt-3 text-sm font-medium text-green-700 dark:text-green-400">
+                Import completed successfully.
               </p>
-            ) : (
-              <p>{importDataResult}</p>
             )}
-          </hgroup>
-        </header>
-        <form
-          method="post"
-          action="migrate/import"
-          encType="multipart/form-data"
-        >
-          <fieldset
-            class="grid"
-            {...(shouldAutoRefresh ? { disabled: true } : {})}
+
+            {activeJob.status === "cancelled" && (
+              <p class="mt-3 text-sm font-medium text-red-700 dark:text-red-400">
+                Import was cancelled.
+              </p>
+            )}
+
+            {activeJob.status === "failed" && activeJob.errorMessage && (
+              <p class="mt-3 text-sm font-medium text-red-700 dark:text-red-400">
+                Error: {activeJob.errorMessage}
+              </p>
+            )}
+          </section>
+        )}
+
+        <section id="import-data" class={sectionClass}>
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Import data
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              {importDataResult ??
+                "Import account data from CSV files exported by other Hollo or Mastodon instances.  Existing data is preserved; new data is merged in."}
+            </p>
+          </header>
+          <form
+            method="post"
+            action="migrate/import"
+            encType="multipart/form-data"
+            class="space-y-4"
           >
-            <label>
-              Category
-              <select name="category">
-                <option value="following_accounts">Follows</option>
-                <option value="lists">Lists</option>
-                <option value="muted_accounts">Muted accounts</option>
-                <option value="blocked_accounts">Blocked accounts</option>
-                <option value="bookmarks">Bookmarks</option>
-              </select>
-              <small>The category of the data you want to import.</small>
-            </label>
-            <label>
-              CSV file
-              <input type="file" name="file" accept=".csv" required />
-              <small>
-                A CSV file exported from other Hollo or Mastodon instances.
-              </small>
-            </label>
-          </fieldset>
-          <button
-            type="submit"
-            {...(shouldAutoRefresh ? { disabled: true } : {})}
-          >
-            {shouldAutoRefresh ? "Import in progress..." : "Import"}
-          </button>
-        </form>
-      </article>
+            <fieldset
+              class="grid gap-4 sm:grid-cols-2"
+              {...(shouldAutoRefresh ? { disabled: true } : {})}
+            >
+              <div>
+                <label
+                  for="import-category"
+                  class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+                >
+                  Category
+                </label>
+                <select
+                  id="import-category"
+                  name="category"
+                  class={`${inputClass} mt-1 w-full border-neutral-300 dark:border-neutral-700`}
+                >
+                  <option value="following_accounts">Follows</option>
+                  <option value="lists">Lists</option>
+                  <option value="muted_accounts">Muted accounts</option>
+                  <option value="blocked_accounts">Blocked accounts</option>
+                  <option value="bookmarks">Bookmarks</option>
+                </select>
+                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  The category of the data you want to import.
+                </p>
+              </div>
+              <div>
+                <label
+                  for="import-file"
+                  class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+                >
+                  CSV file
+                </label>
+                <input
+                  id="import-file"
+                  type="file"
+                  name="file"
+                  accept=".csv"
+                  required
+                  class="mt-1 block w-full text-sm text-neutral-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700 dark:text-neutral-300"
+                />
+                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  A CSV file exported from another Hollo or Mastodon instance.
+                </p>
+              </div>
+            </fieldset>
+            <div class="flex justify-end">
+              <button
+                type="submit"
+                disabled={shouldAutoRefresh}
+                class={primaryButtonClass}
+              >
+                {shouldAutoRefresh ? "Import in progress..." : "Import"}
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
     </DashboardLayout>,
   );
 });
