@@ -115,10 +115,29 @@ interface TagPageProps {
 function TagPage({ tag, posts }: TagPageProps) {
   return (
     <Layout title={`#${tag}`}>
-      <h1>#{tag}</h1>
-      {posts.map((post) => (
-        <PostView post={post} />
-      ))}
+      <main class="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
+        <header class="mb-6">
+          <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+            Hashtag
+          </p>
+          <h1 class="mt-1 text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+            <span class="text-brand-700 dark:text-brand-400">#</span>
+            {tag}
+          </h1>
+          <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+            {posts.length === 0
+              ? "No posts found for this hashtag yet."
+              : `${posts.length.toLocaleString("en-US")} ${
+                  posts.length === 1 ? "post" : "posts"
+                } tagged with this hashtag.`}
+          </p>
+        </header>
+        <div class="divide-y divide-neutral-200 dark:divide-neutral-800">
+          {posts.map((post) => (
+            <PostView post={post} />
+          ))}
+        </div>
+      </main>
     </Layout>
   );
 }
