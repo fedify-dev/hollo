@@ -87,20 +87,12 @@ federation
   })
   .on(Follow, onFollowed)
   .on(Accept, async (ctx, accept) => {
-    const object = await accept.getObject({ crossOrigin: "trust" });
-    if (object instanceof QuoteRequest) {
-      await onQuoteRequestAccepted(ctx, accept);
-    } else {
-      await onFollowAccepted(ctx, accept);
-    }
+    if (await onQuoteRequestAccepted(ctx, accept)) return;
+    await onFollowAccepted(ctx, accept);
   })
   .on(Reject, async (ctx, reject) => {
-    const object = await reject.getObject({ crossOrigin: "trust" });
-    if (object instanceof QuoteRequest) {
-      await onQuoteRequestRejected(ctx, reject);
-    } else {
-      await onFollowRejected(ctx, reject);
-    }
+    if (await onQuoteRequestRejected(ctx, reject)) return;
+    await onFollowRejected(ctx, reject);
   })
   .on(QuoteRequest, onQuoteRequested)
   .on(Create, async (ctx, create) => {

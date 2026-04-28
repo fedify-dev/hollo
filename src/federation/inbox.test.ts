@@ -251,6 +251,62 @@ describe("quote request lifecycle", () => {
     expect(quoted?.quotesCount).toBe(1);
   });
 
+  it("marks a pending quote accepted from Accept<QuoteRequest IRI>", async () => {
+    expect.assertions(3);
+
+    const seeded = await seedPendingQuote();
+    const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const accept = new Accept({
+      actor: new URL("https://hollo.test/@quote-author"),
+      object: new URL(`${seeded.quotePostIri}#quote-request`),
+      result: new URL(authorizationIri),
+    });
+
+    await onQuoteRequestAccepted(ctx, accept);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(quote?.quoteAuthorizationIri).toBe(authorizationIri);
+    expect(quoted?.quotesCount).toBe(1);
+  });
+
+  it("ignores quote request responses from another actor", async () => {
+    expect.assertions(3);
+
+    const seeded = await seedPendingQuote();
+    const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const accept = new Accept({
+      actor: new URL("https://hollo.test/@quote-quoter"),
+      object: new QuoteRequest({
+        object: new URL(seeded.quotedPostIri),
+        instrument: new URL(seeded.quotePostIri),
+      }),
+      result: new URL(authorizationIri),
+    });
+    const reject = new Reject({
+      actor: new URL("https://hollo.test/@quote-quoter"),
+      object: new URL(`${seeded.quotePostIri}#quote-request`),
+    });
+
+    await onQuoteRequestAccepted(ctx, accept);
+    await onQuoteRequestRejected(ctx, reject);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("pending");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
+  });
+
   it("marks a pending quote rejected from Reject<QuoteRequest>", async () => {
     expect.assertions(2);
 
@@ -261,6 +317,27 @@ describe("quote request lifecycle", () => {
         object: new URL(seeded.quotedPostIri),
         instrument: new URL(seeded.quotePostIri),
       }),
+    });
+
+    await onQuoteRequestRejected(ctx, reject);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("rejected");
+    expect(quoted?.quotesCount).toBe(0);
+  });
+
+  it("marks a pending quote rejected from Reject<QuoteRequest IRI>", async () => {
+    expect.assertions(2);
+
+    const seeded = await seedPendingQuote();
+    const reject = new Reject({
+      actor: new URL("https://hollo.test/@quote-author"),
+      object: new URL(`${seeded.quotePostIri}#quote-request`),
     });
 
     await onQuoteRequestRejected(ctx, reject);

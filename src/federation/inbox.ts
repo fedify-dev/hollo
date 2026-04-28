@@ -380,39 +380,74 @@ export async function onFollowRejected(
   }
 }
 
-async function getQuoteRequestFromActivity(
+type QuoteRequestReference = {
+  quoteIri: string;
+  targetIri: string | null;
+};
+
+function getQuoteIriFromQuoteRequestId(requestId: URL): string {
+  const quoteIri = new URL(requestId.href);
+  if (quoteIri.hash === "#quote-request") quoteIri.hash = "";
+  return quoteIri.href;
+}
+
+async function getQuoteRequestReferenceFromActivity(
   activity: Accept | Reject,
-): Promise<QuoteRequest | null> {
-  const object = await activity.getObject({ crossOrigin: "trust" });
-  return object instanceof QuoteRequest ? object : null;
+): Promise<QuoteRequestReference | null> {
+  const object = await activity.getObject({
+    crossOrigin: "trust",
+    suppressError: true,
+  });
+  if (object instanceof QuoteRequest) {
+    const quoteIri = object.instrumentId?.href;
+    if (quoteIri == null) return null;
+    return {
+      quoteIri,
+      targetIri: object.objectId?.href ?? null,
+    };
+  }
+  if (activity.objectId == null) return null;
+  return {
+    quoteIri: getQuoteIriFromQuoteRequestId(activity.objectId),
+    targetIri: null,
+  };
 }
 
 async function updateQuoteRequestState(
-  request: QuoteRequest,
+  request: QuoteRequestReference,
+  responderIri: string | null,
   state: "accepted" | "rejected",
   quoteAuthorizationIri: string | null,
-): Promise<void> {
-  const quoteIri = request.instrumentId?.href;
-  if (quoteIri == null) return;
+): Promise<boolean> {
   const quote = await db.query.posts.findFirst({
-    where: eq(posts.iri, quoteIri),
+    where: eq(posts.iri, request.quoteIri),
+    with: { quoteTarget: { with: { account: true } } },
   });
-  if (quote == null) return;
+  if (quote == null) return false;
+  if (quote.quoteState !== "pending") return false;
   const target =
-    request.objectId == null
-      ? null
+    request.targetIri == null
+      ? quote.quoteTarget
       : await db.query.posts.findFirst({
-          where: eq(posts.iri, request.objectId.href),
+          where: eq(posts.iri, request.targetIri),
+          with: { account: true },
         });
+  if (target == null) return false;
+  if (responderIri == null || responderIri !== target.account.iri) {
+    return false;
+  }
+  if (quote.quoteTargetIri == null) return false;
+  if (request.targetIri != null && quote.quoteTargetIri !== request.targetIri) {
+    return false;
+  }
   await db.transaction(async (tx) => {
     await tx
       .update(posts)
       .set({
         quoteState: state,
         quoteAuthorizationIri,
-        quoteTargetId: target?.id ?? quote.quoteTargetId,
-        quoteTargetIri:
-          request.objectId?.href ?? quote.quoteTargetIri ?? target?.iri ?? null,
+        quoteTargetId: target.id,
+        quoteTargetIri: request.targetIri ?? quote.quoteTargetIri ?? target.iri,
         updated: new Date(),
       })
       .where(eq(posts.id, quote.id));
@@ -427,16 +462,18 @@ async function updateQuoteRequestState(
         .where(eq(posts.id, target.id));
     }
   });
+  return true;
 }
 
 export async function onQuoteRequestAccepted(
   _ctx: InboxContext<void>,
   accept: Accept,
-): Promise<void> {
-  const request = await getQuoteRequestFromActivity(accept);
-  if (request == null) return;
-  await updateQuoteRequestState(
+): Promise<boolean> {
+  const request = await getQuoteRequestReferenceFromActivity(accept);
+  if (request == null) return false;
+  return await updateQuoteRequestState(
     request,
+    accept.actorId?.href ?? null,
     "accepted",
     accept.resultId?.href ?? null,
   );
@@ -445,10 +482,15 @@ export async function onQuoteRequestAccepted(
 export async function onQuoteRequestRejected(
   _ctx: InboxContext<void>,
   reject: Reject,
-): Promise<void> {
-  const request = await getQuoteRequestFromActivity(reject);
-  if (request == null) return;
-  await updateQuoteRequestState(request, "rejected", null);
+): Promise<boolean> {
+  const request = await getQuoteRequestReferenceFromActivity(reject);
+  if (request == null) return false;
+  return await updateQuoteRequestState(
+    request,
+    reject.actorId?.href ?? null,
+    "rejected",
+    null,
+  );
 }
 
 export async function onQuoteAuthorizationDeleted(
