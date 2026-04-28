@@ -704,16 +704,18 @@ app.put(
         excludeBaseUris: [new URL(c.req.url)],
       },
     );
-    await fedCtx.sendActivity(
-      { username: owner.handle },
-      "followers",
-      activity,
-      {
-        orderingKey,
-        preferSharedInbox: true,
-        excludeBaseUris: [new URL(c.req.url)],
-      },
-    );
+    if (updatedPost.visibility !== "direct") {
+      await fedCtx.sendActivity(
+        { username: owner.handle },
+        "followers",
+        activity,
+        {
+          orderingKey,
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
     return c.json(serializePost(updatedPost, owner, c.req.url));
   },
 );

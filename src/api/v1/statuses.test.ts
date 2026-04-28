@@ -10,7 +10,7 @@ import {
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
 import app from "../../index";
-import { accounts, follows, instances, posts } from "../../schema";
+import { accounts, follows, instances, mentions, posts } from "../../schema";
 import { uuidv7 } from "../../uuid";
 
 describe.sequential("/api/v1/accounts/verify_credentials", () => {
@@ -311,6 +311,104 @@ describe.sequential("/api/v1/statuses quotes", () => {
     const updated = await updateResponse.json();
     expect(updated.quote_approval.automatic).toEqual(["followers"]);
     expect(updated.quote_approval.manual).toEqual([]);
+  });
+
+  it("does not fan out direct interaction policy updates to followers", async () => {
+    expect.assertions(3);
+
+    const mentionedAccountId = uuidv7();
+    const followerAccountId = uuidv7();
+    const directPostId = uuidv7();
+    const directPostIri = `https://hollo.test/@quote-author/${directPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values([
+      {
+        id: mentionedAccountId,
+        iri: "https://remote.test/@mentioned",
+        type: "Person",
+        name: "Mentioned",
+        handle: "@mentioned@remote.test",
+        bioHtml: "",
+        protected: false,
+        inboxUrl: "https://remote.test/@mentioned/inbox",
+        sharedInboxUrl: "https://remote.test/inbox",
+        instanceHost: "remote.test",
+      },
+      {
+        id: followerAccountId,
+        iri: "https://remote.test/@follower",
+        type: "Person",
+        name: "Follower",
+        handle: "@follower@remote.test",
+        bioHtml: "",
+        protected: false,
+        inboxUrl: "https://remote.test/@follower/inbox",
+        sharedInboxUrl: "https://remote.test/followers-inbox",
+        instanceHost: "remote.test",
+      },
+    ]);
+    await db.insert(follows).values({
+      iri: `https://remote.test/@follower#follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: followerAccountId,
+      approved: new Date(),
+    });
+    await db.insert(posts).values({
+      id: directPostId,
+      iri: directPostIri,
+      type: "Note",
+      accountId: author.id,
+      visibility: "direct",
+      quoteApprovalPolicy: "public",
+      content: "@mentioned@remote.test Private quote policy update",
+      contentHtml:
+        "<p>@mentioned@remote.test Private quote policy update</p>\n",
+      url: directPostIri,
+      published: new Date(),
+    });
+    await db.insert(mentions).values({
+      postId: directPostId,
+      accountId: mentionedAccountId,
+    });
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const response = await app.request(
+        `/api/v1/statuses/${directPostId}/interaction_policy`,
+        {
+          method: "PUT",
+          headers: {
+            authorization: bearerAuthorization(authorToken),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ quote_approval_policy: "nobody" }),
+        },
+      );
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => {
+        if (
+          !fetch.mock.calls.some(([input]) => {
+            const url = input instanceof Request ? input.url : input.toString();
+            return url === "https://remote.test/@mentioned/inbox";
+          })
+        ) {
+          throw new Error("Direct update was not sent to the mentioned actor");
+        }
+      });
+      expect(
+        fetch.mock.calls.some(([input]) => {
+          const url = input instanceof Request ? input.url : input.toString();
+          return url === "https://remote.test/followers-inbox";
+        }),
+      ).toBe(false);
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally {
+      fetch.mockRestore();
+    }
   });
 
   it("reports quote approval as automatic for approved followers", async () => {
