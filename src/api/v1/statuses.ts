@@ -149,9 +149,7 @@ function buildMuteAndBlockConditions(viewerAccountId: Uuid | null | undefined) {
 
 function normalizeQuoteApprovalPolicy(
   policy: QuoteApprovalPolicy | null | undefined,
-  visibility: "public" | "unlisted" | "private" | "direct",
 ): QuoteApprovalPolicy {
-  if (visibility === "private" || visibility === "direct") return "nobody";
   return policy ?? "public";
 }
 
@@ -235,7 +233,6 @@ async function validateQuoteTarget(
   if (quoteTarget.accountId !== owner.id) {
     const policy = normalizeQuoteApprovalPolicy(
       quoteTarget.quoteApprovalPolicy,
-      quoteTarget.visibility,
     );
     if (policy === "nobody") {
       return { ok: false, status: 422, error: "Quote target is not quotable" };
@@ -376,7 +373,6 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   }
   const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
     data.quote_approval_policy,
-    effectiveVisibility,
   );
   let quoteState: "accepted" | "pending" | null = null;
   if (quoteTarget != null) {
@@ -596,7 +592,6 @@ app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
   }
   const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
     data.quote_approval_policy ?? existingPost.quoteApprovalPolicy,
-    existingPost.visibility,
   );
   await db.transaction(async (tx) => {
     const result = await tx
@@ -683,7 +678,6 @@ app.put(
 
     const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
       result.data.quote_approval_policy,
-      post.visibility,
     );
     await db
       .update(posts)

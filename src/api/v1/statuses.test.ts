@@ -341,6 +341,34 @@ describe.sequential("/api/v1/statuses quotes", () => {
     expect(status.quote_approval.current_user).toBe("automatic");
   });
 
+  it("allows approved followers to quote private statuses", async () => {
+    expect.assertions(4);
+
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Followers can quote this private status",
+      visibility: "private",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const quoteResponse = await createStatus(quoterToken, {
+      status: "Quoting this private status",
+      quoted_status_id: quoted.id,
+      visibility: "public",
+    });
+    expect(quoteResponse.status).toBe(200);
+    const quote = await quoteResponse.json();
+    expect(quote.visibility).toBe("private");
+    expect(quote.quote.state).toBe("accepted");
+  });
+
   it("returns revoked quote state when a quote is revoked", async () => {
     expect.assertions(7);
 
