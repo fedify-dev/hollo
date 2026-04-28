@@ -400,7 +400,11 @@ async function getQuoteRequestReferenceFromActivity(
     suppressError: true,
   });
   if (object instanceof QuoteRequest) {
-    const quoteIri = object.instrumentId?.href;
+    const quoteIri =
+      object.instrumentId?.href ??
+      (activity.objectId == null
+        ? null
+        : getQuoteIriFromQuoteRequestId(activity.objectId));
     if (quoteIri == null) return null;
     return {
       quoteIri,
