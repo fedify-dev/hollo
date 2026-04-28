@@ -49,6 +49,13 @@ export interface PostProps {
   readonly quoted?: boolean;
 }
 
+const dateFormatter = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+
 export function Post({ post, shared, pinned, quoted }: PostProps) {
   if (post.sharing != null)
     return (
@@ -60,131 +67,140 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
   const account = post.account;
   const authorNameHtml = renderCustomEmojis(account.name, account.emojis);
   const authorUrl = account.url ?? account.iri;
-  const authorName = (
-    <a dangerouslySetInnerHTML={{ __html: authorNameHtml }} href={authorUrl} />
-  );
+  const wrapperClass = quoted
+    ? "rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/60"
+    : "py-5";
+  const avatarSize = quoted ? "size-9" : "size-11";
+  const avatarPx = quoted ? 36 : 44;
   return (
-    <article
-      style={
-        pinned
-          ? "border: 1px solid silver;"
-          : quoted
-            ? "border: calc(var(--pico-border-width)*4) solid var(--pico-background-color);"
-            : ""
-      }
-    >
-      <header>
-        <hgroup>
-          {account.avatarUrl && (
+    <article class={wrapperClass}>
+      {pinned && (
+        <p class="mb-2 inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-brand-700 dark:text-brand-400">
+          <span class="i-lucide-pin" aria-hidden="true" />
+          Pinned
+        </p>
+      )}
+      <header class="flex items-start gap-3">
+        {account.avatarUrl && (
+          <a href={authorUrl} class="shrink-0">
             <img
               src={account.avatarUrl}
-              alt={`${account.name}'s avatar`}
-              width={quoted ? 40 : 48}
-              height={quoted ? 40 : 48}
-              style="float: left; margin-right: .5em;"
+              alt=""
+              width={avatarPx}
+              height={avatarPx}
+              class={`${avatarSize} rounded-full object-cover`}
             />
-          )}
-          {quoted ? (
-            <h6 style="font-size: smaller;">{authorName}</h6>
-          ) : (
-            <h5>{authorName}</h5>
-          )}
-          <p>
-            <small style="user-select: all;">{account.handle}</small>
+          </a>
+        )}
+        <div class="min-w-0 flex-1">
+          <div
+            class={
+              quoted
+                ? "text-sm font-semibold text-neutral-900 dark:text-neutral-100"
+                : "font-semibold text-neutral-900 dark:text-neutral-100"
+            }
+          >
+            <a
+              href={authorUrl}
+              dangerouslySetInnerHTML={{ __html: authorNameHtml }}
+              class="hover:underline"
+            />
+          </div>
+          <div class="text-xs text-neutral-500 dark:text-neutral-400">
+            <span class="select-all">{account.handle}</span>
             {post.replyTarget != null && (
               <>
-                {" "}
-                &middot;{" "}
-                <small>
+                {" · "}
+                <span>
                   Reply to{" "}
-                  <a href={post.replyTarget.url ?? post.replyTarget.iri}>
-                    {post.replyTarget.account.name}'s post
+                  <a
+                    href={post.replyTarget.url ?? post.replyTarget.iri}
+                    class="hover:text-brand-700 dark:hover:text-brand-400"
+                  >
+                    {post.replyTarget.account.name}
                   </a>
-                </small>{" "}
+                </span>
               </>
             )}
-          </p>
-        </hgroup>
+          </div>
+        </div>
       </header>
-      {post.summary == null || post.summary.trim() === "" ? (
-        <PostContent post={post} />
-      ) : (
-        <details>
-          <summary lang={post.language ?? undefined}>{post.summary}</summary>
+      <div class="mt-3">
+        {post.summary == null || post.summary.trim() === "" ? (
           <PostContent post={post} />
-        </details>
-      )}
-      <footer>
-        <p>
-          {shared != null && (
-            <small>
-              Shared at{" "}
+        ) : (
+          <details class="group">
+            <summary
+              lang={post.language ?? undefined}
+              class="cursor-pointer rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700 transition-colors hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-neutral-700"
+            >
+              {post.summary}
+            </summary>
+            <div class="mt-3">
+              <PostContent post={post} />
+            </div>
+          </details>
+        )}
+      </div>
+      <footer class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+        {shared != null && (
+          <>
+            <span class="inline-flex items-center gap-1">
+              <span class="i-lucide-repeat-2" aria-hidden="true" />
+              Shared on{" "}
               <time dateTime={shared.toISOString()}>
-                {shared.toLocaleString("en", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </time>{" "}
-              &middot;{" "}
-            </small>
-          )}
-          <a href={post.url ?? post.iri}>
-            <small>
-              Published at{" "}
-              <time dateTime={(post.published ?? post.updated).toISOString()}>
-                {(post.published ?? post.updated).toLocaleString("en", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
+                {dateFormatter.format(shared)}
               </time>
-            </small>
-          </a>
-          {post.likesCount != null && post.likesCount > 0 && (
-            <small>
-              {" "}
-              &middot;{" "}
-              {`${post.likesCount} ${
-                post.likesCount === null || post.likesCount < 2
-                  ? "like"
-                  : "likes"
-              }`}
-            </small>
-          )}
-          {post.reactions.length > 0 && (
-            <small>
-              {" "}
-              &middot;{" "}
+            </span>
+            <span aria-hidden="true">·</span>
+          </>
+        )}
+        <a
+          href={post.url ?? post.iri}
+          class="hover:text-brand-700 dark:hover:text-brand-400"
+        >
+          <time dateTime={(post.published ?? post.updated).toISOString()}>
+            {dateFormatter.format(post.published ?? post.updated)}
+          </time>
+        </a>
+        {post.likesCount != null && post.likesCount > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span class="inline-flex items-center gap-1">
+              <span class="i-lucide-heart" aria-hidden="true" />
+              {numberFormatter.format(post.likesCount)}
+            </span>
+          </>
+        )}
+        {post.sharesCount != null && post.sharesCount > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span class="inline-flex items-center gap-1">
+              <span class="i-lucide-repeat-2" aria-hidden="true" />
+              {numberFormatter.format(post.sharesCount)}
+            </span>
+          </>
+        )}
+        {post.reactions.length > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span class="inline-flex flex-wrap items-center gap-1">
               {Object.entries(groupByEmojis(post.reactions)).map(
-                ([emoji, { src, count }]) => (
-                  <>
-                    {src == null ? (
-                      <span title={`${emoji} × ${count}`}>{emoji}</span>
-                    ) : (
-                      <img
-                        src={src}
-                        alt={emoji}
-                        title={`${emoji} × ${count}`}
-                        style="vertical-align: text-bottom; height: 22px;"
-                      />
-                    )}{" "}
-                  </>
-                ),
+                ([emoji, { src, count }]) =>
+                  src == null ? (
+                    <span title={`${emoji} × ${count}`}>{emoji}</span>
+                  ) : (
+                    <img
+                      src={src}
+                      alt={emoji}
+                      title={`${emoji} × ${count}`}
+                      class="inline h-4 align-text-bottom"
+                    />
+                  ),
               )}
-            </small>
-          )}
-          {post.sharesCount != null && post.sharesCount > 0 && (
-            <small>
-              {" "}
-              &middot;{" "}
-              {`${post.sharesCount} ${
-                post.sharesCount === null || post.sharesCount < 2
-                  ? "share"
-                  : "shares"
-              }`}
-            </small>
-          )}
-          {pinned && <small> &middot; Pinned</small>}
-        </p>
+            </span>
+          </>
+        )}
       </footer>
     </article>
   );
@@ -233,30 +249,36 @@ function PostContent({ post }: PostContentProps) {
     <>
       {displayContentHtml && (
         <div
+          class="prose prose-sm prose-neutral dark:prose-invert max-w-none break-words"
           dangerouslySetInnerHTML={{ __html: contentHtml ?? "" }}
           lang={post.language ?? undefined}
         />
       )}
       {post.poll != null && <Poll poll={post.poll} />}
-      {post.media.map((medium) => (
-        <div>
-          <Medium medium={medium} />
-          {medium.description && medium.description.trim() !== "" && (
-            <>
-              <hr />
-              <details>
-                <summary>ALT text details</summary>
-                {medium.description}
-              </details>
-            </>
-          )}
+      {post.media.length > 0 && (
+        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          {post.media.map((medium) => (
+            <figure class="m-0">
+              <Medium medium={medium} />
+              {medium.description && medium.description.trim() !== "" && (
+                <figcaption class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  <details>
+                    <summary class="cursor-pointer">ALT text</summary>
+                    <p class="mt-1">{medium.description}</p>
+                  </details>
+                </figcaption>
+              )}
+            </figure>
+          ))}
         </div>
-      ))}
+      )}
       {post.quoteTarget != null && (
-        <Post
-          post={{ ...post.quoteTarget, sharing: null, quoteTarget: null }}
-          quoted={true}
-        />
+        <div class="mt-3">
+          <Post
+            post={{ ...post.quoteTarget, sharing: null, quoteTarget: null }}
+            quoted={true}
+          />
+        </div>
       )}
     </>
   );
@@ -274,34 +296,31 @@ function Poll({ poll }: PollProps) {
     0,
   );
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Option</th>
-          <th>Voters</th>
-        </tr>
-      </thead>
-      <tbody>
-        {options.map((option) => {
-          const percent =
-            option.votesCount <= 0
-              ? 0
-              : Math.round((option.votesCount / totalVotes) * 100);
-          return (
-            <tr key={option.index}>
-              <td>{option.title}</td>
-              <td>
-                <span
-                  style={`display: block; width: ${percent}%; white-space: nowrap; border: 1px solid white; border-radius: 5px; padding: 3px 5px; background-color: black; color: white; text-shadow: 0 0 2px black;`}
-                >
-                  {option.votesCount} ({percent}%)
-                </span>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <ul class="mt-3 space-y-2">
+      {options.map((option) => {
+        const percent =
+          option.votesCount <= 0
+            ? 0
+            : Math.round((option.votesCount / totalVotes) * 100);
+        return (
+          <li class="relative overflow-hidden rounded-md border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            <div
+              class="absolute inset-y-0 left-0 bg-brand-100 dark:bg-brand-900/40"
+              style={`width: ${percent}%`}
+              aria-hidden="true"
+            />
+            <div class="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <span class="text-neutral-900 dark:text-neutral-100">
+                {option.title}
+              </span>
+              <span class="text-neutral-500 tabular-nums dark:text-neutral-400">
+                {numberFormatter.format(option.votesCount)} ({percent}%)
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -311,9 +330,14 @@ interface MediumProps {
 
 function Medium({ medium }: MediumProps) {
   return (
-    <a href={medium.url}>
+    <a
+      href={medium.url}
+      class="block overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800"
+    >
       {medium.thumbnailCleaned ? (
-        "Thumbnail not available"
+        <span class="flex aspect-video items-center justify-center bg-neutral-100 px-3 text-xs text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+          Thumbnail not available
+        </span>
       ) : (
         <img
           key={medium.id}
@@ -321,6 +345,7 @@ function Medium({ medium }: MediumProps) {
           alt={medium.description ?? ""}
           width={medium.thumbnailWidth}
           height={medium.thumbnailHeight}
+          class="block h-auto w-full object-cover"
         />
       )}
     </a>
