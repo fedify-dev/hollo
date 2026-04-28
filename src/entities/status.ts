@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 
 import { stripQuoteInlineFallbacks } from "../html";
 import type { PreviewCard } from "../previewcard";
@@ -8,6 +8,8 @@ import {
   type Application,
   type Bookmark,
   bookmarks,
+  type Follow,
+  follows,
   type Like,
   likes,
   type Medium,
@@ -31,6 +33,11 @@ import { serializeEmojis, serializeReactions } from "./emoji";
 import { serializeMedium } from "./medium";
 import { serializePoll } from "./poll";
 
+type StatusAccount = Account & {
+  successor: Account | null;
+  followers?: Follow[];
+};
+
 function getEffectiveQuoteState(
   post: Post & { quoteTarget: Post | null },
 ): QuoteState | "deleted" | null {
@@ -44,6 +51,7 @@ function serializeQuoteApproval(
   policy: QuoteApprovalPolicy,
   currentAccountOwner: { id: string } | undefined | null,
   post: Pick<Post, "accountId" | "visibility">,
+  viewerIsApprovedFollower: boolean,
 ) {
   const effectivePolicy =
     post.visibility === "private" || post.visibility === "direct"
@@ -63,26 +71,52 @@ function serializeQuoteApproval(
       : {
           current_user:
             currentAccountOwner.id === post.accountId ||
-            effectivePolicy === "public"
+            effectivePolicy === "public" ||
+            (effectivePolicy === "followers" && viewerIsApprovedFollower)
               ? "automatic"
               : "denied",
         }),
   };
 }
 
+function getViewerFollowerRelation(ownerId: Uuid | undefined | null) {
+  return {
+    where:
+      ownerId == null
+        ? sql`false`
+        : and(eq(follows.followerId, ownerId), isNotNull(follows.approved)),
+  };
+}
+
 export function getPostRelations(ownerId: Uuid | undefined | null) {
   return {
-    account: { with: { owner: true, successor: true } },
+    account: {
+      with: {
+        owner: true,
+        successor: true,
+        followers: getViewerFollowerRelation(ownerId),
+      },
+    },
     application: true,
     replyTarget: true,
     sharing: {
       with: {
-        account: { with: { successor: true } },
+        account: {
+          with: {
+            successor: true,
+            followers: getViewerFollowerRelation(ownerId),
+          },
+        },
         application: true,
         replyTarget: true,
         quoteTarget: {
           with: {
-            account: { with: { successor: true } },
+            account: {
+              with: {
+                successor: true,
+                followers: getViewerFollowerRelation(ownerId),
+              },
+            },
             application: true,
             replyTarget: true,
             media: true,
@@ -149,7 +183,12 @@ export function getPostRelations(ownerId: Uuid | undefined | null) {
     },
     quoteTarget: {
       with: {
-        account: { with: { successor: true } },
+        account: {
+          with: {
+            successor: true,
+            followers: getViewerFollowerRelation(ownerId),
+          },
+        },
         application: true,
         replyTarget: true,
         media: true,
@@ -210,17 +249,17 @@ export function getPostRelations(ownerId: Uuid | undefined | null) {
 
 export function serializePost(
   post: Post & {
-    account: Account & { successor: Account | null };
+    account: StatusAccount;
     application: Application | null;
     replyTarget: Post | null;
     sharing:
       | (Post & {
-          account: Account & { successor: Account | null };
+          account: StatusAccount;
           application: Application | null;
           replyTarget: Post | null;
           quoteTarget:
             | (Post & {
-                account: Account & { successor: Account | null };
+                account: StatusAccount;
                 application: Application | null;
                 replyTarget: Post | null;
                 media: Medium[];
@@ -261,7 +300,7 @@ export function serializePost(
       | null;
     quoteTarget:
       | (Post & {
-          account: Account & { successor: Account | null };
+          account: StatusAccount;
           application: Application | null;
           replyTarget: Post | null;
           media: Medium[];
@@ -304,6 +343,11 @@ export function serializePost(
   const quoteState = getEffectiveQuoteState(post);
   const quoteIsDisplayable =
     quoteState === "accepted" && post.quoteTarget != null;
+  const viewerIsApprovedFollower =
+    currentAccountOwner != null &&
+    post.account.followers?.some(
+      (follow) => follow.followerId === currentAccountOwner.id,
+    ) === true;
   return {
     id: post.id,
     created_at: post.published ?? post.updated,
@@ -371,6 +415,7 @@ export function serializePost(
       post.quoteApprovalPolicy,
       currentAccountOwner,
       post,
+      viewerIsApprovedFollower,
     ),
     application:
       post.application == null

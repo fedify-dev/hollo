@@ -313,6 +313,34 @@ describe.sequential("/api/v1/statuses quotes", () => {
     expect(updated.quote_approval.manual).toEqual([]);
   });
 
+  it("reports quote approval as automatic for approved followers", async () => {
+    expect.assertions(4);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Followers can quote this",
+      quote_approval_policy: "followers",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: author.id,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+
+    const response = await app.request(`/api/v1/statuses/${quoted.id}`, {
+      headers: {
+        authorization: bearerAuthorization(quoterToken),
+      },
+    });
+    expect(response.status).toBe(200);
+    const status = await response.json();
+    expect(status.quote_approval.automatic).toEqual(["followers"]);
+    expect(status.quote_approval.current_user).toBe("automatic");
+  });
+
   it("returns revoked quote state when a quote is revoked", async () => {
     expect.assertions(7);
 
