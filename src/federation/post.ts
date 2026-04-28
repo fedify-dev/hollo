@@ -318,6 +318,12 @@ export async function persistPost(
     quoteTargetAccountIri,
     options,
   );
+  const preservedQuoteAuthorizationIri =
+    quoteAuthorizationIri ??
+    (existingPost?.quoteState === "accepted" &&
+    existingPost.quoteTargetIri === quoteTargetIri
+      ? existingPost.quoteAuthorizationIri
+      : null);
   const published = toDate(object.published);
   const updated = toDate(object.updated) ?? published ?? new Date();
   const values = {
@@ -336,10 +342,11 @@ export async function persistPost(
     quoteState:
       quoteTargetId == null
         ? null
-        : quoteTargetAccountId === account.id || quoteAuthorizationIri != null
+        : quoteTargetAccountId === account.id ||
+            preservedQuoteAuthorizationIri != null
           ? "accepted"
           : "unauthorized",
-    quoteAuthorizationIri,
+    quoteAuthorizationIri: preservedQuoteAuthorizationIri,
     visibility: to.has(vocab.PUBLIC_COLLECTION.href)
       ? "public"
       : cc.has(vocab.PUBLIC_COLLECTION.href)
