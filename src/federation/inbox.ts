@@ -544,7 +544,7 @@ export async function onQuoteRequestRejected(
 }
 
 export async function onQuoteAuthorizationDeleted(
-  _ctx: InboxContext<void>,
+  ctx: InboxContext<void>,
   del: Delete,
 ): Promise<void> {
   const object = await del.getObject({
@@ -592,6 +592,7 @@ export async function onQuoteAuthorizationDeleted(
         .where(eq(posts.id, quote.quoteTargetId));
     }
   });
+  await sendQuoteUpdate(ctx, quote.iri);
 }
 
 function getQuoteAuthorizationIri(target: Post, quote: Post): string {

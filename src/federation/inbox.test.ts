@@ -461,6 +461,10 @@ describe("quote request lifecycle", () => {
 
     const seeded = await seedPendingQuote();
     const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const requestCtx = {
+      ...ctx,
+      sendActivity: vi.fn(async () => undefined),
+    } as unknown as InboxContext<void>;
     await db
       .update(posts)
       .set({
@@ -475,7 +479,7 @@ describe("quote request lifecycle", () => {
       .where(eq(posts.id, seeded.quotedPostId));
 
     await onQuoteAuthorizationDeleted(
-      ctx,
+      requestCtx,
       new Delete({
         actor: new URL("https://hollo.test/@quote-author"),
         object: new QuoteAuthorization({
@@ -497,11 +501,16 @@ describe("quote request lifecycle", () => {
     expect(quoted?.quotesCount).toBe(0);
   });
 
-  it("marks an accepted quote revoked from a deleted authorization IRI", async () => {
-    expect.assertions(2);
+  it("federates the quote update after authorization deletion", async () => {
+    expect.assertions(7);
 
     const seeded = await seedPendingQuote();
     const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
     await db
       .update(posts)
       .set({
@@ -516,7 +525,57 @@ describe("quote request lifecycle", () => {
       .where(eq(posts.id, seeded.quotedPostId));
 
     await onQuoteAuthorizationDeleted(
-      ctx,
+      requestCtx,
+      new Delete({
+        actor: new URL("https://hollo.test/@quote-author"),
+        object: new QuoteAuthorization({
+          id: new URL(authorizationIri),
+          attribution: new URL("https://hollo.test/@quote-author"),
+          interactingObject: new URL(seeded.quotePostIri),
+          interactionTarget: new URL(seeded.quotedPostIri),
+        }),
+      }),
+    );
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.id, seeded.quotePostId),
+    });
+    expect(quote?.quoteState).toBe("revoked");
+    expect(sendActivity).toHaveBeenCalledOnce();
+    const [sender, recipient, activity] = sendActivity.mock
+      .calls[0] as unknown as [unknown, unknown, unknown];
+    expect(sender).toEqual({ username: "quote-quoter" });
+    expect(recipient).toBe("followers");
+    expect(activity).toBeInstanceOf(Update);
+    const object = await (activity as Update).getObject();
+    expect(object).toBeInstanceOf(Note);
+    expect((object as Note).quoteAuthorizationId).toBeNull();
+  });
+
+  it("marks an accepted quote revoked from a deleted authorization IRI", async () => {
+    expect.assertions(2);
+
+    const seeded = await seedPendingQuote();
+    const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+    const requestCtx = {
+      ...ctx,
+      sendActivity: vi.fn(async () => undefined),
+    } as unknown as InboxContext<void>;
+    await db
+      .update(posts)
+      .set({
+        quoteState: "accepted",
+        quoteAuthorizationIri: authorizationIri,
+        quotesCount: 1,
+      })
+      .where(eq(posts.id, seeded.quotePostId));
+    await db
+      .update(posts)
+      .set({ quotesCount: 1 })
+      .where(eq(posts.id, seeded.quotedPostId));
+
+    await onQuoteAuthorizationDeleted(
+      requestCtx,
       new Delete({
         actor: new URL("https://hollo.test/@quote-author"),
         object: new URL(authorizationIri),

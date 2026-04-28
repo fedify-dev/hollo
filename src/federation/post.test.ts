@@ -389,6 +389,10 @@ describe("toObject", () => {
   });
 
   async function getObjectJson(postId: Uuid) {
+    return await getObjectJsonWithContext(postId, {} as Context<unknown>);
+  }
+
+  async function getObjectJsonWithContext(postId: Uuid, ctx: Context<unknown>) {
     const post = await db.query.posts.findFirst({
       where: eq(posts.id, postId),
       with: {
@@ -402,7 +406,7 @@ describe("toObject", () => {
       },
     });
     if (post == null) throw new Error("Failed to load post");
-    return await toObject(post, {} as Context<unknown>).toJsonLd();
+    return await toObject(post, ctx).toJsonLd();
   }
 
   it("adds a quote-inline fallback to explicit quote content", async () => {
@@ -641,6 +645,38 @@ describe("toObject", () => {
       interactionPolicy: {
         canQuote: {
           automaticApproval: "as:Public",
+        },
+      },
+    });
+  });
+
+  it("emits private follower quote policies", async () => {
+    expect.assertions(1);
+
+    const account = await createAccount({ username: "quote-author" });
+    const postId = crypto.randomUUID() as Uuid;
+
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@quote-author/${postId}`,
+      type: "Note",
+      accountId: account.id as Uuid,
+      visibility: "private",
+      quoteApprovalPolicy: "followers",
+      contentHtml: "<p>Followers can quote this</p>",
+      content: "Followers can quote this",
+      published: new Date(),
+    });
+
+    const json = await getObjectJsonWithContext(postId, {
+      getFollowersUri: (handle: string) =>
+        new URL(`https://hollo.test/@${handle}/followers`),
+    } as Context<unknown>);
+
+    expect(json).toMatchObject({
+      interactionPolicy: {
+        canQuote: {
+          automaticApproval: "https://hollo.test/@quote-author/followers",
         },
       },
     });

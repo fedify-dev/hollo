@@ -1007,9 +1007,7 @@ function getCanQuoteRule(
   ctx: Context<unknown>,
 ): InteractionRule {
   const policy =
-    post.visibility === "private" || post.visibility === "direct"
-      ? "nobody"
-      : post.quoteApprovalPolicy;
+    post.visibility === "direct" ? "nobody" : post.quoteApprovalPolicy;
   if (policy === "public") {
     return new InteractionRule({
       automaticApproval: vocab.PUBLIC_COLLECTION,
