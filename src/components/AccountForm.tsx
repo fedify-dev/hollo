@@ -2,8 +2,10 @@ import { capitalize } from "es-toolkit";
 import iso6391 from "iso-639-1";
 
 import { type PostVisibility, THEME_COLORS, type ThemeColor } from "../schema";
+import { themeColors } from "../theme/colors";
 import {
   CheckboxField,
+  Field,
   FieldSection,
   SelectField,
   SubmitButton,
@@ -102,7 +104,7 @@ export function AccountForm(props: AccountFormProps) {
       </FieldSection>
 
       <FieldSection legend="Defaults">
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="account-language"
             name="language"
@@ -148,8 +150,8 @@ export function AccountForm(props: AccountFormProps) {
               Direct message
             </option>
           </SelectField>
-          <ThemeColorField selected={props.values?.themeColor} />
         </div>
+        <ThemeColorField selected={props.values?.themeColor} />
       </FieldSection>
 
       <FieldSection legend="Updates">
@@ -173,13 +175,58 @@ interface ThemeColorFieldProps {
 }
 
 function ThemeColorField({ selected }: ThemeColorFieldProps) {
+  const active = selected ?? "azure";
   return (
-    <SelectField id="account-theme" name="themeColor" label="Theme color">
-      {THEME_COLORS.map((color) => (
-        <option value={color} selected={selected === color}>
-          {capitalize(color)}
-        </option>
-      ))}
-    </SelectField>
+    <Field
+      id="account-theme-color-amber"
+      label="Theme color"
+      hint={
+        <>
+          Tints this account's profile and post pages. Currently picked:{" "}
+          <strong class="font-semibold text-neutral-700 dark:text-neutral-300">
+            {capitalize(active)}
+          </strong>
+          .
+        </>
+      }
+    >
+      <div class="grid grid-cols-8 gap-2 sm:grid-cols-10">
+        {THEME_COLORS.map((color) => {
+          const swatch = `rgb(${themeColors[color][500]})`;
+          const inputId = `account-theme-color-${color}`;
+          const isSelected = active === color;
+          return (
+            <label
+              for={inputId}
+              title={capitalize(color)}
+              class={`group relative aspect-square cursor-pointer rounded-md ring-2 ring-offset-2 ring-offset-white transition-shadow dark:ring-offset-neutral-900 ${
+                isSelected
+                  ? "ring-neutral-900 dark:ring-neutral-100"
+                  : "ring-transparent hover:ring-neutral-300 dark:hover:ring-neutral-700"
+              }`}
+              style={`background-color: ${swatch};`}
+            >
+              <input
+                id={inputId}
+                type="radio"
+                name="themeColor"
+                value={color}
+                checked={isSelected}
+                class="sr-only"
+              />
+              <span class="sr-only">{capitalize(color)}</span>
+              {isSelected && (
+                <span
+                  class="absolute inset-0 flex items-center justify-center text-white drop-shadow"
+                  aria-hidden="true"
+                >
+                  <span class="i-lucide-check text-sm" />
+                </span>
+              )}
+            </label>
+          );
+        })}
+      </div>
+    </Field>
   );
 }
