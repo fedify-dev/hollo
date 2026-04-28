@@ -11,6 +11,11 @@ To be released.
     support quote posts can now still show the quoted post permalink, while
     quote-aware software can hide the fallback paragraph by class name.
 
+ -  Hid incoming `quote-inline` fallback paragraphs from Mastodon API status
+    content and profile pages when Hollo can render the structured quoted
+    post.  If the quoted post is unavailable, the fallback link remains
+    visible so the quoted URL is not lost.
+
 
 Version 0.8.1
 -------------

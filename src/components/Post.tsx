@@ -1,4 +1,5 @@
 import { renderCustomEmojis } from "../custom-emoji";
+import { stripQuoteInlineFallbacks } from "../html";
 import type {
   Account,
   Medium as DbMedium,
@@ -223,10 +224,14 @@ interface PostContentProps {
 }
 
 function PostContent({ post }: PostContentProps) {
-  const contentHtml = renderCustomEmojis(post.contentHtml, post.emojis);
+  const displayContentHtml =
+    post.quoteTarget == null
+      ? post.contentHtml
+      : stripQuoteInlineFallbacks(post.contentHtml);
+  const contentHtml = renderCustomEmojis(displayContentHtml, post.emojis);
   return (
     <>
-      {post.contentHtml && (
+      {displayContentHtml && (
         <div
           dangerouslySetInnerHTML={{ __html: contentHtml ?? "" }}
           lang={post.language ?? undefined}

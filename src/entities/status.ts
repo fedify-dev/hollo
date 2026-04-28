@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 
+import { stripQuoteInlineFallbacks } from "../html";
 import type { PreviewCard } from "../previewcard";
 import {
   type Account,
@@ -295,7 +296,11 @@ export function serializePost(
       currentAccountOwner == null
         ? false
         : post.pin != null && post.pin.accountId === currentAccountOwner.id,
-    content: sanitizeHtml(post.contentHtml ?? ""),
+    content: sanitizeHtml(
+      post.quoteTarget == null
+        ? (post.contentHtml ?? "")
+        : stripQuoteInlineFallbacks(post.contentHtml ?? ""),
+    ),
     reblog:
       post.sharing == null
         ? null

@@ -91,4 +91,82 @@ describe.sequential("profile tagged page", () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toContain('href="/@hollo/tagged/TestTag"');
   });
+
+  it("hides quote-inline fallback content on profile pages", async () => {
+    expect.assertions(5);
+
+    const quotedPostId = uuidv7();
+    const quotePostId = uuidv7();
+    const quotedPostUrl = `https://hollo.test/@hollo/${quotedPostId}`;
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostUrl,
+        type: "Note",
+        accountId: account.id,
+        visibility: "public",
+        content: "Quoted post",
+        contentHtml: "<p>Quoted post</p>",
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: `https://hollo.test/@hollo/${quotePostId}`,
+        type: "Note",
+        accountId: account.id,
+        quoteTargetId: quotedPostId,
+        visibility: "public",
+        content: "Quote post",
+        contentHtml:
+          "<p>Quote post</p>" +
+          `<p class="quote-inline">RE: <a href="${quotedPostUrl}">` +
+          `${quotedPostUrl}</a></p>`,
+        published: new Date(),
+      },
+    ]);
+
+    const response = await app.request("/@hollo");
+
+    expect(response.status).toBe(200);
+
+    const html = await response.text();
+
+    expect(html).toContain("Quote post");
+    expect(html).toContain("Quoted post");
+    expect(html).not.toContain("quote-inline");
+    expect(html).not.toContain("RE:");
+  });
+
+  it("keeps quote-inline fallback content without a rendered quote", async () => {
+    expect.assertions(5);
+
+    const postId = uuidv7();
+    const quotedPostUrl = "https://remote.test/notes/missing";
+
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@hollo/${postId}`,
+      type: "Note",
+      accountId: account.id,
+      visibility: "public",
+      content: "Quote post",
+      contentHtml:
+        "<p>Quote post</p>" +
+        `<p class="quote-inline">RE: <a href="${quotedPostUrl}">` +
+        `${quotedPostUrl}</a></p>`,
+      published: new Date(),
+    });
+
+    const response = await app.request("/@hollo");
+
+    expect(response.status).toBe(200);
+
+    const html = await response.text();
+
+    expect(html).toContain("Quote post");
+    expect(html).toContain("quote-inline");
+    expect(html).toContain("RE:");
+    expect(html).toContain(quotedPostUrl);
+  });
 });
