@@ -21,74 +21,107 @@ emojis.get("/", async (c) => {
 
   return c.html(
     <DashboardLayout title="Hollo: Custom emojis" selectedMenu="emojis">
-      <hgroup>
-        <h1>Custom emojis</h1>
-        <p>You can register custom emojis for your Hollo accounts.</p>
-      </hgroup>
+      <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+            Custom emojis
+          </h1>
+          <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+            Register custom emojis for your Hollo accounts.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a
+            href="/emojis/new"
+            class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+          >
+            <span class="i-lucide-plus" aria-hidden="true" />
+            Add emoji
+          </a>
+          <a
+            href="/emojis/import"
+            class="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            <span class="i-lucide-download" aria-hidden="true" />
+            Import
+          </a>
+        </div>
+      </header>
       <form
         method="post"
         action="/emojis/delete"
         onsubmit="const cnt = this.querySelectorAll('input[name=emoji]:checked').length; return window.confirm('Are you sure you want to delete the selected ' + (cnt > 1 ? cnt + ' emojis' : cnt + ' emoji') + '?');"
       >
-        {emojis.length > 0 && (
-          <table>
-            <thead>
-              <tr>
-                <th>Check</th>
-                <th>Category</th>
-                <th>Short code</th>
-                <th>Image</th>
-              </tr>
-            </thead>
-            <tbody>
-              {emojis.map((emoji) => (
+        {emojis.length > 0 ? (
+          <div class="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+            <table class="w-full text-sm">
+              <thead class="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
                 <tr>
-                  <td>
-                    <input
-                      type="checkbox"
-                      id={`emoji-${emoji.shortcode}`}
-                      name="emoji"
-                      value={emoji.shortcode}
-                      onchange="this.form.querySelector('button[type=submit]').disabled = !this.form.querySelectorAll('input[name=emoji]:checked').length"
-                    />
-                  </td>
-                  <td>
-                    <label for={`emoji-${emoji.shortcode}`}>
-                      {emoji.category}
-                    </label>
-                  </td>
-                  <td>
-                    <tt>
+                  <th class="w-10 px-3 py-2 text-left">
+                    <span class="sr-only">Select</span>
+                  </th>
+                  <th class="px-3 py-2 text-left font-semibold">Category</th>
+                  <th class="px-3 py-2 text-left font-semibold">Shortcode</th>
+                  <th class="px-3 py-2 text-left font-semibold">Image</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-900">
+                {emojis.map((emoji) => (
+                  <tr>
+                    <td class="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        id={`emoji-${emoji.shortcode}`}
+                        name="emoji"
+                        value={emoji.shortcode}
+                        class="size-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-200 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:ring-brand-900"
+                        onchange="this.form.querySelector('button[type=submit]').disabled = !this.form.querySelectorAll('input[name=emoji]:checked').length"
+                      />
+                    </td>
+                    <td class="px-3 py-2 text-neutral-700 dark:text-neutral-300">
                       <label for={`emoji-${emoji.shortcode}`}>
+                        {emoji.category ?? "—"}
+                      </label>
+                    </td>
+                    <td class="px-3 py-2">
+                      <label
+                        for={`emoji-${emoji.shortcode}`}
+                        class="font-mono text-neutral-900 dark:text-neutral-100"
+                      >
                         :{emoji.shortcode}:
                       </label>
-                    </tt>
-                  </td>
-                  <td>
-                    <label for={`emoji-${emoji.shortcode}`}>
-                      <img
-                        src={emoji.url}
-                        alt={`:${emoji.shortcode}:`}
-                        style="height: 24px"
-                      />
-                    </label>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td class="px-3 py-2">
+                      <label for={`emoji-${emoji.shortcode}`}>
+                        <img
+                          src={emoji.url}
+                          alt={`:${emoji.shortcode}:`}
+                          class="h-6 w-auto"
+                        />
+                      </label>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div class="rounded-xl border border-dashed border-neutral-300 px-6 py-12 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
+            No custom emojis yet. Add one above to get started.
+          </div>
         )}
-        <div role="group">
-          <a role="button" href="/emojis/new">
-            Add a custom emoji
-          </a>
-          <a role="button" href="/emojis/import" class="secondary">
-            Import custom emojis
-          </a>
-          <button type="submit" class="contrast" disabled>
-            Delete selected emojis
-          </button>
-        </div>
+        {emojis.length > 0 && (
+          <div class="mt-4 flex justify-end">
+            <button
+              type="submit"
+              disabled
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-neutral-900 dark:text-red-400 dark:hover:bg-red-950"
+            >
+              <span class="i-lucide-trash-2" aria-hidden="true" />
+              Delete selected
+            </button>
+          </div>
+        )}
       </form>
     </DashboardLayout>,
   );
@@ -102,51 +135,103 @@ emojis.get("/new", async (c) => {
     .groupBy(customEmojis.category);
   return c.html(
     <DashboardLayout title="Hollo: Add custom emoji" selectedMenu="emojis">
-      <hgroup>
-        <h1>Add custom emoji</h1>
-        <p>You can add a custom emoji to your Hollo server.</p>
-      </hgroup>
-      <form method="post" action="/emojis" enctype="multipart/form-data">
-        <fieldset class="grid">
-          <label>
-            Category
+      <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <a
+            href="/emojis"
+            class="hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Custom emojis
+          </a>
+        </p>
+        <h1 class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Add a custom emoji
+        </h1>
+      </header>
+      <form
+        method="post"
+        action="/emojis"
+        enctype="multipart/form-data"
+        class="space-y-4 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label
+              for="emoji-category"
+              class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+            >
+              Category
+            </label>
             <select
+              id="emoji-category"
               name="category"
+              class="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:ring-brand-900"
               onchange="this.form.new.disabled = this.value != 'new'"
             >
               <option>None</option>
               <option value="new">New category</option>
-              <hr />
               {categories.map(({ category }) => (
                 <option value={`category:${category}`}>{category}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label
+              for="emoji-new-category"
+              class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+            >
+              New category
+            </label>
+            <input
+              id="emoji-new-category"
+              type="text"
+              name="new"
+              disabled={true}
+              class="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:ring-brand-900"
+            />
+          </div>
+        </div>
+        <div>
+          <label
+            for="emoji-shortcode"
+            class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+          >
+            Short code
           </label>
-          <label>
-            New category
-            <input type="text" name="new" disabled={true} />
-          </label>
-        </fieldset>
-        <label>
-          <span>Short code</span>
           <input
+            id="emoji-shortcode"
             type="text"
             name="shortcode"
             required
             pattern="^:(-|[a-z0-9_])+:$"
             placeholder=":shortcode:"
+            class="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-sm shadow-sm transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:ring-brand-900"
           />
-        </label>
-        <label>
-          <span>Image</span>
+        </div>
+        <div>
+          <label
+            for="emoji-image"
+            class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+          >
+            Image
+          </label>
           <input
+            id="emoji-image"
             type="file"
             name="image"
             required
             accept="image/png, image/jpeg, image/gif, image/webp"
+            class="mt-1 block w-full text-sm text-neutral-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700 dark:text-neutral-300"
           />
-        </label>
-        <button type="submit">Add</button>
+        </div>
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+          >
+            Add emoji
+          </button>
+        </div>
       </form>
     </DashboardLayout>,
   );
@@ -297,73 +382,117 @@ emojis.get("/import", async (c) => {
   }
   return c.html(
     <DashboardLayout title="Hollo: Import custom emojis" selectedMenu="emojis">
-      <hgroup>
-        <h1>Import custom emojis</h1>
-        <p>You can import custom emojis from your peer servers.</p>
-      </hgroup>
-      <form method="post">
-        <table>
-          <thead>
-            <tr>
-              <th>Check</th>
-              <th>Short code</th>
-              <th>Domain</th>
-              <th>Image</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.values(emojis).map(({ id, shortcode, url, domain }) => (
+      <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <a
+            href="/emojis"
+            class="hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Custom emojis
+          </a>
+        </p>
+        <h1 class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Import custom emojis
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Import custom emojis discovered on peer servers.
+        </p>
+      </header>
+      <form method="post" class="space-y-4">
+        <div class="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+          <table class="w-full text-sm">
+            <thead class="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
               <tr>
-                <td>
-                  <input
-                    type="checkbox"
-                    id={id}
-                    name="import"
-                    value={JSON.stringify({ shortcode, url })}
-                  />
-                </td>
-                <td>
-                  <label for={id}>
-                    <tt>:{shortcode}:</tt>
-                  </label>
-                </td>
-                <td>
-                  <label for={id}>{domain}</label>
-                </td>
-                <td>
-                  <label for={id}>
-                    <img
-                      src={url}
-                      alt={`:${shortcode}:`}
-                      style="height: 24px"
-                    />
-                  </label>
-                </td>
+                <th class="w-10 px-3 py-2 text-left">
+                  <span class="sr-only">Select</span>
+                </th>
+                <th class="px-3 py-2 text-left font-semibold">Shortcode</th>
+                <th class="px-3 py-2 text-left font-semibold">Domain</th>
+                <th class="px-3 py-2 text-left font-semibold">Image</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <fieldset class="grid">
-          <label>
-            Category
+            </thead>
+            <tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-900">
+              {Object.values(emojis).map(({ id, shortcode, url, domain }) => (
+                <tr>
+                  <td class="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      id={id}
+                      name="import"
+                      value={JSON.stringify({ shortcode, url })}
+                      class="size-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-200 dark:border-neutral-700 dark:bg-neutral-950 dark:focus:ring-brand-900"
+                    />
+                  </td>
+                  <td class="px-3 py-2">
+                    <label
+                      for={id}
+                      class="font-mono text-neutral-900 dark:text-neutral-100"
+                    >
+                      :{shortcode}:
+                    </label>
+                  </td>
+                  <td class="px-3 py-2 text-neutral-700 dark:text-neutral-300">
+                    <label for={id}>{domain}</label>
+                  </td>
+                  <td class="px-3 py-2">
+                    <label for={id}>
+                      <img
+                        src={url}
+                        alt={`:${shortcode}:`}
+                        class="h-6 w-auto"
+                      />
+                    </label>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div class="grid gap-4 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900 sm:grid-cols-2">
+          <div>
+            <label
+              for="import-category"
+              class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+            >
+              Category
+            </label>
             <select
+              id="import-category"
               name="category"
+              class="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:ring-brand-900"
               onchange="this.form.new.disabled = this.value != 'new'"
             >
               <option>None</option>
               <option value="new">New category</option>
-              <hr />
               {[...categories].map((category) => (
                 <option value={`category:${category}`}>{category}</option>
               ))}
             </select>
-          </label>
-          <label>
-            New category
-            <input type="text" name="new" disabled={true} />
-          </label>
-        </fieldset>
-        <button type="submit">Import selected custom emojis</button>
+          </div>
+          <div>
+            <label
+              for="import-new-category"
+              class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+            >
+              New category
+            </label>
+            <input
+              id="import-new-category"
+              type="text"
+              name="new"
+              disabled={true}
+              class="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:ring-brand-900"
+            />
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+          >
+            Import selected emojis
+          </button>
+        </div>
       </form>
     </DashboardLayout>,
   );
