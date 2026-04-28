@@ -101,9 +101,9 @@ color token:
 theme: {
   colors: {
     brand: {
-      50: "rgb(var(--theme-50) / <alpha-value>)",
+      50: "rgb(var(--theme-50))",
       // ... 100 through 900
-      DEFAULT: "rgb(var(--theme-500) / <alpha-value>)",
+      DEFAULT: "rgb(var(--theme-500))",
     },
   },
 }
@@ -113,6 +113,20 @@ This means components write `bg-brand`, `text-brand-700`,
 `border-brand-200`, and so on, without ever knowing which of the twenty
 hues is currently active.  No safelist is needed because no class name
 varies with the theme color.
+
+### Alpha modifiers
+
+Wind4 wraps every brand-colored utility in
+`color-mix(in srgb, ... var(--un-bg-opacity), transparent)`, so a
+`--un-bg-opacity` (and the matching `--un-text-opacity`, `--un-border-opacity`,
+`--un-ring-opacity`, `--un-divide-opacity`, `--un-placeholder-opacity`) custom
+property must be defined before any brand utility resolves.  *uno.config.ts*
+sets all of these to `100%` on *:root* via a preflight, which makes plain
+`bg-brand-500` behave like fully opaque rgb.
+
+Slash modifiers work as expected on top of this default: `bg-brand-500/50`,
+`text-brand-700/80`, `ring-brand-200/40`, and so on resolve to a 50%/80%/40%
+mix against transparent.
 
 ### Dark mode
 
