@@ -203,17 +203,25 @@ interface AccountListPageProps {
 function AccountListPage({ accountOwners }: AccountListPageProps) {
   return (
     <DashboardLayout title="Hollo: Accounts" selectedMenu="accounts">
-      <hgroup>
-        <h1>Accounts</h1>
-        <p>
-          You can have more than one account. Each account has its own handle,
-          settings, and data, and you can switch between them at any time.
-        </p>
-      </hgroup>
+      <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+            Accounts
+          </h1>
+          <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+            You can have more than one account. Each account has its own handle,
+            settings, and data, and you can switch between them at any time.
+          </p>
+        </div>
+        <a
+          href="/accounts/new"
+          class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+        >
+          <span class="i-lucide-plus" aria-hidden="true" />
+          New account
+        </a>
+      </header>
       <AccountList accountOwners={accountOwners} />
-      <a role="button" href="/accounts/new">
-        Create a new account
-      </a>
     </DashboardLayout>
   );
 }
@@ -274,10 +282,25 @@ function AccountPage(props: AccountPageProps) {
       selectedMenu="accounts"
       themeColor={props.accountOwner.themeColor}
     >
-      <hgroup>
-        <h1>Edit {username}</h1>
-        <p>You can edit your account by filling out the form below.</p>
-      </hgroup>
+      <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <a
+            href="/accounts"
+            class="hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Accounts
+          </a>
+        </p>
+        <h1 class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Edit{" "}
+          <span class="font-mono text-brand-700 dark:text-brand-400">
+            {username}
+          </span>
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Update profile fields, defaults, and theme color for this account.
+        </p>
+      </header>
       <AccountForm
         action={`/accounts/${props.accountOwner.account.id}`}
         readOnly={{ username: true }}
