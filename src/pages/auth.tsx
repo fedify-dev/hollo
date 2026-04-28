@@ -84,46 +84,82 @@ interface AuthPageProps {
 async function AuthPage({ totp, tfa }: AuthPageProps) {
   return (
     <DashboardLayout title="Hollo: Auth" selectedMenu="auth">
-      <hgroup>
-        <h1>Auth</h1>
-        <p>Authentication settings.</p>
-      </hgroup>
+      <header class="mb-6">
+        <h1 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Authentication
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Manage how you sign in to this Hollo instance.
+        </p>
+      </header>
 
-      <article>
-        <header>
-          <hgroup>
-            <h2>Two-factor authentication (OTP)</h2>
-            <p>
-              Configure two-factor authentication to secure your account. You
-              need an authenticator app like Google Authenticator or Authy to
-              use this feature.
+      <section class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <header class="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Two-factor authentication (TOTP)
+            </h2>
+            <p class="mt-1 max-w-xl text-sm text-neutral-600 dark:text-neutral-400">
+              Secure sign-in with a one-time code from an authenticator app like
+              Google Authenticator or Authy.
             </p>
-          </hgroup>
+          </div>
+          <span
+            class={
+              totp == null
+                ? "inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                : "inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950 dark:text-green-300"
+            }
+          >
+            <span
+              class={
+                totp == null
+                  ? "size-1.5 rounded-full bg-neutral-400"
+                  : "size-1.5 rounded-full bg-green-500"
+              }
+              aria-hidden="true"
+            />
+            {totp == null ? "Disabled" : "Enabled"}
+          </span>
         </header>
         {totp == null ? (
           tfa == null ? (
-            <>
-              <p>Two-factor authentication is not enabled.</p>
-              <a role="button" href="?open=2fa">
-                Enable
-              </a>
-            </>
+            <a
+              href="?open=2fa"
+              class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              Enable two-factor authentication
+            </a>
           ) : (
-            <>
-              <p>Scan the QR code below with your authenticator app:</p>
-              <p style="text-align: center">
-                <img src={await qrCode(tfa.totp.toString())} alt="" />
-              </p>
-              <details>
-                <summary>
-                  Can't scan the QR code? Click here to copy the URL to your
-                  authenticator app.
-                </summary>
-                <input type="text" value={tfa.totp.toString()} readonly />
-              </details>
-              <form method="post" action="/auth/2fa">
-                <p>Enter the code from your authenticator app to verify:</p>
-                <fieldset role="group">
+            <div class="space-y-4">
+              <div class="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start">
+                <div class="rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-950">
+                  <img
+                    src={await qrCode(tfa.totp.toString())}
+                    alt="QR code for two-factor setup"
+                    class="block size-40"
+                  />
+                </div>
+                <div class="text-sm text-neutral-700 dark:text-neutral-300">
+                  <p>Scan the QR code with your authenticator app.</p>
+                  <details class="mt-3">
+                    <summary class="cursor-pointer text-brand-700 hover:underline dark:text-brand-400">
+                      Can't scan? Copy the setup URL instead.
+                    </summary>
+                    <input
+                      type="text"
+                      value={tfa.totp.toString()}
+                      readonly
+                      class="mt-2 w-full rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                    />
+                  </details>
+                </div>
+              </div>
+              <form method="post" action="/auth/2fa" class="space-y-2">
+                <p class="text-sm text-neutral-700 dark:text-neutral-300">
+                  Enter the six-digit code to confirm setup:
+                </p>
+                <div class="flex gap-2">
                   <input
                     type="hidden"
                     name="totp"
@@ -137,28 +173,42 @@ async function AuthPage({ totp, tfa }: AuthPageProps) {
                     required
                     placeholder="123456"
                     aria-invalid={tfa.error == null ? undefined : "true"}
+                    class={`flex-1 rounded-md border bg-white px-3 py-2 text-center font-mono text-lg tracking-widest text-neutral-900 shadow-sm placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:ring-brand-900 ${
+                      tfa.error == null
+                        ? "border-neutral-300 dark:border-neutral-700"
+                        : "border-red-500 dark:border-red-500"
+                    }`}
                   />
-                  <button type="submit">Verify</button>
-                </fieldset>
-                {tfa.error && <small>{tfa.error}</small>}
+                  <button
+                    type="submit"
+                    class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                  >
+                    Verify
+                  </button>
+                </div>
+                {tfa.error && (
+                  <p class="text-xs text-red-600 dark:text-red-400">
+                    {tfa.error}
+                  </p>
+                )}
               </form>
-            </>
+            </div>
           )
         ) : (
-          <>
-            <p>Two-factor authentication is enabled.</p>
-            <form
-              method="post"
-              action="/auth/2fa/disable"
-              onsubmit="return window.confirm('Are you sure you want to disable two-factor authentication? This will remove the two-factor authentication from your account.');"
+          <form
+            method="post"
+            action="/auth/2fa/disable"
+            onsubmit="return window.confirm('Are you sure you want to disable two-factor authentication? This will remove the two-factor authentication from your account.');"
+          >
+            <button
+              type="submit"
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 dark:border-red-900 dark:bg-neutral-900 dark:text-red-400 dark:hover:bg-red-950"
             >
-              <button type="submit" class="secondary">
-                Disable
-              </button>
-            </form>
-          </>
+              Disable two-factor authentication
+            </button>
+          </form>
         )}
-      </article>
+      </section>
     </DashboardLayout>
   );
 }
