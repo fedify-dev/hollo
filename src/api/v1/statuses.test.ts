@@ -502,6 +502,25 @@ describe.sequential("/api/v1/statuses quotes", () => {
     expect(selfQuote.quote.state).toBe("accepted");
   });
 
+  it("allows direct self-quotes without self-mentions", async () => {
+    expect.assertions(3);
+
+    const quotedResponse = await createStatus(authorToken, {
+      status: "Self-quotable post",
+    });
+    expect(quotedResponse.status).toBe(200);
+    const quoted = await quotedResponse.json();
+
+    const selfQuoteResponse = await createStatus(authorToken, {
+      status: "Direct self-quote",
+      quoted_status_id: quoted.id,
+      visibility: "direct",
+    });
+    expect(selfQuoteResponse.status).toBe(200);
+    const selfQuote = await selfQuoteResponse.json();
+    expect(selfQuote.quote.state).toBe("accepted");
+  });
+
   it("returns revoked quote state when a quote is revoked", async () => {
     expect.assertions(7);
 

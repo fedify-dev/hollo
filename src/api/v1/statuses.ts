@@ -225,6 +225,7 @@ async function validateQuoteTarget(
   }
   if (
     visibility === "direct" &&
+    quoteTarget.accountId !== owner.id &&
     !mentionedIds.includes(quoteTarget.accountId)
   ) {
     return {
