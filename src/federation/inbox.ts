@@ -656,6 +656,7 @@ export async function onQuoteRequested(
       : await db.query.posts.findFirst({
           where: eq(posts.iri, instrument.id.href),
         });
+  if (existingQuote?.quoteState === "revoked") return;
   const persistedQuote = await persistPost(
     db,
     instrument,

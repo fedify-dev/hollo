@@ -989,6 +989,81 @@ describe("quote request lifecycle", () => {
     expect(sendActivity).toHaveBeenCalledTimes(2);
   });
 
+  it("preserves revoked quotes when QuoteRequests are retried", async () => {
+    expect.assertions(4);
+
+    const author = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    const quotePostIri = "https://remote.test/@quoter/quote-retried";
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id as Uuid,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+
+    const request = new QuoteRequest({
+      actor: new URL("https://remote.test/@quoter"),
+      object: new URL(quotedPostIri),
+      instrument: new Note({
+        id: new URL(quotePostIri),
+        attribution: new Person({
+          id: new URL("https://remote.test/@quoter"),
+          name: "quoter",
+          preferredUsername: "quoter",
+          inbox: new URL("https://remote.test/@quoter/inbox"),
+        }),
+        quote: new URL(quotedPostIri),
+        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+        content: "<p>Remote quote</p>",
+      }),
+    });
+
+    await onQuoteRequested(requestCtx, request);
+    const acceptedQuote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    if (acceptedQuote == null) throw new Error("Failed to persist quote");
+    await db
+      .update(posts)
+      .set({
+        quoteState: "revoked",
+        quoteAuthorizationIri: null,
+        updated: new Date(),
+      })
+      .where(eq(posts.id, acceptedQuote.id));
+    await db
+      .update(posts)
+      .set({ quotesCount: 0 })
+      .where(eq(posts.id, quotedPostId));
+    sendActivity.mockClear();
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: eq(posts.iri, quotePostIri),
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: eq(posts.id, quotedPostId),
+    });
+    expect(quote?.quoteState).toBe("revoked");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
   it("rejects a private QuoteRequest from an approved follower", async () => {
     expect.assertions(4);
 
