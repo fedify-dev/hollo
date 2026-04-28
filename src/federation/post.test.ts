@@ -784,6 +784,60 @@ describe("persistPost quotes", () => {
     expect(persisted?.contentHtml).toBe("<p>Updated quote</p>");
   });
 
+  it("preserves accepted legacy quotes during later updates", async () => {
+    expect.assertions(3);
+
+    const author = await seedRemoteAccount("quote-author");
+    const quoter = await seedRemoteAccount("quote-quoter");
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotePostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = "https://remote.test/objects/quoted-legacy-update";
+    const quotePostIri = "https://remote.test/objects/quote-legacy-update";
+
+    await db.insert(posts).values([
+      {
+        id: quotedPostId,
+        iri: quotedPostIri,
+        type: "Note",
+        accountId: author.id,
+        visibility: "public",
+        contentHtml: "<p>Quoted post</p>",
+        content: "Quoted post",
+        published: new Date(),
+      },
+      {
+        id: quotePostId,
+        iri: quotePostIri,
+        type: "Note",
+        accountId: quoter.id,
+        quoteTargetId: quotedPostId,
+        quoteTargetIri: quotedPostIri,
+        quoteState: "accepted",
+        quoteAuthorizationIri: null,
+        visibility: "public",
+        contentHtml: "<p>Original quote</p>",
+        content: "Original quote",
+        published: new Date(),
+      },
+    ]);
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL(quotePostIri),
+        attribution: createPerson(quoter),
+        quote: new URL(quotedPostIri),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Updated quote</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteState).toBe("accepted");
+    expect(persisted?.quoteAuthorizationIri).toBeNull();
+    expect(persisted?.contentHtml).toBe("<p>Updated quote</p>");
+  });
+
   it("defaults quote approval to public when no interaction policy exists", async () => {
     const author = await seedRemoteAccount("quote-author");
 
