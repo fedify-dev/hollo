@@ -1,5 +1,5 @@
 import { Emoji, Flag, Note, QuoteAuthorization } from "@fedify/vocab";
-import { and, eq, inArray, isNull, like, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, like, or } from "drizzle-orm";
 
 import { db } from "../db";
 import {
@@ -11,10 +11,30 @@ import {
   posts,
   reports,
 } from "../schema";
-import { isUuid } from "../uuid";
+import { isUuid, type Uuid } from "../uuid";
 import { toEmoji } from "./emoji";
 import { federation } from "./federation";
 import { toObject } from "./post";
+
+export async function hasApprovedFollowFromKeyOwner(
+  keyOwnerId: URL,
+  followingId: Uuid,
+): Promise<boolean> {
+  const found = await db.query.follows.findFirst({
+    where: and(
+      inArray(
+        follows.followerId,
+        db
+          .select({ id: accounts.id })
+          .from(accounts)
+          .where(eq(accounts.iri, keyOwnerId.href)),
+      ),
+      eq(follows.followingId, followingId),
+      isNotNull(follows.approved),
+    ),
+  });
+  return found != null;
+}
 
 federation.setObjectDispatcher(
   Note,
@@ -46,19 +66,9 @@ federation.setObjectDispatcher(
     if (post.visibility === "private") {
       const keyOwner = await ctx.getSignedKeyOwner();
       if (keyOwner?.id == null) return null;
-      const found = await db.query.follows.findFirst({
-        where: and(
-          inArray(
-            follows.followerId,
-            db
-              .select({ id: accounts.id })
-              .from(accounts)
-              .where(eq(accounts.iri, keyOwner.id.href)),
-          ),
-          eq(follows.followingId, owner.id),
-        ),
-      });
-      if (found == null) return null;
+      if (!(await hasApprovedFollowFromKeyOwner(keyOwner.id, owner.id))) {
+        return null;
+      }
     } else if (post.visibility === "direct") {
       const keyOwner = await ctx.getSignedKeyOwner();
       const keyOwnerId = keyOwner?.id;
@@ -110,19 +120,9 @@ federation.setObjectDispatcher(
     if (targetPost.visibility === "private") {
       const keyOwner = await ctx.getSignedKeyOwner();
       if (keyOwner?.id == null) return null;
-      const found = await db.query.follows.findFirst({
-        where: and(
-          inArray(
-            follows.followerId,
-            db
-              .select({ id: accounts.id })
-              .from(accounts)
-              .where(eq(accounts.iri, keyOwner.id.href)),
-          ),
-          eq(follows.followingId, owner.id),
-        ),
-      });
-      if (found == null) return null;
+      if (!(await hasApprovedFollowFromKeyOwner(keyOwner.id, owner.id))) {
+        return null;
+      }
     } else if (targetPost.visibility === "direct") {
       const keyOwner = await ctx.getSignedKeyOwner();
       const keyOwnerId = keyOwner?.id;
