@@ -223,6 +223,10 @@ export interface FieldSectionProps {
  * card.  Sibling sections automatically get a top divider so multiple
  * sections inside the same wrapper read as logical chunks rather than as
  * separate cards.
+ *
+ * The padding/divider live on a plain wrapper <div> instead of on the
+ * <fieldset> itself because fieldset/legend has native rendering quirks
+ * that swallow padding-top.
  */
 export function FieldSection({
   legend,
@@ -230,17 +234,19 @@ export function FieldSection({
   children,
 }: PropsWithChildren<FieldSectionProps>) {
   return (
-    <fieldset class="m-0 border-0 p-0 [&+&]:mt-6 [&+&]:border-t [&+&]:border-neutral-200 [&+&]:pt-6 dark:[&+&]:border-neutral-800">
-      <legend class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-        {legend}
-      </legend>
-      {description && (
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {description}
-        </p>
-      )}
-      <div class="mt-3 space-y-4">{children}</div>
-    </fieldset>
+    <div class="[&+&]:mt-6 [&+&]:border-t [&+&]:border-neutral-200 [&+&]:pt-6 dark:[&+&]:border-neutral-800">
+      <fieldset class="m-0 border-0 p-0">
+        <legend class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          {legend}
+        </legend>
+        {description && (
+          <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            {description}
+          </p>
+        )}
+        <div class="mt-4 space-y-4">{children}</div>
+      </fieldset>
+    </div>
   );
 }
 
