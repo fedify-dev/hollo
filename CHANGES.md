@@ -7,7 +7,7 @@ Version 0.9.0
 To be released.
 
  -  Added [FEP-044f] quote authorization and policy support on top of the
-    Mastodon-compatible quote APIs.  [[#457], [#459]]
+    Mastodon-compatible quote APIs.  [[#457], [#459], [#460]]
 
      -  Added persistent quote states for `pending`, `accepted`, `rejected`,
         `revoked`, and `unauthorized` quotes, plus quote target and
@@ -100,6 +100,7 @@ To be released.
 [#457]: https://github.com/fedify-dev/hollo/pull/457
 [#458]: https://github.com/fedify-dev/hollo/pull/458
 [#459]: https://github.com/fedify-dev/hollo/pull/459
+[#460]: https://github.com/fedify-dev/hollo/pull/460
 
 
 Version 0.8.1
