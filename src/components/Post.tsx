@@ -1,5 +1,6 @@
 import { renderCustomEmojis } from "../custom-emoji";
 import { stripQuoteInlineFallbacks } from "../html";
+import type { PreviewCard } from "../previewcard";
 import type {
   Account,
   Medium as DbMedium,
@@ -272,6 +273,9 @@ function PostContent({ post }: PostContentProps) {
           ))}
         </div>
       )}
+      {post.previewCard != null && post.media.length === 0 && (
+        <PreviewCardView card={post.previewCard} />
+      )}
       {post.quoteTarget != null && (
         <div class="mt-3">
           <Post
@@ -281,6 +285,54 @@ function PostContent({ post }: PostContentProps) {
         </div>
       )}
     </>
+  );
+}
+
+interface PreviewCardViewProps {
+  readonly card: PreviewCard;
+}
+
+function PreviewCardView({ card }: PreviewCardViewProps) {
+  let host: string | null = null;
+  try {
+    host = new URL(card.url).hostname.replace(/^www\./, "");
+  } catch {
+    host = null;
+  }
+  const hasImage = card.image != null;
+  return (
+    <a
+      href={card.url}
+      target="_blank"
+      rel="noopener nofollow"
+      class="mt-3 flex overflow-hidden rounded-lg border border-neutral-200 transition-colors hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700"
+    >
+      {hasImage && (
+        <div class="aspect-square w-28 shrink-0 bg-neutral-100 sm:w-36 dark:bg-neutral-900">
+          <img
+            src={card.image!.url}
+            alt=""
+            loading="lazy"
+            class="size-full object-cover"
+          />
+        </div>
+      )}
+      <div class="min-w-0 flex-1 self-center p-3 sm:p-4">
+        {host && (
+          <p class="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            {host}
+          </p>
+        )}
+        <h3 class="mt-0.5 line-clamp-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+          {card.title}
+        </h3>
+        {card.description && card.description.trim() !== "" && (
+          <p class="mt-1 line-clamp-2 text-xs text-neutral-600 dark:text-neutral-400">
+            {card.description}
+          </p>
+        )}
+      </div>
+    </a>
   );
 }
 

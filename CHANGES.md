@@ -49,9 +49,16 @@ To be released.
     post.  If the quoted post is unavailable, the fallback link remains
     visible so the quoted URL is not lost.
 
+ -  Posts on the public profile and hashtag pages now render Open Graph link
+    previews—a thumbnail (when `og:image` is set), the host name, the page
+    title, and a short description—for each post that has a stored
+    `preview_card`.  Posts with attached media or shown as quoted posts hide
+    the preview to avoid visual clutter.  [[#458]]
+
  -  Upgraded Fedify to 2.2.0.
 
 [#457]: https://github.com/fedify-dev/hollo/pull/457
+[#458]: https://github.com/fedify-dev/hollo/pull/458
 
 
 Version 0.8.1
