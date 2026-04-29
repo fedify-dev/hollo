@@ -9,7 +9,7 @@ mise.local.toml
 **/skills/npm-*
 src/public/uno.css
 .playwright-mcp/
-*.png
+/*.png
 
 coverage/**
 !coverage/.gitkeep
