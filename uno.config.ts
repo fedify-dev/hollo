@@ -56,6 +56,16 @@ export default defineConfig({
         button:disabled, [role="button"][aria-disabled="true"] {
           cursor: not-allowed;
         }
+        ::selection {
+          background-color: rgb(var(--theme-200));
+          color: rgb(var(--theme-900));
+        }
+        @media (prefers-color-scheme: dark) {
+          ::selection {
+            background-color: rgb(var(--theme-800));
+            color: rgb(var(--theme-100));
+          }
+        }
         @media (prefers-color-scheme: dark) {
           .shiki, .shiki span {
             color: var(--shiki-dark) !important;
