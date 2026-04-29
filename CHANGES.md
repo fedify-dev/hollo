@@ -58,7 +58,7 @@ To be released.
     the preview to avoid visual clutter.  [[#458]]
 
  -  Refreshed the entire server-rendered front-end.  Hollo replaces Pico CSS
-    with a new design system documented in `DESIGN.md` and styled through
+    with a new design system documented in _DESIGN.md_ and styled through
     UnoCSS (Wind4, Icons, Typography, and Web Fonts presets).  [[#458]]
 
      -  The design language is achromatic by default; each account owner's
@@ -90,8 +90,8 @@ To be released.
         don't dominate dark surfaces.  Text selection adopts the active
         brand color.
      -  Hollo's logos are self-hosted from `/public/` instead of being
-        fetched from jsDelivr.  The 22 Pico-generated `.min.css` files
-        are removed; UnoCSS emits a single `src/public/uno.css` whose
+        fetched from jsDelivr.  The 22 Pico-generated _\*.min.css_ files
+        are removed; UnoCSS emits a single _src/public/uno.css_ whose
         URL is cache-busted by file mtime.
 
  -  Upgraded Fedify to 2.2.0.
