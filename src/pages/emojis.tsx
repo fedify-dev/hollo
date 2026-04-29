@@ -215,14 +215,29 @@ emojis.get("/new", async (c) => {
           >
             Image
           </label>
-          <input
-            id="emoji-image"
-            type="file"
-            name="image"
-            required
-            accept="image/png, image/jpeg, image/gif, image/webp"
-            class="mt-1 block w-full text-sm text-neutral-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-700 dark:text-neutral-300"
-          />
+          <label
+            for="emoji-image"
+            class="mt-1 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-600 transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-brand-600 dark:hover:bg-brand-950/20"
+          >
+            <span
+              class="i-lucide-image-up text-2xl text-neutral-500 dark:text-neutral-400"
+              aria-hidden="true"
+            />
+            <span class="font-medium text-neutral-800 dark:text-neutral-200">
+              Click to choose an image
+            </span>
+            <span class="text-xs text-neutral-500 dark:text-neutral-400">
+              PNG, JPEG, GIF, or WebP
+            </span>
+            <input
+              id="emoji-image"
+              type="file"
+              name="image"
+              required
+              accept="image/png, image/jpeg, image/gif, image/webp"
+              class="sr-only"
+            />
+          </label>
         </div>
         <div class="flex justify-end">
           <button

@@ -46,7 +46,9 @@ export default defineConfig({
           --un-divide-opacity: 100%;
           --un-placeholder-opacity: 100%;
         }
-        input, textarea, select {
+        input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+        textarea,
+        select {
           border-style: solid;
           border-width: 1px;
         }
