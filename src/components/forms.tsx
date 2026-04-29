@@ -218,23 +218,28 @@ export interface FieldSectionProps {
   description?: Child;
 }
 
-/** Card-shaped fieldset with a legend and optional description. */
+/**
+ * Borderless fieldset for grouping related controls within a single form
+ * card.  Sibling sections automatically get a top divider so multiple
+ * sections inside the same wrapper read as logical chunks rather than as
+ * separate cards.
+ */
 export function FieldSection({
   legend,
   description,
   children,
 }: PropsWithChildren<FieldSectionProps>) {
   return (
-    <fieldset class="m-0 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-      <legend class="px-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+    <fieldset class="m-0 border-0 p-0 [&+&]:mt-6 [&+&]:border-t [&+&]:border-neutral-200 [&+&]:pt-6 dark:[&+&]:border-neutral-800">
+      <legend class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
         {legend}
       </legend>
       {description && (
-        <p class="-mt-1 mb-4 text-xs text-neutral-500 dark:text-neutral-400">
+        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
           {description}
         </p>
       )}
-      <div class="space-y-4">{children}</div>
+      <div class="mt-3 space-y-4">{children}</div>
     </fieldset>
   );
 }

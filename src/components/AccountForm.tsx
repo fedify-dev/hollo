@@ -45,7 +45,7 @@ export function AccountForm(props: AccountFormProps) {
     <form
       method={props.method ?? "post"}
       action={props.action}
-      class="space-y-6"
+      class="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <FieldSection legend="Identity">
         <TextField
@@ -163,7 +163,7 @@ export function AccountForm(props: AccountFormProps) {
         />
       </FieldSection>
 
-      <div class="flex justify-end">
+      <div class="mt-6 flex justify-end border-t border-neutral-200 pt-4 dark:border-neutral-800">
         <SubmitButton>{props.submitLabel}</SubmitButton>
       </div>
     </form>
