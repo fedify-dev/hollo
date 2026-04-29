@@ -35,7 +35,7 @@ export function renderCustomEmojis(
     return input.replaceAll(CUSTOM_EMOJI_REGEXP, (match) => {
       const emoji = emojis[match] ?? emojis[match.replace(/^:|:$/g, "")];
       if (emoji == null) return match;
-      return `<img src="${emoji}" alt="${match}" style="display: inline-block; height: 1em; vertical-align: -0.125em">`;
+      return `<img src="${emoji}" alt="${match}" class="not-prose" style="display: inline-block; height: 1em; margin: 0; vertical-align: -0.125em">`;
     });
   }
 }
