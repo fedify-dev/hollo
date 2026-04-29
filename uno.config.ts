@@ -66,6 +66,17 @@ export default defineConfig({
             color: rgb(var(--theme-100));
           }
         }
+        /* UnoCSS sorts the .dark:divide-* rule alphabetically before the
+           .divide-* rule (dark < divide), so the light value would win in
+           dark mode.  Pin a sensible default for both schemes here. */
+        .divide-y > :not(:last-child) {
+          border-color: rgb(229 229 229);
+        }
+        @media (prefers-color-scheme: dark) {
+          .divide-y > :not(:last-child) {
+            border-color: rgb(38 38 38);
+          }
+        }
         @media (prefers-color-scheme: dark) {
           .shiki, .shiki span {
             color: var(--shiki-dark) !important;
