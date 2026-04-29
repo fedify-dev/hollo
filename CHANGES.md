@@ -6,8 +6,8 @@ Version 0.9.0
 
 To be released.
 
- -  Added FEP-044f quote authorization and policy support on top of the
-    Mastodon-compatible quote APIs.  [[#457]]
+ -  Added [FEP-044f] quote authorization and policy support on top of the
+    Mastodon-compatible quote APIs.  [[#457], [#459]]
 
      -  Added persistent quote states for `pending`, `accepted`, `rejected`,
         `revoked`, and `unauthorized` quotes, plus quote target and
@@ -15,7 +15,9 @@ To be released.
      -  Hollo now enforces quote policy, quote target visibility, block
         relationships, follower-only quote permissions, and direct-message
         mention requirements when creating a quote through
-        `POST /api/v1/statuses`.
+        `POST /api/v1/statuses`.  Remote public posts without an advertised
+        FEP-044f quote policy are treated as legacy quote targets and can be
+        quoted without waiting for quote authorization.
      -  Implemented `quote_approval_policy` handling on status creation and
         editing, and added `PUT /api/v1/statuses/:id/interaction_policy` for
         updating a status' quote policy after publication.
@@ -94,8 +96,10 @@ To be released.
 
  -  Upgraded Fedify to 2.2.0.
 
+[FEP-044f]: https://w3id.org/fep/044f
 [#457]: https://github.com/fedify-dev/hollo/pull/457
 [#458]: https://github.com/fedify-dev/hollo/pull/458
+[#459]: https://github.com/fedify-dev/hollo/pull/459
 
 
 Version 0.8.1

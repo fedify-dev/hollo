@@ -48,7 +48,7 @@ function getEffectiveQuoteState(
 }
 
 function serializeQuoteApproval(
-  policy: QuoteApprovalPolicy,
+  policy: QuoteApprovalPolicy | null,
   currentAccountOwner: { id: string } | undefined | null,
   post: Pick<Post, "accountId" | "visibility">,
   viewerIsApprovedFollower: boolean,
@@ -56,7 +56,7 @@ function serializeQuoteApproval(
   const effectivePolicy =
     post.visibility === "direct" || post.visibility === "private"
       ? "nobody"
-      : policy;
+      : (policy ?? "public");
   const automatic =
     effectivePolicy === "public"
       ? ["public"]

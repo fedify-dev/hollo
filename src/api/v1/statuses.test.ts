@@ -521,6 +521,135 @@ describe.sequential("/api/v1/statuses quotes", () => {
     expect(selfQuote.quote.state).toBe("accepted");
   });
 
+  it("accepts quotes of remote posts without FEP-044f policy", async () => {
+    expect.assertions(3);
+
+    const remoteAccountId = uuidv7();
+    const quotedPostId = uuidv7();
+    const quotedPostIri = `https://remote.test/@legacy/${quotedPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/@legacy",
+      type: "Person",
+      name: "Legacy remote author",
+      handle: "@legacy@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@legacy/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: remoteAccountId,
+      visibility: "public",
+      quoteApprovalPolicy: null,
+      content: "Legacy remote quoted post",
+      contentHtml: "<p>Legacy remote quoted post</p>\n",
+      url: quotedPostIri,
+      published: new Date(),
+    });
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const quoteResponse = await createStatus(quoterToken, {
+        status: "Quoting a legacy remote post",
+        quoted_status_id: quotedPostId,
+      });
+      expect(quoteResponse.status).toBe(200);
+      const quote = await quoteResponse.json();
+      expect(quote.quote.state).toBe("accepted");
+      const activities = await Promise.all(
+        fetch.mock.calls.map(async ([input]) => {
+          const request = input instanceof Request ? input : null;
+          return request == null ? null : await request.clone().json();
+        }),
+      );
+      expect(
+        activities.some((activity) => activity?.type === "QuoteRequest"),
+      ).toBe(false);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it("requests authorization for cached remote public policies", async () => {
+    expect.assertions(3);
+
+    const remoteAccountId = uuidv7();
+    const quotedPostId = uuidv7();
+    const quotedPostIri = `https://remote.test/@fep-author/${quotedPostId}`;
+
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/@fep-author",
+      type: "Person",
+      name: "FEP-044f remote author",
+      handle: "@fep-author@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@fep-author/inbox",
+      followersUrl: "https://remote.test/@fep-author/followers",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+    await db.insert(follows).values({
+      iri: `https://remote.test/follows/${crypto.randomUUID()}`,
+      followingId: remoteAccountId,
+      followerId: quoter.id,
+      approved: new Date(),
+    });
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: remoteAccountId,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      content: "FEP-044f public remote post",
+      contentHtml: "<p>FEP-044f public remote post</p>\n",
+      url: quotedPostIri,
+      published: new Date(),
+    });
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const quoteResponse = await createStatus(quoterToken, {
+        status: "Quoting a public FEP-044f remote post",
+        quoted_status_id: quotedPostId,
+      });
+      expect(quoteResponse.status).toBe(200);
+      const quote = await quoteResponse.json();
+      expect(quote.quote.state).toBe("pending");
+
+      let quoteRequest: unknown;
+      await vi.waitFor(async () => {
+        for (const [input] of fetch.mock.calls) {
+          const request = input instanceof Request ? input : null;
+          const activity =
+            request == null ? null : await request.clone().json();
+          if (activity?.type === "QuoteRequest") {
+            quoteRequest = activity;
+            return;
+          }
+        }
+        throw new Error("QuoteRequest was not sent");
+      });
+      expect(quoteRequest).toBeDefined();
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
   it("returns revoked quote state when a quote is revoked", async () => {
     expect.assertions(7);
 
