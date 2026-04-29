@@ -48,6 +48,7 @@ export interface PostProps {
   readonly shared?: Date;
   readonly pinned?: boolean;
   readonly quoted?: boolean;
+  readonly featured?: boolean;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en", {
@@ -57,12 +58,13 @@ const dateFormatter = new Intl.DateTimeFormat("en", {
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 
-export function Post({ post, shared, pinned, quoted }: PostProps) {
+export function Post({ post, shared, pinned, quoted, featured }: PostProps) {
   if (post.sharing != null)
     return (
       <Post
         post={{ ...post.sharing, sharing: null }}
         shared={post.published ?? undefined}
+        featured={featured}
       />
     );
   const account = post.account;
@@ -70,9 +72,11 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
   const authorUrl = account.url ?? account.iri;
   const wrapperClass = quoted
     ? "rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/60"
-    : "py-5";
-  const avatarSize = quoted ? "size-9" : "size-11";
-  const avatarPx = quoted ? 36 : 44;
+    : featured
+      ? "py-2"
+      : "py-5";
+  const avatarSize = quoted ? "size-9" : featured ? "size-12" : "size-11";
+  const avatarPx = quoted ? 36 : featured ? 48 : 44;
   return (
     <article class={wrapperClass}>
       {pinned && (
@@ -98,7 +102,9 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
             class={
               quoted
                 ? "text-sm font-semibold text-neutral-900 dark:text-neutral-100"
-                : "font-semibold text-neutral-900 dark:text-neutral-100"
+                : featured
+                  ? "text-lg font-semibold text-neutral-900 dark:text-neutral-100"
+                  : "font-semibold text-neutral-900 dark:text-neutral-100"
             }
           >
             <a
@@ -128,7 +134,7 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
       </header>
       <div class="mt-3">
         {post.summary == null || post.summary.trim() === "" ? (
-          <PostContent post={post} />
+          <PostContent post={post} featured={featured} />
         ) : (
           <details class="group">
             <summary
@@ -138,7 +144,7 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
               {post.summary}
             </summary>
             <div class="mt-3">
-              <PostContent post={post} />
+              <PostContent post={post} featured={featured} />
             </div>
           </details>
         )}
@@ -238,9 +244,10 @@ interface PostContentProps {
         })
       | null;
   };
+  readonly featured?: boolean;
 }
 
-function PostContent({ post }: PostContentProps) {
+function PostContent({ post, featured }: PostContentProps) {
   const displayContentHtml =
     post.quoteTarget == null
       ? post.contentHtml
@@ -250,7 +257,11 @@ function PostContent({ post }: PostContentProps) {
     <>
       {displayContentHtml && (
         <div
-          class="prose prose-sm prose-neutral dark:prose-invert max-w-none break-words"
+          class={
+            featured
+              ? "prose prose-base prose-neutral dark:prose-invert max-w-none break-words"
+              : "prose prose-sm prose-neutral dark:prose-invert max-w-none break-words"
+          }
           dangerouslySetInnerHTML={{ __html: contentHtml ?? "" }}
           lang={post.language ?? undefined}
         />
