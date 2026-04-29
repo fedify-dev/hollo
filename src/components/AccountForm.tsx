@@ -103,7 +103,7 @@ export function AccountForm(props: AccountFormProps) {
         />
       </FieldSection>
 
-      <FieldSection legend="Defaults">
+      <FieldSection legend="Preferences">
         <div class="grid gap-4 sm:grid-cols-2">
           <SelectField
             id="account-language"
