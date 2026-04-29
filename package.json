@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "skills-npm",
+    "prepare": "skills-npm || true",
     "prod": "pnpm run migrate && node --env-file-if-exists=.env --dns-result-order=ipv6first dist/bin/server.js",
     "dev": "pnpm run migrate && pnpm run uno:build && concurrently -k -n uno,app -c blue,green \"pnpm run uno:watch\" \"tsx watch --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts\"",
     "worker": "NODE_TYPE=worker node --env-file-if-exists=.env --dns-result-order=ipv6first dist/bin/server.js",
