@@ -27,7 +27,7 @@ export function AuthorizationPage(props: AuthorizationPageProps) {
             <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               The application can:
             </p>
-            <ul class="mt-2 flex flex-wrap gap-1.5">
+            <ul id="scopes" class="mt-2 flex flex-wrap gap-1.5">
               {props.scopes.map((scope) => (
                 <li key={scope}>
                   <code class="inline-block rounded bg-white px-2 py-0.5 font-mono text-xs text-brand-700 ring-1 ring-neutral-200 dark:bg-neutral-950 dark:text-brand-400 dark:ring-neutral-800">

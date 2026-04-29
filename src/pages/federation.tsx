@@ -62,7 +62,7 @@ data.get("/", async (c) => {
                 : done === "refresh:post"
                   ? "The post has been refreshed."
                   : error === "refresh:account-conflict"
-                    ? "Refresh blocked by a canonical handle conflict."
+                    ? "Account refresh was blocked by a canonical handle conflict."
                     : "Use this when you see outdated remote account or post data."}
             </p>
           </header>
