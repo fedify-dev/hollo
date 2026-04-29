@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   and,
+  asc,
   desc,
   eq,
   gt,
@@ -82,6 +83,9 @@ app.get(
       );
     }
     const query = c.req.valid("query");
+    const minId = query.min_id;
+    const isForward = minId != null;
+    const sinceId = query.since_id;
     const timeline = await db.query.posts.findMany({
       where: and(
         eq(posts.visibility, "public"),
@@ -182,12 +186,17 @@ app.get(
           ),
         ),
         query.max_id == null ? undefined : lt(posts.id, query.max_id),
-        query.min_id == null ? undefined : gt(posts.id, query.min_id),
+        minId != null
+          ? gt(posts.id, minId)
+          : sinceId == null
+            ? undefined
+            : gt(posts.id, sinceId),
       ),
       with: getPostRelations(owner.id),
-      orderBy: [desc(posts.id)],
+      orderBy: [isForward ? asc(posts.id) : desc(posts.id)],
       limit: query.limit,
     });
+    if (isForward) timeline.reverse();
     const nextMaxId =
       timeline.length >= query.limit ? timeline[timeline.length - 1].id : null;
     const nextLink = nextMaxId == null ? undefined : new URL(c.req.url);
@@ -213,6 +222,9 @@ app.get(
       );
     }
     const query = c.req.valid("query");
+    const minId = query.min_id;
+    const isForward = minId != null;
+    const sinceId = query.since_id;
     let timeline: Parameters<typeof serializePost>[0][];
     if (TIMELINE_INBOXES) {
       timeline = await db.query.posts.findMany({
@@ -228,12 +240,18 @@ app.get(
                   query.max_id == null
                     ? undefined
                     : lt(timelinePosts.postId, query.max_id),
-                  query.min_id == null
-                    ? undefined
-                    : gt(timelinePosts.postId, query.min_id),
+                  minId != null
+                    ? gt(timelinePosts.postId, minId)
+                    : sinceId == null
+                      ? undefined
+                      : gt(timelinePosts.postId, sinceId),
                 ),
               )
-              .orderBy(desc(timelinePosts.postId))
+              .orderBy(
+                isForward
+                  ? asc(timelinePosts.postId)
+                  : desc(timelinePosts.postId),
+              )
               .limit(Math.min(TIMELINE_INBOX_LIMIT, query.limit)),
           ),
           // Hide future posts
@@ -469,12 +487,17 @@ app.get(
             ),
           ),
           query.max_id == null ? undefined : lt(posts.id, query.max_id),
-          query.min_id == null ? undefined : gt(posts.id, query.min_id),
+          minId != null
+            ? gt(posts.id, minId)
+            : sinceId == null
+              ? undefined
+              : gt(posts.id, sinceId),
         ),
         with: getPostRelations(owner.id),
-        orderBy: [desc(posts.id)],
+        orderBy: [isForward ? asc(posts.id) : desc(posts.id)],
         limit: query.limit,
       });
+      if (isForward) timeline.reverse();
     }
     const nextMaxId =
       timeline.length >= query.limit ? timeline[timeline.length - 1].id : null;
@@ -504,6 +527,9 @@ app.get(
       );
     }
     const query = c.req.valid("query");
+    const minId = query.min_id;
+    const isForward = minId != null;
+    const sinceId = query.since_id;
     const list = await db.query.lists.findFirst({
       where: and(eq(lists.id, listId), eq(lists.accountOwnerId, owner.id)),
     });
@@ -523,12 +549,16 @@ app.get(
                   query.max_id == null
                     ? undefined
                     : lt(listPosts.postId, query.max_id),
-                  query.min_id == null
-                    ? undefined
-                    : gt(listPosts.postId, query.min_id),
+                  minId != null
+                    ? gt(listPosts.postId, minId)
+                    : sinceId == null
+                      ? undefined
+                      : gt(listPosts.postId, sinceId),
                 ),
               )
-              .orderBy(desc(listPosts.postId))
+              .orderBy(
+                isForward ? asc(listPosts.postId) : desc(listPosts.postId),
+              )
               .limit(Math.min(TIMELINE_INBOX_LIMIT, query.limit)),
           ),
           // Hide future posts
@@ -744,12 +774,17 @@ app.get(
             ),
           ),
           query.max_id == null ? undefined : lt(posts.id, query.max_id),
-          query.min_id == null ? undefined : gt(posts.id, query.min_id),
+          minId != null
+            ? gt(posts.id, minId)
+            : sinceId == null
+              ? undefined
+              : gt(posts.id, sinceId),
         ),
         with: getPostRelations(owner.id),
-        orderBy: [desc(posts.id)],
+        orderBy: [isForward ? asc(posts.id) : desc(posts.id)],
         limit: query.limit,
       });
+      if (isForward) timeline.reverse();
     }
     const nextMaxId =
       timeline.length >= query.limit ? timeline[timeline.length - 1].id : null;
@@ -777,6 +812,9 @@ app.get(
       );
     }
     const query = c.req.valid("query");
+    const minId = query.min_id;
+    const isForward = minId != null;
+    const sinceId = query.since_id;
     const hashtag = `#${c.req.param("hashtag")}`;
     const followingAccountIds = await getApprovedFollowingAccountIds(owner.id);
     const timeline = await db.query.posts.findMany({
@@ -849,12 +887,17 @@ app.get(
             .where(eq(blocks.blockedAccountId, owner.id)),
         ),
         query.max_id == null ? undefined : lt(posts.id, query.max_id),
-        query.min_id == null ? undefined : gt(posts.id, query.min_id),
+        minId != null
+          ? gt(posts.id, minId)
+          : sinceId == null
+            ? undefined
+            : gt(posts.id, sinceId),
       ),
       with: getPostRelations(owner.id),
-      orderBy: [desc(posts.id)],
+      orderBy: [isForward ? asc(posts.id) : desc(posts.id)],
       limit: query.limit,
     });
+    if (isForward) timeline.reverse();
     const nextMaxId =
       timeline.length >= query.limit ? timeline[timeline.length - 1].id : null;
     const nextLink = nextMaxId == null ? undefined : new URL(c.req.url);
