@@ -1,7 +1,7 @@
 import type { Child, JSX, PropsWithChildren } from "hono/jsx";
 
 const fieldBase =
-  "w-full rounded-md bg-white px-3 py-2 text-neutral-900 shadow-sm transition-colors placeholder:text-neutral-400 focus:(border-brand-500 outline-none ring-2 ring-brand-100) disabled:(cursor-not-allowed opacity-60) read-only:(bg-neutral-50 text-neutral-500) dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:ring-brand-900 dark:read-only:bg-neutral-900 dark:read-only:text-neutral-400";
+  "w-full rounded-md bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm transition-colors placeholder:text-neutral-400 focus:(border-brand-500 outline-none ring-2 ring-brand-100) disabled:(cursor-not-allowed opacity-60) read-only:(bg-neutral-50 text-neutral-500) dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:ring-brand-900 dark:read-only:bg-neutral-900 dark:read-only:text-neutral-400";
 
 const fieldValid = "border-neutral-300 dark:border-neutral-700";
 const fieldInvalid = "border-red-500 dark:border-red-500";
