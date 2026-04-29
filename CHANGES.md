@@ -55,6 +55,43 @@ To be released.
     `preview_card`.  Posts with attached media or shown as quoted posts hide
     the preview to avoid visual clutter.  [[#458]]
 
+ -  Refreshed the entire server-rendered front-end.  Hollo replaces Pico CSS
+    with a new design system documented in `DESIGN.md` and styled through
+    UnoCSS (Wind4, Icons, Typography, and Web Fonts presets).  [[#458]]
+
+     -  The design language is achromatic by default; each account owner's
+        *theme color* tints the profile, post, hashtag, and owner-specific
+        dashboard pages through `--theme-50` through `--theme-950` CSS
+        variables injected on `<html>`.
+     -  Web Fonts are loaded from bunny.net: Inter for Latin, Noto Sans
+        KR/JP/SC for CJK, and JetBrains Mono for code.  Lucide icons
+        replace ad-hoc iconography.
+     -  Every public and dashboard page was rebuilt: login, setup, OTP, the
+        public home, account profiles, single post permalinks, the hashtag
+        stream, the account list and editor, custom emojis, federation,
+        thumbnail cleanup, the OAuth consent screen, and the dashboard
+        auth (2FA) panel.
+     -  Posts render their bodies as `prose` markdown with brand-colored
+        links, attached media as a two-column grid, polls as brand-tinted
+        bars, quoted posts as an inset card, and link previews as a
+        media-object card.  The single-post permalink page additionally
+        enlarges the focal post.
+     -  Forms share a small set of primitives (`Field`, `TextField`,
+        `TextareaField`, `SelectField`, `CheckboxField`, `FieldSection`,
+        and `SubmitButton`) that the auth, account, emoji, federation,
+        thumbnail cleanup, and migrate forms all use.  The theme color
+        picker on the account form is a 20-swatch grid; the username
+        field is bracketed by `@` and `@host` chips so the resulting
+        fediverse handle is obvious.
+     -  Dark mode follows `prefers-color-scheme: dark` automatically, with
+        primary buttons stepping from `brand-600` to `brand-700` so they
+        don't dominate dark surfaces.  Text selection adopts the active
+        brand color.
+     -  Hollo's logos are self-hosted from `/public/` instead of being
+        fetched from jsDelivr.  The 22 Pico-generated `.min.css` files
+        are removed; UnoCSS emits a single `src/public/uno.css` whose
+        URL is cache-busted by file mtime.
+
  -  Upgraded Fedify to 2.2.0.
 
 [#457]: https://github.com/fedify-dev/hollo/pull/457
@@ -230,6 +267,7 @@ Released on April 27, 2026.
 
  -  Upgraded Fedify to 2.1.10.
 
+[Fedify debugger]: https://fedify.dev/manual/debug
 [#173]: https://github.com/fedify-dev/hollo/issues/173
 [#348]: https://github.com/fedify-dev/hollo/issues/348
 [#350]: https://github.com/fedify-dev/hollo/issues/350
@@ -245,7 +283,6 @@ Released on April 27, 2026.
 [#445]: https://github.com/fedify-dev/hollo/issues/445
 [#447]: https://github.com/fedify-dev/hollo/pull/447
 [#448]: https://github.com/fedify-dev/hollo/pull/448
-[Fedify debugger]: https://fedify.dev/manual/debug
 
 
 Version 0.7.13
@@ -338,8 +375,8 @@ Version 0.7.7
 Released on March 13, 2026.
 
  -  Fixed video thumbnail generation failing for some MP4/MOV files by writing
-    the video data to a temporary file instead of piping it via stdin (`pipe:0`),
-    which does not support seeking.  [[#397], [#398] by NTSK]
+    the video data to a temporary file instead of piping it via stdin
+    (`pipe:0`), which does not support seeking.  [[#397], [#398] by NTSK]
 
 [#397]: https://github.com/fedify-dev/hollo/issues/397
 [#398]: https://github.com/fedify-dev/hollo/pull/398
@@ -425,6 +462,8 @@ Released on February 10, 2026.
     request to the outbox could previously retrieve all posts regardless of
     their visibility setting.  [[CVE-2026-25808]]
 
+[CVE-2026-25808]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-6r2w-3pcj-v4v5
+
 
 Version 0.7.1
 -------------
@@ -490,7 +529,8 @@ Released on January 24, 2026.
 
      -  `GET /api/v2/notifications`: Get paginated grouped notifications with
         deduplicated accounts and statuses
-     -  `GET /api/v2/notifications/:group_key`: Get a specific notification group
+     -  `GET /api/v2/notifications/:group_key`: Get a specific notification
+        group
      -  `GET /api/v2/notifications/:group_key/accounts`: Get all accounts in a
         notification group
      -  `POST /api/v2/notifications/:group_key/dismiss`: Dismiss a notification
@@ -551,24 +591,24 @@ Released on January 24, 2026.
     `text/plain`.
 
  -  Implemented Mastodon 4.5.0 quote notification types (`quote` and
-     `quoted_update`) for improved quote post interaction tracking.
-     Users now receive notifications when their posts are quoted by others
-     and when posts they've quoted are edited by the original authors.
-     Key features include:
+    `quoted_update`) for improved quote post interaction tracking.
+    Users now receive notifications when their posts are quoted by others
+    and when posts they've quoted are edited by the original authors.
+    Key features include:
 
-      -  Added `quote` notification type that triggers when someone quotes
-         your post, with the notification showing the quote post itself.
-      -  Added `quoted_update` notification type that triggers when a post
-         you quoted is edited, with the notification showing your quote post
-         to provide context.
-      -  Both notification types are non-groupable, meaning each quote or edit
-         generates an individual notification for better visibility.
-      -  Self-quotes (quoting your own posts) do not generate notifications
-         to avoid unnecessary noise.
-      -  Existing quote posts are automatically backfilled with notifications
-         during migration to ensure consistent notification history.
-      -  Added database index on `posts.quote_target_id` for improved query
-         performance when looking up quote relationships.
+     -  Added `quote` notification type that triggers when someone quotes
+        your post, with the notification showing the quote post itself.
+     -  Added `quoted_update` notification type that triggers when a post
+        you quoted is edited, with the notification showing your quote post
+        to provide context.
+     -  Both notification types are non-groupable, meaning each quote or edit
+        generates an individual notification for better visibility.
+     -  Self-quotes (quoting your own posts) do not generate notifications
+        to avoid unnecessary noise.
+     -  Existing quote posts are automatically backfilled with notifications
+        during migration to ensure consistent notification history.
+     -  Added database index on `posts.quote_target_id` for improved query
+        performance when looking up quote relationships.
 
  -  Removed dependency on deprecated *fluent-ffmpeg* package and now invoke
     ffmpeg binary directly for video screenshot generation.  This change
@@ -606,15 +646,15 @@ Released on January 24, 2026.
         consistent WebFinger handle validation across v1 and v2 APIs.
 
 [#94]: https://github.com/fedify-dev/hollo/issues/94
-[#210]: https://github.com/fedify-dev/hollo/issues/210
-[#312]: https://github.com/fedify-dev/hollo/issues/312
 [#170]: https://github.com/fedify-dev/hollo/issues/170
 [#171]: https://github.com/fedify-dev/hollo/pull/171
 [#174]: https://github.com/fedify-dev/hollo/pull/174
 [#177]: https://github.com/fedify-dev/hollo/issues/177
 [#179]: https://github.com/fedify-dev/hollo/pull/179
+[#210]: https://github.com/fedify-dev/hollo/issues/210
 [#295]: https://github.com/fedify-dev/hollo/pull/295
 [#296]: https://github.com/fedify-dev/hollo/pull/296
+[#312]: https://github.com/fedify-dev/hollo/issues/312
 [#333]: https://github.com/fedify-dev/hollo/pull/333
 [#334]: https://github.com/fedify-dev/hollo/pull/334
 
@@ -629,8 +669,6 @@ Released on February 10, 2026.
     The outbox now only serves public and unlisted posts.  Any unauthenticated
     request to the outbox could previously retrieve all posts regardless of
     their visibility setting.  [[CVE-2026-25808]]
-
-[CVE-2026-25808]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-6r2w-3pcj-v4v5
 
 
 Version 0.6.19
@@ -788,8 +826,8 @@ Version 0.6.8
 Released on August 21, 2025.
 
  -  Fixed a critical bug introduced in 0.6.7 where the search query would return
-    too many results, causing out-of-memory errors and query timeouts.  The issue
-    was caused by incorrect logical operator precedence when filtering
+    too many results, causing out-of-memory errors and query timeouts.  The
+    issue was caused by incorrect logical operator precedence when filtering
     future-dated posts.  [[#207], [#208] by aliceif]
 
 [#207]: https://github.com/fedify-dev/hollo/issues/207
@@ -819,6 +857,8 @@ Released on August 8, 2025.
     fix [CVE-2025-54888] that addresses an authentication bypass
     vulnerability allowing actor impersonation.  [[CVE-2025-54888]]
 
+[CVE-2025-54888]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-6jcc-xgcr-q3h4
+
 
 Version 0.6.5
 -------------
@@ -841,10 +881,10 @@ Version 0.6.4
 
 Released on July 7, 2025.
 
- -  Fixed a regression bug where follower-only posts were returning `404 Not
-    Found` errors when accessed through conversation threads. This was caused
-    by improper OAuth scope checking that only accepted `read:statuses` scope
-    but tokens contain `read` scope:  [[#169], [#172]]
+ -  Fixed a regression bug where follower-only posts were returning
+    `404 Not Found` errors when accessed through conversation threads. This was
+    caused by improper OAuth scope checking that only accepted `read:statuses`
+    scope but tokens contain `read` scope:  [[#169], [#172]]
 
      -  `GET /api/v1/statuses/:id`
      -  `GET /api/v1/statuses/:id/context`
@@ -907,9 +947,9 @@ Released on June 5, 2025.
      -  Deprecated `FS_ASSET_PATH` in favor of `FS_STORAGE_PATH`.
      -  Deprecated `ASSET_URL_BASE` in favor of `STORAGE_URL_BASE`.
 
- -  Implemented OAuth 2.0 Authorization Code flow with support for access grants.
-    This improves the security of the OAuth authorization process by separating
-    the authorization code from the access token issuance.
+ -  Implemented OAuth 2.0 Authorization Code flow with support for access
+    grants. This improves the security of the OAuth authorization process by
+    separating the authorization code from the access token issuance.
     [[#130] by Emelia Smith]
 
  -  Hollo now requires the `SECRET_KEY` environment variable to be at least 44
@@ -955,10 +995,11 @@ Released on June 5, 2025.
     authorization code interception attacks in the OAuth authorization flow.
     [[#155] by Emelia Smith]
 
- -  Added support for the `profile` OAuth scope for enhanced user authentication.
-    This allows applications to request limited profile information using the
-    new `/oauth/userinfo` endpoint and enables the `profile` scope to be used
-    with the `GET /api/v1/accounts/verify_credentials` endpoint.
+ -  Added support for the `profile` OAuth scope for enhanced user
+    authentication. This allows applications to request limited profile
+    information using the new `/oauth/userinfo` endpoint and enables the
+    `profile` scope to be used with the
+    `GET /api/v1/accounts/verify_credentials` endpoint.
     [[#45], [#156] by Emelia Smith]
 
  -  Made few Mastodon API endpoints publicly accessible without
@@ -976,6 +1017,7 @@ Released on June 5, 2025.
 [complete list of supported languages]: https://shiki.style/languages
 [#45]: https://github.com/fedify-dev/hollo/issues/45
 [#50]: https://github.com/fedify-dev/hollo/issues/50
+[#99]: https://github.com/fedify-dev/hollo/issues/99
 [#110]: https://github.com/fedify-dev/hollo/pull/110
 [#111]: https://github.com/fedify-dev/hollo/issues/111
 [#114]: https://github.com/fedify-dev/hollo/pull/114
@@ -1056,7 +1098,7 @@ Version 0.5.2
 
 Released on February 20, 2025.
 
--  Fixed a bug where the `follows.follower_id` column had not referenced the
+ -  Fixed a bug where the `follows.follower_id` column had not referenced the
     `accounts.id` column.  [[#112]]
 
  -  Fixed a bug where `GET /api/v1/notifications` had returned server errors
@@ -1067,6 +1109,9 @@ Released on February 20, 2025.
 
  -  Upgrade Fedify to 1.4.2.
 
+[#112]: https://github.com/fedify-dev/hollo/issues/112
+[#113]: https://github.com/fedify-dev/hollo/issues/113
+
 
 Version 0.5.1
 -------------
@@ -1075,6 +1120,8 @@ Released on February 14, 2025.
 
  -  Fixed a bug where `GET /api/v1/accounts/:id/statuses` had tried to fetch
     remote posts for local accounts.  [[#107]]
+
+[#107]: https://github.com/fedify-dev/hollo/issues/107
 
 
 Version 0.5.0
@@ -1120,16 +1167,15 @@ Released on February 12, 2025.
  -  The `S3_REGION` environment variable became required if `DRIVE_DISK` is set
     to `s3`.  [[#95]]
 
+[`GET /api/v1/mutes`]: https://docs.joinmastodon.org/methods/mutes/#get
+[`GET /api/v1/blocks`]: https://docs.joinmastodon.org/methods/blocks/#get
 [#95]: https://github.com/fedify-dev/hollo/issues/95
-[#99]: https://github.com/fedify-dev/hollo/issues/99
 [#100]: https://github.com/fedify-dev/hollo/pull/100
 [#101]: https://github.com/fedify-dev/hollo/issues/101
 [#103]: https://github.com/fedify-dev/hollo/issues/103
 [#104]: https://github.com/fedify-dev/hollo/issues/104
 [#105]: https://github.com/fedify-dev/hollo/pull/105
 [#106]: https://github.com/fedify-dev/hollo/pull/106
-[`GET /api/v1/mutes`]: https://docs.joinmastodon.org/methods/mutes/#get
-[`GET /api/v1/blocks`]: https://docs.joinmastodon.org/methods/blocks/#get
 
 
 Version 0.4.12
@@ -1193,9 +1239,6 @@ Released on February 20, 2025.
 
  -  Upgrade Fedify to 1.3.9.
 
-[#112]: https://github.com/fedify-dev/hollo/issues/112
-[#113]: https://github.com/fedify-dev/hollo/issues/113
-
 
 Version 0.4.7
 -------------
@@ -1247,8 +1290,11 @@ Version 0.4.4
 
 Released on January 21, 2025.
 
- -  Upgrade Fedify to 1.3.4, which includes [security
-    fixes][@fedify-dev/fedify#200]. [[CVE-2025-23221]]
+ -  Upgrade Fedify to 1.3.4, which includes
+    [security fixes][@fedify-dev/fedify#200]. [[CVE-2025-23221]]
+
+[@fedify-dev/fedify#200]: https://github.com/fedify-dev/fedify/discussions/200
+[CVE-2025-23221]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-c59p-wq67-24wx
 
 
 Version 0.4.3
@@ -1261,8 +1307,8 @@ Released on January 11, 2025.
  -  Fixed a bug where importing follows from CSV generated by Iceshrimp had
     failed.  [[#85]]
 
-[#92]: https://github.com/fedify-dev/hollo/issues/92
 [#85]: https://github.com/fedify-dev/hollo/issues/85
+[#92]: https://github.com/fedify-dev/hollo/issues/92
 
 
 Version 0.4.2
@@ -1335,8 +1381,6 @@ Released on August 8, 2025.
     fix [CVE-2025-54888] that addresses an authentication bypass
     vulnerability allowing actor impersonation.  [[CVE-2025-54888]]
 
-[CVE-2025-54888]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-6jcc-xgcr-q3h4
-
 
 Version 0.3.10
 --------------
@@ -1382,19 +1426,14 @@ Released on February 14, 2025.
     remote posts for local accounts.  [[#107]]
  -  Upgrade Fedify to 1.3.8.
 
-[#107]: https://github.com/fedify-dev/hollo/issues/107
-
 
 Version 0.3.6
 -------------
 
 Released on January 21, 2025.
 
- -  Upgrade Fedify to 1.3.4, which includes [security
-    fixes][@fedify-dev/fedify#200]. [[CVE-2025-23221]]
-
-[@fedify-dev/fedify#200]: https://github.com/fedify-dev/fedify/discussions/200
-[CVE-2025-23221]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-c59p-wq67-24wx
+ -  Upgrade Fedify to 1.3.4, which includes
+    [security fixes][@fedify-dev/fedify#200]. [[CVE-2025-23221]]
 
 
 Version 0.3.5
@@ -1428,6 +1467,8 @@ Released on December 19, 2024.
  -  Fixed a bug where generated thumbnails had been cropped incorrectly
     if the original image had not the EXIF orientation metadata.  [[#76]]
 
+[#76]: https://github.com/fedify-dev/hollo/issues/76
+
 
 Version 0.3.2
 -------------
@@ -1442,7 +1483,6 @@ Released on December 18, 2024.
 
  -  Upgrade Fedify to 1.3.2.
 
-[#76]: https://github.com/fedify-dev/hollo/issues/76
 [#78]: https://github.com/fedify-dev/hollo/issues/78
 
 
@@ -1539,6 +1579,8 @@ Released on November 4, 2024.
     Sharkey, Akkoma) had empty `url` fields, causing them to be displayed
     incorrectly in client apps.  [[#58]]
 
+[#58]: https://github.com/fedify-dev/hollo/issues/58
+
 
 Version 0.2.0
 -------------
@@ -1597,8 +1639,6 @@ Released on November 4, 2024.
     Sharkey, Akkoma) had empty `url` fields, causing them to be displayed
     incorrectly in client apps.  [[#58]]
 
-[#58]: https://github.com/fedify-dev/hollo/issues/58
-
 
 Version 0.1.6
 -------------
@@ -1607,8 +1647,8 @@ Released on October 30, 2024.
 
  -  Fixed a bug where followers-only posts from accounts that had had set
     their follower lists to private had been recognized as direct messages.
-    Even after upgrading to this version, such accounts need to be force-refreshed
-    from the administration dashboard to fix the issue.
+    Even after upgrading to this version, such accounts need to be
+    force-refreshed from the administration dashboard to fix the issue.
 
  -  Fixed the federated (public) timeline showing the shared posts from
     the blocked or muted accounts.
