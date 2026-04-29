@@ -44,7 +44,7 @@ export default defineConfig({
           --un-divide-opacity: 100%;
           --un-placeholder-opacity: 100%;
         }
-        input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+        input:where(:not([type="file"], [type="checkbox"], [type="radio"])),
         textarea,
         select {
           border-style: solid;

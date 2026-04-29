@@ -110,6 +110,7 @@ accounts.post("/", async (c) => {
               : undefined,
         }}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+        host={new URL(c.req.url).host}
       />,
       400,
     );
@@ -236,6 +237,7 @@ accounts.get("/new", (c) => {
         expandSpoilers: false,
       }}
       officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+      host={new URL(c.req.url).host}
     />,
   );
 });
@@ -265,6 +267,7 @@ accounts.get("/:id", async (c) => {
       accountOwner={accountOwner}
       news={news != null}
       officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+      host={new URL(c.req.url).host}
     />,
   );
 });
@@ -321,6 +324,7 @@ function AccountPage(props: AccountPageProps) {
         }}
         errors={props.errors}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+        host={props.host}
         submitLabel="Save changes"
       />
     </DashboardLayout>
@@ -368,6 +372,7 @@ accounts.post("/:id", async (c) => {
           name: name == null || name === "" ? "Display name is required." : "",
         }}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
+        host={new URL(c.req.url).host}
       />,
       400,
     );

@@ -21,6 +21,7 @@ export interface NewAccountPageProps {
     bio?: string;
   };
   officialAccount: string;
+  host: string;
 }
 
 export function NewAccountPage(props: NewAccountPageProps) {
@@ -40,6 +41,7 @@ export function NewAccountPage(props: NewAccountPageProps) {
         errors={props.errors}
         submitLabel="Create account"
         officialAccount={props.officialAccount}
+        host={props.host}
       />
     </DashboardLayout>
   );

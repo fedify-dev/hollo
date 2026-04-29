@@ -37,6 +37,7 @@ export interface AccountFormProps {
     bio?: string;
   };
   officialAccount: string;
+  host: string;
   submitLabel: string;
 }
 
@@ -48,17 +49,10 @@ export function AccountForm(props: AccountFormProps) {
       class="rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <FieldSection legend="Identity">
-        <TextField
-          id="account-username"
-          name="username"
-          label="Username"
-          labelExtra={props.readOnly?.username ? "(cannot change)" : undefined}
-          placeholder="john"
-          required={true}
+        <UsernameField
+          host={props.host}
           readOnly={props.readOnly?.username}
           value={props.values?.username}
-          pattern="^[\p{L}\p{N}._\-]+$"
-          hint="Your username will be a part of your fediverse handle."
           error={props.errors?.username}
         />
         <TextField
@@ -167,6 +161,54 @@ export function AccountForm(props: AccountFormProps) {
         <SubmitButton>{props.submitLabel}</SubmitButton>
       </div>
     </form>
+  );
+}
+
+interface UsernameFieldProps {
+  host: string;
+  readOnly?: boolean;
+  value?: string;
+  error?: string;
+}
+
+function UsernameField({ host, readOnly, value, error }: UsernameFieldProps) {
+  const invalid = error != null;
+  const wrapperBase =
+    "flex w-full overflow-hidden rounded-md border bg-white shadow-sm transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 dark:bg-neutral-950 dark:focus-within:ring-brand-900";
+  const wrapperBorder = invalid
+    ? "border-red-500 dark:border-red-500"
+    : "border-neutral-300 dark:border-neutral-700";
+  const chipClass =
+    "flex items-center bg-neutral-50 px-3 text-sm text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400";
+  return (
+    <Field
+      id="account-username"
+      label="Username"
+      labelExtra={readOnly ? "(cannot change)" : undefined}
+      hint="Your username will be a part of your fediverse handle."
+      error={error}
+    >
+      <div class={`${wrapperBase} ${wrapperBorder}`}>
+        <span class={chipClass} aria-hidden="true">
+          @
+        </span>
+        <input
+          id="account-username"
+          type="text"
+          name="username"
+          required={true}
+          placeholder="john"
+          readOnly={readOnly}
+          value={value}
+          aria-invalid={invalid ? "true" : undefined}
+          pattern="^[\p{L}\p{N}._\-]+$"
+          class="border-0 flex-1 bg-transparent px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60 read-only:bg-neutral-50 read-only:text-neutral-500 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:read-only:bg-neutral-900 dark:read-only:text-neutral-400"
+        />
+        <span class={chipClass} aria-hidden="true">
+          @{host}
+        </span>
+      </div>
+    </Field>
   );
 }
 
