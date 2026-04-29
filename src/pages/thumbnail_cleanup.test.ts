@@ -30,7 +30,7 @@ describe.sequential("thumbnail cleanup", () => {
   });
 
   it("preserves preview counts over 999 across the redirect", async () => {
-    expect.assertions(5);
+    expect.assertions(6);
 
     vi.mocked(getMediaWithDeletableThumbnails).mockResolvedValue(
       createMediaItems(4980),
@@ -62,6 +62,8 @@ describe.sequential("thumbnail cleanup", () => {
     });
 
     expect(previewResponse.status).toBe(200);
-    expect(await previewResponse.text()).toContain("Number of Items: 4,980");
+    const previewBody = await previewResponse.text();
+    expect(previewBody).toContain("Items");
+    expect(previewBody).toContain("4,980");
   });
 });

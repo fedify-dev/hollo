@@ -21,21 +21,27 @@ export interface NewAccountPageProps {
     bio?: string;
   };
   officialAccount: string;
+  host: string;
 }
 
 export function NewAccountPage(props: NewAccountPageProps) {
   return (
     <DashboardLayout title="Hollo: New account" selectedMenu="accounts">
-      <hgroup>
-        <h1>Create a new account</h1>
-        <p>You can create a new account by filling out the form below.</p>
-      </hgroup>
+      <header class="mb-6">
+        <h1 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Create a new account
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Fill out the form below to add another account to this Hollo instance.
+        </p>
+      </header>
       <AccountForm
         action="/accounts"
         values={props.values}
         errors={props.errors}
-        submitLabel="Create a new account"
+        submitLabel="Create account"
         officialAccount={props.officialAccount}
+        host={props.host}
       />
     </DashboardLayout>
   );

@@ -114,223 +114,285 @@ data.get("/", async (c) => {
     },
   ];
 
+  const dateInputClass =
+    "rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-neutral-950 dark:text-neutral-100 dark:focus:ring-brand-900";
+  const primaryButtonClass =
+    "rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-brand-700 dark:hover:bg-brand-800";
+  const secondaryButtonClass =
+    "rounded-md border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800";
   return c.html(
     <DashboardLayout
       title="Hollo: Thumbnail Cleanup"
       selectedMenu="thumbnail_cleanup"
     >
-      <hgroup>
-        <h1>Thumbnail cleanup</h1>
-        <p>This control panel allows you to clean up thumbnails.</p>
-      </hgroup>
+      <header class="mb-6">
+        <h1 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Thumbnail cleanup
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Free up storage by deleting old thumbnails for remote posts.
+        </p>
+      </header>
 
-      <article>
-        <header>
-          <hgroup>
-            <h2>Thumbnail statistics</h2>
-            <p>An overview about the number of thumbnails tracked by hollo.</p>
-          </hgroup>
-        </header>
-        <table>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th style="text-align: right">Number of thumbnails</th>
-            </tr>
-          </thead>
-          <tbody>
-            {thumbnailsTable.map((entry) => (
-              <tr>
-                <td>{entry.caption}</td>
-                <td style="text-align: right">
-                  {entry.count.toLocaleString("en")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </article>
-      <article id="cleanup-preview">
-        <header>
-          <hgroup>
-            <h2>Preview cleanup</h2>
-            {done === "clean_preview" ? (
-              <p>Preview done.</p>
-            ) : (
-              <p>Use this to preview the cleanup.</p>
-            )}
-          </hgroup>
-        </header>
-        <form
-          method="post"
-          action="/thumbnail_cleanup/clean_preview"
-          onsubmit="this.submit.ariaBusy = 'true'"
-        >
-          <fieldset role="group">
-            <input
-              type="date"
-              name="before"
-              value={suggestedCleanupCutoff}
-              required
-              aria-invalid={error === "clean" ? "true" : undefined}
-            />
-            <button name="submit" type="submit">
-              preview
-            </button>
-          </fieldset>
-          {error === "clean_preview" ? (
-            <small>Something went wrong while previewing the cleanup.</small>
-          ) : (
-            <small>The date before which remote thumbnails get deleted.</small>
-          )}
-        </form>
-        {done === "clean_preview" &&
-          (fileCount > 0 ? (
-            <p>
-              Number of Items: {fileCount.toLocaleString("en")}
-              <br />
-              First: {firstFile}
-              <br />
-              Last: {lastFile}
-              <br />
+      <div class="space-y-6">
+        <section class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Thumbnail statistics
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              An overview of thumbnails tracked by Hollo.
             </p>
-          ) : (
-            <p>No thumbnails to clean.</p>
-          ))}
-      </article>
-
-      {/* Cleanup Progress Section */}
-      {activeJob && (
-        <article id="cleanup-progress">
-          <header>
-            <hgroup>
-              <h2>
-                {activeJob.status === "pending"
-                  ? "Cleanup Queued"
-                  : activeJob.status === "processing"
-                    ? "Cleanup in Progress"
-                    : activeJob.status === "completed"
-                      ? "Cleanup Completed"
-                      : activeJob.status === "cancelled"
-                        ? "Cleanup Cancelled"
-                        : "Cleanup Failed"}
-              </h2>
-              <p>
-                Cleanup
-                {activeJob.status === "pending" && " waiting to start"}
-                {activeJob.status === "processing" && " processing..."}
-              </p>
-            </hgroup>
           </header>
+          <div class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+            <table class="w-full text-sm">
+              <thead class="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+                <tr>
+                  <th class="px-3 py-2 text-left font-semibold">Type</th>
+                  <th class="px-3 py-2 text-right font-semibold">Thumbnails</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-900">
+                {thumbnailsTable.map((entry) => (
+                  <tr>
+                    <td class="px-3 py-2 text-neutral-800 dark:text-neutral-200">
+                      {entry.caption}
+                    </td>
+                    <td class="px-3 py-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">
+                      {entry.count.toLocaleString("en")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          <progress
-            value={activeJob.processedItems}
-            max={activeJob.totalItems}
-          />
+        <section
+          id="cleanup-preview"
+          class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
+        >
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Preview cleanup
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              {done === "clean_preview"
+                ? "Preview ready."
+                : "Preview which thumbnails would be deleted."}
+            </p>
+          </header>
+          <form
+            method="post"
+            action="/thumbnail_cleanup/clean_preview"
+            onsubmit="this.submit.ariaBusy = 'true'"
+          >
+            <div class="flex gap-2">
+              <input
+                type="date"
+                name="before"
+                value={suggestedCleanupCutoff}
+                required
+                aria-invalid={error === "clean" ? "true" : undefined}
+                class={`${dateInputClass} flex-1 ${
+                  error === "clean_preview"
+                    ? "border-red-500"
+                    : "border-neutral-300 dark:border-neutral-700"
+                }`}
+              />
+              <button name="submit" type="submit" class={primaryButtonClass}>
+                Preview
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              {error === "clean_preview"
+                ? "Something went wrong while previewing the cleanup."
+                : "Cutoff date — thumbnails older than this will be deleted."}
+            </p>
+          </form>
+          {done === "clean_preview" &&
+            (fileCount > 0 ? (
+              <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                    Items
+                  </dt>
+                  <dd class="mt-1 font-semibold text-neutral-900 dark:text-neutral-100">
+                    {fileCount.toLocaleString("en")}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                    First
+                  </dt>
+                  <dd class="mt-1 text-neutral-700 dark:text-neutral-300">
+                    {firstFile}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                    Last
+                  </dt>
+                  <dd class="mt-1 text-neutral-700 dark:text-neutral-300">
+                    {lastFile}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p class="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
+                No thumbnails to clean.
+              </p>
+            ))}
+        </section>
 
-          <p>
-            <strong>{activeJob.processedItems.toLocaleString("en-US")}</strong>{" "}
-            / {activeJob.totalItems.toLocaleString("en-US")} items processed
-            {activeJob.processedItems > 0 && (
+        {activeJob && (
+          <section
+            id="cleanup-progress"
+            class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <header class="mb-3">
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {activeJob.status === "pending"
+                  ? "Cleanup queued"
+                  : activeJob.status === "processing"
+                    ? "Cleanup in progress"
+                    : activeJob.status === "completed"
+                      ? "Cleanup completed"
+                      : activeJob.status === "cancelled"
+                        ? "Cleanup cancelled"
+                        : "Cleanup failed"}
+              </h2>
+              <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                {activeJob.status === "pending" && "Waiting to start."}
+                {activeJob.status === "processing" && "Processing..."}
+              </p>
+            </header>
+
+            <div class="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+              <div
+                class="h-full bg-brand-600 transition-all"
+                style={`width: ${
+                  activeJob.totalItems > 0
+                    ? Math.round(
+                        (activeJob.processedItems / activeJob.totalItems) * 100,
+                      )
+                    : 0
+                }%`}
+              />
+            </div>
+
+            <p class="mt-3 text-sm text-neutral-700 dark:text-neutral-300">
+              <strong class="font-semibold text-neutral-900 dark:text-neutral-100">
+                {activeJob.processedItems.toLocaleString("en-US")}
+              </strong>{" "}
+              / {activeJob.totalItems.toLocaleString("en-US")} items processed
+              {activeJob.processedItems > 0 && (
+                <>
+                  {" "}
+                  (
+                  <strong class="font-semibold text-green-700 dark:text-green-400">
+                    {activeJob.successfulItems.toLocaleString("en-US")}
+                  </strong>{" "}
+                  successful
+                  {activeJob.failedItems > 0 && (
+                    <>
+                      ,{" "}
+                      <strong class="font-semibold text-red-700 dark:text-red-400">
+                        {activeJob.failedItems.toLocaleString("en-US")}
+                      </strong>{" "}
+                      failed
+                    </>
+                  )}
+                  )
+                </>
+              )}
+            </p>
+
+            {shouldAutoRefresh && (
               <>
-                {" "}
-                (
-                <strong style={{ color: "var(--pico-ins-color)" }}>
-                  {activeJob.successfulItems.toLocaleString("en-US")}
-                </strong>{" "}
-                successful
-                {activeJob.failedItems > 0 && (
-                  <>
-                    ,{" "}
-                    <strong style={{ color: "var(--pico-del-color)" }}>
-                      {activeJob.failedItems.toLocaleString("en-US")}
-                    </strong>{" "}
-                    failed
-                  </>
-                )}
-                )
+                <form
+                  method="post"
+                  action={`/thumbnail_cleanup/clean/${activeJob.id}/cancel`}
+                  class="mt-4"
+                >
+                  <button type="submit" class={secondaryButtonClass}>
+                    Cancel cleanup
+                  </button>
+                </form>
+                <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                  This page refreshes every 5 seconds. You can navigate away
+                  safely — the cleanup keeps running in the background.
+                </p>
+                <script
+                  dangerouslySetInnerHTML={{
+                    __html: "setTimeout(() => location.reload(), 5000);",
+                  }}
+                />
               </>
             )}
-          </p>
 
-          {shouldAutoRefresh && (
-            <>
-              <form
-                method="post"
-                action={`/thumbnail_cleanup/clean/${activeJob.id}/cancel`}
-              >
-                <button type="submit" class="secondary">
-                  Cancel Cleanup
-                </button>
-              </form>
-              <small>
-                This page refreshes automatically every 5 seconds. You can
-                navigate away safely &mdash; the cleanup will continue in the
-                background.
-              </small>
-              <script
-                dangerouslySetInnerHTML={{
-                  __html: "setTimeout(() => location.reload(), 5000);",
-                }}
-              />
-            </>
-          )}
-
-          {activeJob.status === "completed" && (
-            <p style={{ color: "var(--pico-ins-color)" }}>
-              Cleanup completed successfully!
-            </p>
-          )}
-
-          {activeJob.status === "cancelled" && (
-            <p style={{ color: "var(--pico-del-color)" }}>
-              Cleanup was cancelled.
-            </p>
-          )}
-
-          {activeJob.status === "failed" && activeJob.errorMessage && (
-            <p style={{ color: "var(--pico-del-color)" }}>
-              Error: {activeJob.errorMessage}
-            </p>
-          )}
-        </article>
-      )}
-
-      <article id="cleanup-thumbnails">
-        <header>
-          <hgroup>
-            <h2>Clean up thumbnails</h2>
-            {cleanupDataResult == null ? (
-              <p>
-                Use this if you want to free up storage by deleting old
-                thumbnails from remote posts. Bookmarked, shared and favorited
-                posts are exempt.
+            {activeJob.status === "completed" && (
+              <p class="mt-3 text-sm font-medium text-green-700 dark:text-green-400">
+                Cleanup completed successfully.
               </p>
-            ) : (
-              <p>{cleanupDataResult}</p>
             )}
-          </hgroup>
-        </header>
-        <form method="post" action="/thumbnail_cleanup/clean">
-          <fieldset role="group">
-            <input
-              type="date"
-              name="before"
-              value={suggestedCleanupCutoff}
-              required
-              aria-invalid={error === "clean" ? "true" : undefined}
-            />
-            <button
-              name="submit"
-              type="submit"
-              {...(shouldAutoRefresh ? { disabled: true } : {})}
-            >
-              clean
-            </button>
-          </fieldset>
-          <small>The date before which remote thumbnails get deleted.</small>
-        </form>
-      </article>
+
+            {activeJob.status === "cancelled" && (
+              <p class="mt-3 text-sm font-medium text-red-700 dark:text-red-400">
+                Cleanup was cancelled.
+              </p>
+            )}
+
+            {activeJob.status === "failed" && activeJob.errorMessage && (
+              <p class="mt-3 text-sm font-medium text-red-700 dark:text-red-400">
+                Error: {activeJob.errorMessage}
+              </p>
+            )}
+          </section>
+        )}
+
+        <section
+          id="cleanup-thumbnails"
+          class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
+        >
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Clean up thumbnails
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              {cleanupDataResult ??
+                "Free up storage by deleting old remote thumbnails.  Bookmarked, shared, and favorited posts are exempt."}
+            </p>
+          </header>
+          <form method="post" action="/thumbnail_cleanup/clean">
+            <div class="flex gap-2">
+              <input
+                type="date"
+                name="before"
+                value={suggestedCleanupCutoff}
+                required
+                aria-invalid={error === "clean" ? "true" : undefined}
+                class={`${dateInputClass} flex-1 ${
+                  error === "clean"
+                    ? "border-red-500"
+                    : "border-neutral-300 dark:border-neutral-700"
+                }`}
+              />
+              <button
+                name="submit"
+                type="submit"
+                disabled={shouldAutoRefresh}
+                class={primaryButtonClass}
+              >
+                Clean
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              Cutoff date — thumbnails older than this will be deleted.
+            </p>
+          </form>
+        </section>
+      </div>
     </DashboardLayout>,
   );
 });

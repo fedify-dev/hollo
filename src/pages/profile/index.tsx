@@ -394,31 +394,63 @@ function ProfilePage({
       ]}
       themeColor={accountOwner.themeColor}
     >
-      <Profile accountOwner={accountOwner} />
-      {tag != null && <h2>Posts tagged #{tag}</h2>}
-      {featuredTags.length > 0 && (
-        <p>
-          Featured tags:{" "}
-          {featuredTags.map((tag) => (
-            <>
+      <main class="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
+        <Profile accountOwner={accountOwner} />
+        {tag != null && (
+          <h2 class="mt-10 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+            Posts tagged{" "}
+            <span class="text-brand-700 dark:text-brand-400">#{tag}</span>
+          </h2>
+        )}
+        {featuredTags.length > 0 && (
+          <div class="mt-6 flex flex-wrap items-center gap-2 text-sm">
+            <span class="text-neutral-500 dark:text-neutral-400">
+              Featured tags:
+            </span>
+            {featuredTags.map((tag) => (
               <a
                 href={`/@${accountOwner.handle}/tagged/${encodeURIComponent(tag.name)}`}
+                class="rounded-full border border-brand-200 bg-brand-50 px-3 py-0.5 font-medium text-brand-700 transition-colors hover:bg-brand-100 hover:border-brand-300 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-400 dark:hover:bg-brand-900/40 dark:hover:border-brand-800"
               >
                 #{tag.name}
-              </a>{" "}
-            </>
+              </a>
+            ))}
+          </div>
+        )}
+        <div class="mt-6 divide-y divide-neutral-200 dark:divide-neutral-800">
+          {tag == null &&
+            pinnedPosts.map((post) => <PostView post={post} pinned={true} />)}
+          {posts.map((post) => (
+            <PostView post={post} />
           ))}
-        </p>
-      )}
-      {tag == null &&
-        pinnedPosts.map((post) => <PostView post={post} pinned={true} />)}
-      {posts.map((post) => (
-        <PostView post={post} />
-      ))}
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div>{newerUrl && <a href={newerUrl}>&larr; Newer</a>}</div>
-        <div>{olderUrl && <a href={olderUrl}>Older &rarr;</a>}</div>
-      </div>
+        </div>
+        {(newerUrl || olderUrl) && (
+          <nav class="mt-8 flex items-center justify-between gap-4">
+            <div>
+              {newerUrl && (
+                <a
+                  href={newerUrl}
+                  class="inline-flex items-center gap-1 text-sm text-neutral-600 hover:text-brand-700 dark:text-neutral-400 dark:hover:text-brand-400"
+                >
+                  <span class="i-lucide-arrow-left" aria-hidden="true" />
+                  Newer
+                </a>
+              )}
+            </div>
+            <div>
+              {olderUrl && (
+                <a
+                  href={olderUrl}
+                  class="inline-flex items-center gap-1 text-sm text-neutral-600 hover:text-brand-700 dark:text-neutral-400 dark:hover:text-brand-400"
+                >
+                  Older
+                  <span class="i-lucide-arrow-right" aria-hidden="true" />
+                </a>
+              )}
+            </div>
+          </nav>
+        )}
+      </main>
     </Layout>
   );
 }

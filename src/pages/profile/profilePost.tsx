@@ -200,10 +200,23 @@ function PostPage({ post, accountOwner }: PostPageProps) {
       ]}
       themeColor={accountOwner.themeColor}
     >
-      <PostView post={post} />
-      {post.replies.map((reply) => (
-        <PostView post={reply} />
-      ))}
+      <main class="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
+        <PostView post={post} featured={true} />
+        {post.replies.length > 0 && (
+          <section class="mt-8">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+              {post.replies.length === 1
+                ? "1 reply"
+                : `${post.replies.length} replies`}
+            </h2>
+            <div class="mt-2 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {post.replies.map((reply) => (
+                <PostView post={reply} />
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
     </Layout>
   );
 }

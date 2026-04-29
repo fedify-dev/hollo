@@ -7,11 +7,13 @@
   "scripts": {
     "prepare": "skills-npm",
     "prod": "pnpm run migrate && node --env-file-if-exists=.env --dns-result-order=ipv6first dist/bin/server.js",
-    "dev": "pnpm run migrate && tsx watch --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts",
+    "dev": "pnpm run migrate && pnpm run uno:build && concurrently -k -n uno,app -c blue,green \"pnpm run uno:watch\" \"tsx watch --env-file-if-exists=.env --dns-result-order=ipv6first bin/server.ts\"",
     "worker": "NODE_TYPE=worker node --env-file-if-exists=.env --dns-result-order=ipv6first dist/bin/server.js",
     "list:routes": "tsx --env-file-if-exists=.env bin/routes.ts",
     "measure:memory": "node --expose-gc --import tsx --env-file-if-exists=.env scripts/measure-memory.ts",
-    "build": "tsdown",
+    "uno:build": "unocss \"src/**/*.{tsx,ts}\" -o src/public/uno.css",
+    "uno:watch": "unocss \"src/**/*.{tsx,ts}\" -o src/public/uno.css --watch",
+    "build": "pnpm run uno:build && tsdown",
     "test": "pnpm run migrate:test && vitest",
     "test:ci": "vitest",
     "typecheck": "tsgo --noEmit",
@@ -84,6 +86,7 @@
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.52.0",
     "@fedify/lint": "^2.2.0",
+    "@iconify-json/lucide": "^1.2.104",
     "@reporters/github": "^1.13.1",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/markdown-it": "^14.1.2",
@@ -91,7 +94,9 @@
     "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.7.1",
     "@typescript/native-preview": "7.0.0-dev.20260420.1",
+    "@unocss/cli": "^66.6.8",
     "@vitest/coverage-v8": "3.1.4",
+    "concurrently": "^9.2.1",
     "linkedom": "^0.18.12",
     "oxfmt": "^0.46.0",
     "oxlint": "^1.61.0",
@@ -99,6 +104,7 @@
     "timekeeper": "^2.3.1",
     "tsdown": "^0.21.10",
     "typescript": "^6.0.3",
+    "unocss": "^66.6.8",
     "vitest": "^3.1.4"
   },
   "packageManager": "pnpm@9.15.1+sha512.1acb565e6193efbebda772702950469150cf12bcc764262e7587e71d19dc98a423dff9536e57ea44c49bdf790ff694e83c27be5faa23d67e0c033b583be4bfcf"

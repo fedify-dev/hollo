@@ -16,7 +16,7 @@ describe.sequential("profile tagged page", () => {
   });
 
   it("shows only the profile user's matching tagged posts", async () => {
-    expect.assertions(5);
+    expect.assertions(6);
 
     const taggedPostId = uuidv7();
     const otherPostId = uuidv7();
@@ -70,7 +70,8 @@ describe.sequential("profile tagged page", () => {
 
     const html = await response.text();
 
-    expect(html).toContain("Posts tagged #TestTag");
+    expect(html).toContain("Posts tagged");
+    expect(html).toContain("#TestTag");
     expect(html).toContain("Matching profile tag post");
     expect(html).not.toContain("Different tag post");
     expect(html).not.toContain("Private matching tag post");

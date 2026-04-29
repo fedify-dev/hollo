@@ -7,6 +7,9 @@ node_modules/
 tmp/
 mise.local.toml
 **/skills/npm-*
+src/public/uno.css
+.playwright-mcp/
+/*.png
 
 coverage/**
 !coverage/.gitkeep

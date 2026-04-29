@@ -1,6 +1,7 @@
 import { count } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 
+import { AuthCard } from "../../components/AuthCard.tsx";
 import { Layout } from "../../components/Layout.tsx";
 import { SetupForm } from "../../components/SetupForm.tsx";
 import db from "../../db.ts";
@@ -81,28 +82,33 @@ interface SetupPageProps {
 function SetupPage(props: SetupPageProps) {
   return (
     <Layout title="Welcome to Hollo!">
-      {props.proxyWarning && (
-        <article class="pico-background-red-700">
-          <p class="pico-background-red-700" style="margin: 0">
-            <strong>Warning:</strong> Your Hollo server apparently runs behind a
-            reverse proxy or L7 load balancer. Please configure environment
-            variable{" "}
-            <a href="https://docs.hollo.social/install/env/#behind_proxy-">
-              <code class="pico-background-red-800">BEHIND_PROXY</code>
+      <AuthCard
+        title="Welcome to Hollo!"
+        subtitle="It's the first time to use Hollo. Let's set up your account."
+      >
+        {props.proxyWarning && (
+          <div
+            role="alert"
+            class="mb-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+          >
+            <strong class="font-semibold">Warning:</strong> Your Hollo server
+            appears to run behind a reverse proxy or L7 load balancer. Set the
+            environment variable{" "}
+            <a
+              href="https://docs.hollo.social/install/env/#behind_proxy-"
+              class="underline underline-offset-2 hover:no-underline"
+            >
+              <code class="font-mono">BEHIND_PROXY</code>
             </a>{" "}
-            to <code class="pico-background-red-800">true</code> to prevent
-            federation issues.
-          </p>
-        </article>
-      )}
-      <hgroup>
-        <h1>Welcome to Hollo!</h1>
-        <p>
-          It's the first time to use Hollo, let's set up your account. The email
-          and password you set here will be used to sign in to Hollo.
-        </p>
-      </hgroup>
-      <SetupForm action="/setup" values={props.values} errors={props.errors} />
+            to <code class="font-mono">true</code> to prevent federation issues.
+          </div>
+        )}
+        <SetupForm
+          action="/setup"
+          values={props.values}
+          errors={props.errors}
+        />
+      </AuthCard>
     </Layout>
   );
 }

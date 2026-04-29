@@ -37,117 +37,143 @@ data.get("/", async (c) => {
     queueMessages = [];
   }
 
+  const refreshError =
+    error === "refresh" || error === "refresh:account-conflict";
   return c.html(
     <DashboardLayout title="Hollo: Federation" selectedMenu="federation">
-      <hgroup>
-        <h1>Federation</h1>
-        <p>
-          This control panel allows you to manage remote objects or interactions
-          with the fediverse.
+      <header class="mb-6">
+        <h1 class="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Federation
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Manage remote objects and interactions with the fediverse.
         </p>
-      </hgroup>
+      </header>
 
-      <article>
-        <header>
-          <hgroup>
-            <h2>Force refresh account/post</h2>
-            {done === "refresh:account" ? (
-              <p>Account has been refreshed.</p>
-            ) : done === "refresh:post" ? (
-              <p>Post has been refreshed.</p>
-            ) : error === "refresh:account-conflict" ? (
-              <p>Account refresh was blocked by a canonical handle conflict.</p>
-            ) : (
-              <p>Use this when you see outdated remote account/post data.</p>
-            )}
-          </hgroup>
-        </header>
-        <form
-          method="post"
-          action="/federation/refresh"
-          onsubmit="this.submit.ariaBusy = 'true'"
-        >
-          <fieldset role="group">
-            <input
-              type="text"
-              name="uri"
-              placeholder="@hollo@hollo.social"
-              required
-              aria-invalid={
-                error === "refresh" || error === "refresh:account-conflict"
-                  ? "true"
-                  : undefined
-              }
-            />
-            <button name="submit" type="submit">
-              Refresh
-            </button>
-          </fieldset>
-          {error === "refresh" ? (
-            <small>
-              The given handle or URI is invalid or not found. Please try again.
-            </small>
-          ) : error === "refresh:account-conflict" ? (
-            <small>
-              Hollo could not verify that this actor canonically owns the handle
-              already cached in the database, so the stale account was not
-              deleted automatically.
-            </small>
-          ) : (
-            <small>
-              A fediverse handle (e.g., <tt>@hollo@hollo.social</tt>) or a
-              post/actor URI (e.g.,{" "}
-              <tt>
-                https://hollo.social/@hollo/01904586-7b75-7ef6-ad31-bec40b8b1e66
-              </tt>
-              ) is allowed.
-            </small>
-          )}
-        </form>
-      </article>
-
-      <article>
-        <header>
-          <hgroup>
-            <h2>Task queue messages</h2>
-            <p>The number of messages in the task queue.</p>
-          </hgroup>
-        </header>
-        <table>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th style="text-align: right">Number of messages</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queueMessages.map((queueMessage) => (
-              <tr>
-                <td>{queueMessage.type}</td>
-                <td style="text-align: right">
-                  {queueMessage.number.toLocaleString("en")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </article>
-
-      <article>
-        <header>
-          <hgroup>
-            <h2>How to shut down your instance</h2>
-            <p>
-              So-called <q>self-destruct</q> your instance.
+      <div class="space-y-6">
+        <section class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Force refresh account or post
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              {done === "refresh:account"
+                ? "The account has been refreshed."
+                : done === "refresh:post"
+                  ? "The post has been refreshed."
+                  : error === "refresh:account-conflict"
+                    ? "Account refresh was blocked by a canonical handle conflict."
+                    : "Use this when you see outdated remote account or post data."}
             </p>
-          </hgroup>
-        </header>
-        <p>
-          Hollo does not provide so-called <q>self-destruct</q> feature.
-          However, you can achieve the same effect by deleting all{" "}
-          <a href="/accounts">your accounts</a>.
-        </p>
-      </article>
+          </header>
+          <form
+            method="post"
+            action="/federation/refresh"
+            onsubmit="this.submit.ariaBusy = 'true'"
+          >
+            <div class="flex gap-2">
+              <input
+                type="text"
+                name="uri"
+                placeholder="@hollo@hollo.social"
+                required
+                aria-invalid={refreshError ? "true" : undefined}
+                class={`flex-1 rounded-md border bg-white px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-neutral-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:ring-brand-900 ${
+                  refreshError
+                    ? "border-red-500"
+                    : "border-neutral-300 dark:border-neutral-700"
+                }`}
+              />
+              <button
+                name="submit"
+                type="submit"
+                class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
+              >
+                Refresh
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              {error === "refresh" ? (
+                <>
+                  The given handle or URI is invalid or not found. Please try
+                  again.
+                </>
+              ) : error === "refresh:account-conflict" ? (
+                <>
+                  Hollo could not verify that this actor canonically owns the
+                  handle already cached in the database, so the stale account
+                  was not deleted automatically.
+                </>
+              ) : (
+                <>
+                  A fediverse handle (e.g.{" "}
+                  <code class="font-mono">@hollo@hollo.social</code>) or a
+                  post/actor URI is allowed.
+                </>
+              )}
+            </p>
+          </form>
+        </section>
+
+        <section class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          <header class="mb-4">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              Task queue
+            </h2>
+            <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              Pending messages, grouped by activity type.
+            </p>
+          </header>
+          {queueMessages.length > 0 ? (
+            <div class="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+              <table class="w-full text-sm">
+                <thead class="bg-neutral-50 text-xs uppercase tracking-wider text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-semibold">Type</th>
+                    <th class="px-3 py-2 text-right font-semibold">Messages</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-900">
+                  {queueMessages.map((queueMessage) => (
+                    <tr>
+                      <td class="px-3 py-2 font-mono text-neutral-900 dark:text-neutral-100">
+                        {queueMessage.type}
+                      </td>
+                      <td class="px-3 py-2 text-right tabular-nums text-neutral-700 dark:text-neutral-300">
+                        {queueMessage.number.toLocaleString("en")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p class="text-sm text-neutral-500 dark:text-neutral-400">
+              The task queue is empty.
+            </p>
+          )}
+        </section>
+
+        <section class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+          <header class="mb-3">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+              How to shut down your instance
+            </h2>
+          </header>
+          <p class="text-sm text-neutral-700 dark:text-neutral-300">
+            Hollo does not provide a so-called{" "}
+            <q class="italic">self-destruct</q> feature. You can achieve the
+            same effect by deleting all{" "}
+            <a
+              href="/accounts"
+              class="text-brand-700 underline-offset-2 hover:underline dark:text-brand-400"
+            >
+              your accounts
+            </a>
+            .
+          </p>
+        </section>
+      </div>
     </DashboardLayout>,
   );
 });

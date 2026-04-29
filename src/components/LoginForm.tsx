@@ -1,3 +1,5 @@
+import { SubmitButton, TextField } from "./forms";
+
 export interface LoginFormProps {
   method?: "get" | "post" | "dialog";
   action: string;
@@ -13,32 +15,32 @@ export interface LoginFormProps {
 
 export function LoginForm(props: LoginFormProps) {
   return (
-    <form method={props.method ?? "post"} action={props.action}>
-      <label>
-        Email{" "}
-        <input
-          type="email"
-          name="email"
-          required={true}
-          placeholder="john@example.com"
-          value={props.values?.email}
-          aria-invalid={props.errors?.email != null ? true : undefined}
-        />
-        {props.errors?.email && <small>{props.errors.email}</small>}
-      </label>
-      <label>
-        Password{" "}
-        <input
-          type="password"
-          name="password"
-          required={true}
-          minLength={6}
-          aria-invalid={props.errors?.password != null ? true : undefined}
-        />
-        {props.errors?.password && <small>{props.errors.password}</small>}
-      </label>
+    <form
+      method={props.method ?? "post"}
+      action={props.action}
+      class="space-y-4"
+    >
+      <TextField
+        id="login-email"
+        name="email"
+        type="email"
+        label="Email"
+        placeholder="john@example.com"
+        required={true}
+        value={props.values?.email}
+        error={props.errors?.email}
+      />
+      <TextField
+        id="login-password"
+        name="password"
+        type="password"
+        label="Password"
+        required={true}
+        minLength={6}
+        error={props.errors?.password}
+      />
       {props.next && <input type="hidden" name="next" value={props.next} />}
-      <button type="submit">Sign in</button>
+      <SubmitButton fullWidth>Sign in</SubmitButton>
     </form>
   );
 }
