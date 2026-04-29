@@ -178,32 +178,19 @@ function ThemeColorField({ selected }: ThemeColorFieldProps) {
   const active = selected ?? "azure";
   return (
     <Field
-      id="account-theme-color-amber"
+      id={`account-theme-color-${active}`}
       label="Theme color"
-      hint={
-        <>
-          Tints this account's profile and post pages. Currently picked:{" "}
-          <strong class="font-semibold text-neutral-700 dark:text-neutral-300">
-            {capitalize(active)}
-          </strong>
-          .
-        </>
-      }
+      hint="Tints this account's profile and post pages."
     >
       <div class="grid grid-cols-8 gap-2 sm:grid-cols-10">
         {THEME_COLORS.map((color) => {
           const swatch = `rgb(${themeColors[color][500]})`;
           const inputId = `account-theme-color-${color}`;
-          const isSelected = active === color;
           return (
             <label
               for={inputId}
               title={capitalize(color)}
-              class={`group relative aspect-square cursor-pointer rounded-md ring-2 ring-offset-2 ring-offset-white transition-shadow dark:ring-offset-neutral-900 ${
-                isSelected
-                  ? "ring-neutral-900 dark:ring-neutral-100"
-                  : "ring-transparent hover:ring-neutral-300 dark:hover:ring-neutral-700"
-              }`}
+              class="relative aspect-square cursor-pointer rounded-md ring-2 ring-transparent ring-offset-2 ring-offset-white transition-shadow hover:ring-neutral-300 has-[:checked]:ring-neutral-900 dark:ring-offset-neutral-900 dark:hover:ring-neutral-700 dark:has-[:checked]:ring-neutral-100"
               style={`background-color: ${swatch};`}
             >
               <input
@@ -211,18 +198,16 @@ function ThemeColorField({ selected }: ThemeColorFieldProps) {
                 type="radio"
                 name="themeColor"
                 value={color}
-                checked={isSelected}
-                class="sr-only"
+                checked={active === color}
+                class="peer sr-only"
               />
               <span class="sr-only">{capitalize(color)}</span>
-              {isSelected && (
-                <span
-                  class="absolute inset-0 flex items-center justify-center text-white drop-shadow"
-                  aria-hidden="true"
-                >
-                  <span class="i-lucide-check text-sm" />
-                </span>
-              )}
+              <span
+                class="pointer-events-none absolute inset-0 flex items-center justify-center text-white opacity-0 drop-shadow peer-checked:opacity-100"
+                aria-hidden="true"
+              >
+                <span class="i-lucide-check text-sm" />
+              </span>
             </label>
           );
         })}
