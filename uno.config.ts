@@ -50,6 +50,12 @@ export default defineConfig({
           border-style: solid;
           border-width: 1px;
         }
+        button:not(:disabled), [role="button"]:not(:disabled) {
+          cursor: pointer;
+        }
+        button:disabled, [role="button"][aria-disabled="true"] {
+          cursor: not-allowed;
+        }
         @media (prefers-color-scheme: dark) {
           .shiki, .shiki span {
             color: var(--shiki-dark) !important;
