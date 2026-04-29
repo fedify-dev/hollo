@@ -126,7 +126,7 @@ async function AuthPage({ totp, tfa }: AuthPageProps) {
           tfa == null ? (
             <a
               href="?open=2fa"
-              class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+              class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
             >
               Enable two-factor authentication
             </a>
@@ -181,7 +181,7 @@ async function AuthPage({ totp, tfa }: AuthPageProps) {
                   />
                   <button
                     type="submit"
-                    class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                    class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
                   >
                     Verify
                   </button>

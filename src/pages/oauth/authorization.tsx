@@ -117,7 +117,7 @@ export function AuthorizationPage(props: AuthorizationPageProps) {
                 type="submit"
                 name="decision"
                 value="allow"
-                class="flex-1 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                class="flex-1 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
               >
                 Allow
               </button>

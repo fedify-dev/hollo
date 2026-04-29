@@ -85,7 +85,7 @@ function AccountItem({ accountOwner: { account, ...rest } }: AccountItemProps) {
       <footer class="mt-5 flex flex-wrap gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
         <a
           href={`/accounts/${ownerId}`}
-          class="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+          class="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
         >
           <span class="i-lucide-pencil" aria-hidden="true" />
           Edit

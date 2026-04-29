@@ -273,7 +273,7 @@ export function SubmitButton({
     "inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-neutral-950";
   const styles: Record<SubmitButtonVariant, string> = {
     primary:
-      "bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-400",
+      "bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-400 dark:bg-brand-700 dark:hover:bg-brand-800",
     secondary:
       "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 focus-visible:ring-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800",
     danger:

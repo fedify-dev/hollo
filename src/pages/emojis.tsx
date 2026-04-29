@@ -33,7 +33,7 @@ emojis.get("/", async (c) => {
         <div class="flex flex-wrap gap-2">
           <a
             href="/emojis/new"
-            class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
           >
             <span class="i-lucide-plus" aria-hidden="true" />
             Add emoji
@@ -242,7 +242,7 @@ emojis.get("/new", async (c) => {
         <div class="flex justify-end">
           <button
             type="submit"
-            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
           >
             Add emoji
           </button>
@@ -503,7 +503,7 @@ emojis.get("/import", async (c) => {
         <div class="flex justify-end">
           <button
             type="submit"
-            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
           >
             Import selected emojis
           </button>

@@ -87,7 +87,7 @@ data.get("/", async (c) => {
               <button
                 name="submit"
                 type="submit"
-                class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
               >
                 Refresh
               </button>
