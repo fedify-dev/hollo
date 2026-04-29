@@ -610,6 +610,13 @@
       "when": 1777358526000,
       "tag": "0086_quote_controls",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1777428000000,
+      "tag": "0087_quote_authorization_requirement",
+      "breakpoints": true
     }
   ]
 }

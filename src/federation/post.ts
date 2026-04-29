@@ -111,9 +111,9 @@ export function isPost(object?: vocab.Object | Link | null): object is ASPost {
 function getQuoteApprovalPolicy(
   object: ASPost,
   account: Account,
-): QuoteApprovalPolicy {
+): QuoteApprovalPolicy | null {
   const canQuote = object.interactionPolicy?.canQuote;
-  if (canQuote == null) return "public";
+  if (canQuote == null) return null;
   const automaticApprovals = canQuote.automaticApprovals;
   if (automaticApprovals.length < 1) return "nobody";
   if (
@@ -1014,7 +1014,7 @@ function getCanQuoteRule(
   const policy =
     post.visibility === "direct" || post.visibility === "private"
       ? "nobody"
-      : post.quoteApprovalPolicy;
+      : (post.quoteApprovalPolicy ?? "public");
   if (policy === "public") {
     return new InteractionRule({
       automaticApproval: vocab.PUBLIC_COLLECTION,

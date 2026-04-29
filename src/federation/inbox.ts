@@ -624,7 +624,7 @@ async function canAutomaticallyAcceptQuoteRequest(
     ),
   });
   if (block != null) return false;
-  const policy = target.quoteApprovalPolicy;
+  const policy = target.quoteApprovalPolicy ?? "public";
   if (policy === "public") return true;
   if (policy === "nobody") return false;
   const follow = await db.query.follows.findFirst({

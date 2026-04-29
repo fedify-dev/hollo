@@ -917,7 +917,7 @@ describe("persistPost quotes", () => {
     expect(persisted?.contentHtml).toBe("<p>Updated quote</p>");
   });
 
-  it("defaults quote approval to public when no interaction policy exists", async () => {
+  it("stores no quote approval policy when no interaction policy exists", async () => {
     const author = await seedRemoteAccount("quote-author");
 
     const persisted = await persistPost(
@@ -931,7 +931,7 @@ describe("persistPost quotes", () => {
       "https://hollo.test",
     );
 
-    expect(persisted?.quoteApprovalPolicy).toBe("public");
+    expect(persisted?.quoteApprovalPolicy).toBeNull();
   });
 
   it("does not treat manual-only quote approval as public", async () => {

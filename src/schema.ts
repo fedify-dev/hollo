@@ -461,9 +461,9 @@ export const posts = pgTable(
     quoteTargetIri: text("quote_target_iri"),
     quoteState: quoteStateEnum("quote_state"),
     quoteAuthorizationIri: text("quote_authorization_iri"),
-    quoteApprovalPolicy: quoteApprovalPolicyEnum("quote_approval_policy")
-      .notNull()
-      .default("public"),
+    quoteApprovalPolicy: quoteApprovalPolicyEnum(
+      "quote_approval_policy",
+    ).default("public"),
     visibility: postVisibilityEnum("visibility").notNull(),
     summary: text("summary"),
     contentHtml: text("content_html"),

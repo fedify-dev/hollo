@@ -343,6 +343,11 @@ in *drizzle/* directory.
 This compares *src/schema.ts* with the current database state and generates
 a SQL migration file.
 
+Schema migrations MUST be generated with `pnpm migrate:generate`.  Do not
+hand-write schema migration SQL files; use a generated migration and then
+edit only when a custom data backfill or other non-schema operation is
+needed.
+
 Optional flags:
 
  -  `--name <name>`: Custom migration name

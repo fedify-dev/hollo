@@ -389,7 +389,10 @@ app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
         : await db.query.accountOwners.findFirst({
             where: eq(accountOwners.id, quoteTarget.accountId),
           });
-    quoteState = localQuoteTargetOwner == null ? "pending" : "accepted";
+    quoteState =
+      localQuoteTargetOwner == null && quoteTarget.quoteApprovalPolicy != null
+        ? "pending"
+        : "accepted";
   }
   await db.transaction(async (tx) => {
     let poll: Poll | null = null;
