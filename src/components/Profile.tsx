@@ -60,13 +60,13 @@ export function Profile({ accountOwner }: ProfileProps) {
           </p>
           <p class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-neutral-600 dark:text-neutral-400">
             <span>
-              <strong class="font-semibold text-neutral-900 dark:text-neutral-100">
+              <strong class="font-semibold text-brand-700 dark:text-brand-400">
                 {numberFormatter.format(account.followingCount ?? 0)}
               </strong>{" "}
               following
             </span>
             <span>
-              <strong class="font-semibold text-neutral-900 dark:text-neutral-100">
+              <strong class="font-semibold text-brand-700 dark:text-brand-400">
                 {numberFormatter.format(account.followersCount ?? 0)}
               </strong>{" "}
               {account.followersCount === 1 ? "follower" : "followers"}
@@ -74,7 +74,7 @@ export function Profile({ accountOwner }: ProfileProps) {
           </p>
           {bioHtml && (
             <div
-              class="prose prose-sm prose-neutral dark:prose-invert mt-4 max-w-none"
+              class="prose prose-sm prose-neutral dark:prose-invert prose-a:text-brand-700 dark:prose-a:text-brand-400 mt-4 max-w-none"
               dangerouslySetInnerHTML={{ __html: bioHtml }}
             />
           )}

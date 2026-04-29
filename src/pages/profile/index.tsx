@@ -410,7 +410,7 @@ function ProfilePage({
             {featuredTags.map((tag) => (
               <a
                 href={`/@${accountOwner.handle}/tagged/${encodeURIComponent(tag.name)}`}
-                class="rounded-full border border-neutral-200 bg-white px-3 py-0.5 text-neutral-700 hover:border-brand-400 hover:text-brand-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-600 dark:hover:text-brand-400"
+                class="rounded-full border border-brand-200 bg-brand-50 px-3 py-0.5 font-medium text-brand-700 transition-colors hover:bg-brand-100 hover:border-brand-300 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-400 dark:hover:bg-brand-900/40 dark:hover:border-brand-800"
               >
                 #{tag.name}
               </a>

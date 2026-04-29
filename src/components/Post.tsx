@@ -259,8 +259,8 @@ function PostContent({ post, featured }: PostContentProps) {
         <div
           class={
             featured
-              ? "prose prose-base prose-neutral dark:prose-invert max-w-none break-words"
-              : "prose prose-sm prose-neutral dark:prose-invert max-w-none break-words"
+              ? "prose prose-base prose-neutral dark:prose-invert prose-a:text-brand-700 dark:prose-a:text-brand-400 max-w-none break-words"
+              : "prose prose-sm prose-neutral dark:prose-invert prose-a:text-brand-700 dark:prose-a:text-brand-400 max-w-none break-words"
           }
           dangerouslySetInnerHTML={{ __html: contentHtml ?? "" }}
           lang={post.language ?? undefined}
