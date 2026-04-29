@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { db } from "../../db";
@@ -26,9 +26,12 @@ app.post("/:id/follow", scopeRequired(["write:follows"]), async (c) => {
     return c.json({ error: "This method requires an authenticated user" }, 422);
   }
   const tag = c.req.param("id");
-  await db.update(accountOwners).set({
-    followedTags: sql`array_append(${accountOwners.followedTags}, ${tag})`,
-  });
+  await db
+    .update(accountOwners)
+    .set({
+      followedTags: sql`array_append(${accountOwners.followedTags}, ${tag})`,
+    })
+    .where(eq(accountOwners.id, owner.id));
   return c.json({ ...serializeTag(tag, null, c.req.url), following: true });
 });
 
@@ -38,9 +41,12 @@ app.post("/:id/unfollow", scopeRequired(["write:follows"]), async (c) => {
     return c.json({ error: "This method requires an authenticated user" }, 422);
   }
   const tag = c.req.param("id");
-  await db.update(accountOwners).set({
-    followedTags: sql`array_remove(${accountOwners.followedTags}, ${tag})`,
-  });
+  await db
+    .update(accountOwners)
+    .set({
+      followedTags: sql`array_remove(${accountOwners.followedTags}, ${tag})`,
+    })
+    .where(eq(accountOwners.id, owner.id));
   return c.json({ ...serializeTag(tag, null, c.req.url), following: false });
 });
 
