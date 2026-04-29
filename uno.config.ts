@@ -46,6 +46,10 @@ export default defineConfig({
           --un-divide-opacity: 100%;
           --un-placeholder-opacity: 100%;
         }
+        input, textarea, select {
+          border-style: solid;
+          border-width: 1px;
+        }
         @media (prefers-color-scheme: dark) {
           .shiki, .shiki span {
             color: var(--shiki-dark) !important;
