@@ -52,7 +52,7 @@
     "@opentelemetry/context-async-hooks": "^2.7.0",
     "@opentelemetry/core": "^2.7.0",
     "@opentelemetry/sdk-trace-base": "^2.7.0",
-    "@sentry/core": "^10.48.0",
+    "@sentry/core": "^10.51.0",
     "@sentry/node": "^10.48.0",
     "@shikijs/markdown-it": "^4.0.2",
     "@supercharge/promise-pool": "^3.2.0",
