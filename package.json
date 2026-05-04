@@ -98,7 +98,7 @@
     "@vitest/coverage-v8": "3.1.4",
     "concurrently": "^9.2.1",
     "linkedom": "^0.18.12",
-    "oxfmt": "^0.46.0",
+    "oxfmt": "^0.47.0",
     "oxlint": "^1.61.0",
     "skills-npm": "^1.1.1",
     "timekeeper": "^2.3.1",
