@@ -90,7 +90,7 @@
     "@reporters/github": "^1.13.1",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/markdown-it": "^14.1.2",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.7.1",
     "@typescript/native-preview": "7.0.0-dev.20260420.1",
