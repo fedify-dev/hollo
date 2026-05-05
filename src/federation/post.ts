@@ -187,6 +187,21 @@ export async function persistPost(
   if (existingPost != null && existingPost.account.owner != null) {
     return existingPost;
   }
+  const publishedRaw = toDate(object.published);
+  const updatedRaw = toDate(object.updated);
+  const now = Date.now();
+  const twelveHoursMs = 12 * 60 * 60 * 1000;
+  if (
+    (publishedRaw != null && +publishedRaw > now + twelveHoursMs) ||
+    (updatedRaw != null && +updatedRaw > now + twelveHoursMs)
+  ) {
+    logger.debug(
+      "Ignoring post {iri} with a timestamp too far in the future: " +
+        "published={published}, updated={updated}",
+      { iri: object.id.href, published: publishedRaw, updated: updatedRaw },
+    );
+    return null;
+  }
   const actor = await object.getAttribution(options);
   logger.debug("Fetched actor: {actor}", { actor });
   if (!isActor(actor)) return null;
@@ -325,8 +340,8 @@ export async function persistPost(
   const preservedQuoteAuthorizationIri =
     quoteAuthorizationIri ??
     (preserveAcceptedQuote ? existingPost.quoteAuthorizationIri : null);
-  const published = toDate(object.published);
-  const updated = toDate(object.updated) ?? published ?? new Date();
+  const published = publishedRaw;
+  const updated = updatedRaw ?? published ?? new Date();
   const values = {
     type:
       object instanceof Question
@@ -380,7 +395,7 @@ export async function persistPost(
     .values({
       ...values,
       repliesCount: existingPost?.repliesCount ?? 0,
-      id: uuidv7(+(published ?? updated)),
+      id: uuidv7(Math.max(0, +(published ?? updated))),
       iri: object.id.href,
     })
     .onConflictDoUpdate({

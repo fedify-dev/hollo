@@ -94,13 +94,24 @@ To be released.
         are removed; UnoCSS emits a single _src/public/uno.css_ whose
         URL is cache-busted by file mtime.
 
+ -  Fixed a bug where incoming ActivityPub posts with timestamps more than
+    12 hours in the future were accepted and stuck to the top of the
+    federated timeline, enabling timeline manipulation via forged timestamps.
+    Such posts are now silently ignored.  [[#67], [#466]]
+
+ -  Fixed a crash when persisting ActivityPub posts with a `published` date
+    before the Unix epoch (January 1, 1970), which caused `uuidv7()` to
+    receive a negative timestamp.  [[#67], [#466]]
+
  -  Upgraded Fedify to 2.2.0.
 
 [FEP-044f]: https://w3id.org/fep/044f
+[#67]: https://github.com/fedify-dev/hollo/issues/67
 [#457]: https://github.com/fedify-dev/hollo/pull/457
 [#458]: https://github.com/fedify-dev/hollo/pull/458
 [#459]: https://github.com/fedify-dev/hollo/pull/459
 [#460]: https://github.com/fedify-dev/hollo/pull/460
+[#466]: https://github.com/fedify-dev/hollo/pull/466
 
 
 Version 0.8.1
