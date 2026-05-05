@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.8.2
 -------------
 
-To be released.
+Released on May 5, 2026.
 
  -  Fixed a security vulnerability where the hashtag follow/unfollow API
     endpoints were missing an ownership filter, allowing a single authenticated
