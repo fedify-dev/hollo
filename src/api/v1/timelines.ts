@@ -26,7 +26,8 @@ import {
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import {
   accountOwners,
@@ -45,7 +46,7 @@ import {
   postAccountIdInArray,
 } from "../visibility";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
 app.use(tokenRequired);
 
@@ -72,15 +73,10 @@ export const publicTimelineQuerySchema = timelineQuerySchema.extend({
 
 app.get(
   "/public",
+  withAccountOwner,
   zValidator("query", publicTimelineQuerySchema),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     const timeline = await db.query.posts.findMany({
       where: and(
@@ -203,15 +199,10 @@ app.get(
 app.get(
   "/home",
   scopeRequired(["read:statuses"]),
+  withAccountOwner,
   zValidator("query", timelineQuerySchema),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     let timeline: Parameters<typeof serializePost>[0][];
     if (TIMELINE_INBOXES) {
@@ -492,17 +483,12 @@ app.get(
   "/list/:list_id",
   tokenRequired,
   scopeRequired(["read:lists"]),
+  withAccountOwner,
   zValidator("query", publicTimelineQuerySchema),
   async (c) => {
     const listId = c.req.param("list_id");
     if (!isUuid(listId)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     const list = await db.query.lists.findFirst({
       where: and(eq(lists.id, listId), eq(lists.accountOwnerId, owner.id)),
@@ -767,15 +753,10 @@ app.get(
   "/tag/:hashtag",
   tokenRequired,
   scopeRequired(["read:statuses"]),
+  withAccountOwner,
   zValidator("query", publicTimelineQuerySchema),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     const hashtag = `#${c.req.param("hashtag")}`;
     const followingAccountIds = await getApprovedFollowingAccountIds(owner.id);

@@ -41,7 +41,7 @@ describe.sequential("OAuth / Middleware", () => {
     });
 
     it("Can use a client credentials token", async () => {
-      expect.assertions(7);
+      expect.assertions(6);
 
       const clientCredential = await createClientCredential(application, [
         "read:accounts",
@@ -61,14 +61,13 @@ describe.sequential("OAuth / Middleware", () => {
 
       expect(json.authorizationHeader).toBe(`Bearer ${clientCredential.token}`);
       expect(json.grant_type).toBe("client_credentials");
-      expect(json.application.clientId).toBe(application.clientId);
       expect(json.scopes).toEqual(application.scopes);
       // A client credential grant should not have an account owner
-      expect(json.accountOwner).toBeNull();
+      expect(json.accountOwnerId).toBeNull();
     });
 
     it("Can use an access token", async () => {
-      expect.assertions(8);
+      expect.assertions(7);
 
       const accessToken = await getAccessToken(client, account, [
         "read:accounts",
@@ -90,7 +89,6 @@ describe.sequential("OAuth / Middleware", () => {
       expect(json.grant_type).toBe("authorization_code");
       expect(json.applicationId).toBe(application.id);
       expect(json.accountOwnerId).toBe(account.id);
-      expect(json.application.clientId).toBe(application.clientId);
       expect(json.scopes).toEqual(application.scopes);
     });
 

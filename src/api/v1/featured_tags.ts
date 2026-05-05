@@ -17,38 +17,40 @@ import { serializeFeaturedTag } from "../../entities/tag";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import type * as schema from "../../schema";
 import { featuredTags, posts } from "../../schema";
 import { isUuid, type Uuid, uuidv7 } from "../../uuid";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
-app.get("/", tokenRequired, scopeRequired(["read:accounts"]), async (c) => {
-  const owner = c.get("token").accountOwner;
-  if (owner == null) {
-    return c.json({ error: "The access token is invalid." }, 401);
-  }
-  const tags = await db.query.featuredTags.findMany({
-    where: eq(featuredTags.accountOwnerId, owner.id),
-  });
-  const stats = await getFeaturedTagStats(db, owner.id);
-  return c.json(
-    tags.map((tag) => serializeFeaturedTag(tag, stats[tag.name], c.req.url)),
-  );
-});
+app.get(
+  "/",
+  tokenRequired,
+  scopeRequired(["read:accounts"]),
+  withAccountOwner,
+  async (c) => {
+    const owner = c.get("accountOwner");
+    const tags = await db.query.featuredTags.findMany({
+      where: eq(featuredTags.accountOwnerId, owner.id),
+    });
+    const stats = await getFeaturedTagStats(db, owner.id);
+    return c.json(
+      tags.map((tag) => serializeFeaturedTag(tag, stats[tag.name], c.req.url)),
+    );
+  },
+);
 
 app.post(
   "/",
   tokenRequired,
   scopeRequired(["write:accounts"]),
+  withAccountOwner,
   zValidator("json", z.object({ name: z.string().trim().min(1) })),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json({ error: "The access token is invalid." }, 401);
-    }
+    const owner = c.get("accountOwner");
     let name = c.req.valid("json").name;
     if (name.startsWith("#")) name = name.substring(1);
     const result = await db
@@ -69,15 +71,13 @@ app.delete(
   "/:id",
   tokenRequired,
   scopeRequired(["write:accounts"]),
+  withAccountOwner,
   async (c) => {
     const featuredTagId = c.req.param("id");
     if (!isUuid(featuredTagId)) {
       return c.json({ error: "Record not found" }, 404);
     }
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json({ error: "The access token is invalid." }, 401);
-    }
+    const owner = c.get("accountOwner");
     const result = await db
       .delete(featuredTags)
       .where(

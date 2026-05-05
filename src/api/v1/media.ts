@@ -8,23 +8,22 @@ import { makeVideoScreenshot, uploadThumbnail } from "../../media";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import { media } from "../../schema";
 import { isUuid, uuidv7 } from "../../uuid";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
-export async function postMedia(c: Context<{ Variables: Variables }>) {
+export async function postMedia(
+  c: Context<{ Variables: AccountOwnerVariables }>,
+) {
   const [{ drive }, { default: sharp }] = await Promise.all([
     import("../../storage"),
     import("sharp"),
   ]);
   const disk = drive.use();
-  const owner = c.get("token").accountOwner;
-  if (owner == null) {
-    return c.json({ error: "This method requires an authenticated user" }, 422);
-  }
   const form = await c.req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -79,7 +78,13 @@ export async function postMedia(c: Context<{ Variables: Variables }>) {
   return c.json(serializeMedium(result[0]));
 }
 
-app.post("/", tokenRequired, scopeRequired(["write:media"]), postMedia);
+app.post(
+  "/",
+  tokenRequired,
+  scopeRequired(["write:media"]),
+  withAccountOwner,
+  postMedia,
+);
 
 app.get("/:id", async (c) => {
   const mediumId = c.req.param("id");

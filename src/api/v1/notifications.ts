@@ -12,7 +12,8 @@ import { getPostRelations, serializePost } from "../../entities/status";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import {
   type NotificationType,
@@ -66,7 +67,7 @@ function parseNotificationId(compositeId: string): ParsedNotificationId {
   return { uuid: compositeId as Uuid, timestamp: null };
 }
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
 // set for O(1) access to all possible types
 const notificationTypeSet = new Set(notificationTypeEnum.enumValues);
@@ -78,14 +79,9 @@ app.get(
   "/",
   tokenRequired,
   scopeRequired(["read:notifications"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     let types = c.req.queries("types[]") as NotificationType[];
     const excludeTypes = c.req.queries("exclude_types[]") as NotificationType[];
     const olderThanStr = c.req.query("older_than");

@@ -42,7 +42,8 @@ import {
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import {
   type Account,
@@ -63,21 +64,16 @@ import {
 import { isUuid, type Uuid } from "../../uuid";
 import { timelineQuerySchema } from "./timelines";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 const allowedImageMimeTypes = ["image/gif", "image/jpeg", "image/png"];
 
 app.get(
   "/verify_credentials",
   tokenRequired,
   scopeRequired(["read:accounts", "profile"]),
+  withAccountOwner,
   async (c) => {
-    const accountOwner = c.get("token").accountOwner;
-    if (accountOwner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const accountOwner = c.get("accountOwner");
     return c.json(serializeAccountOwner(accountOwner, c.req.url));
   },
 );
@@ -86,6 +82,7 @@ app.patch(
   "/update_credentials",
   tokenRequired,
   scopeRequired(["write:accounts"]),
+  withAccountOwner,
   zValidator(
     "form",
     z.object({
@@ -117,13 +114,7 @@ app.patch(
       import("../../text"),
     ]);
     const disk = drive.use();
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const account = owner.account;
     const form = c.req.valid("form");
     let avatarUrl: string | undefined;
@@ -266,14 +257,9 @@ app.get(
   "/relationships",
   tokenRequired,
   scopeRequired(["read:follows"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const ids = (c.req.queries("id[]") ?? []).filter(isUuid);
     const accountList =
       ids.length > 0
@@ -315,7 +301,6 @@ app.get(
     }),
   ),
   async (c) => {
-    const owner = c.get("token")?.accountOwner;
     const query = c.req.valid("query");
     const acct = query.acct;
     let account:
@@ -338,15 +323,7 @@ app.get(
         return c.json({ error: "Record not found" }, 404);
       }
       const fedCtx = federation.createContext(c.req.raw, undefined);
-      const options =
-        owner == null
-          ? fedCtx
-          : {
-              contextLoader: fedCtx.contextLoader,
-              documentLoader: await fedCtx.getDocumentLoader({
-                username: owner.handle,
-              }),
-            };
+      const options = fedCtx;
       const actor = await lookupObject(acct, options);
       if (!isActor(actor)) return c.json({ error: "Record not found" }, 404);
       const loaded = await persistAccount(db, actor, c.req.url, options);
@@ -448,14 +425,9 @@ app.get(
   "/familiar_followers",
   tokenRequired,
   scopeRequired(["read:follows"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const ids: Uuid[] = (c.req.queries("id[]") ?? []).filter(isUuid);
     const result: {
       id: string;
@@ -514,6 +486,7 @@ app.get(
   "/:id/statuses",
   tokenRequired,
   scopeRequired(["read:statuses"]),
+  withAccountOwner,
   zValidator(
     "query",
     timelineQuerySchema.extend({
@@ -527,13 +500,7 @@ app.get(
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const tokenOwner = c.get("token").accountOwner;
-    if (tokenOwner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const tokenOwner = c.get("accountOwner");
     const account = await db.query.accounts.findFirst({
       where: eq(accounts.id, id),
       with: {
@@ -701,16 +668,11 @@ app.post(
   "/:id/follow",
   tokenRequired,
   scopeRequired(["write:follows"]),
+  withAccountOwner,
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const following = await db.query.accounts.findFirst({
       where: eq(accounts.id, id),
       with: { owner: true },
@@ -755,16 +717,11 @@ app.post(
   "/:id/unfollow",
   tokenRequired,
   scopeRequired(["write:follows"]),
+  withAccountOwner,
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const following = await db.query.accounts.findFirst({
       where: eq(accounts.id, id),
       with: { owner: true },
@@ -841,16 +798,11 @@ app.get(
   "/:id/lists",
   tokenRequired,
   scopeRequired(["read:lists"]),
+  withAccountOwner,
   async (c) => {
     const accountId = c.req.param("id");
     if (!isUuid(accountId)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const listList = await db.query.lists.findMany({
       where: and(
         eq(lists.accountOwnerId, owner.id),
@@ -871,6 +823,7 @@ app.post(
   "/:id/mute",
   tokenRequired,
   scopeRequired(["write:mutes"]),
+  withAccountOwner,
   zValidator(
     "json",
     z.object({
@@ -881,13 +834,7 @@ app.post(
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const { notifications, duration } = c.req.valid("json");
     const account = await db.query.accounts.findFirst({
       where: eq(accounts.id, id),
@@ -950,16 +897,11 @@ app.post(
   "/:id/unmute",
   tokenRequired,
   scopeRequired(["write:mutes"]),
+  withAccountOwner,
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     await db
       .delete(mutes)
       .where(and(eq(mutes.accountId, owner.id), eq(mutes.mutedAccountId, id)));
@@ -992,16 +934,11 @@ app.post(
   "/:id/block",
   tokenRequired,
   scopeRequired(["read:blocks"]),
+  withAccountOwner,
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const acct = await db.query.accounts.findFirst({
       where: eq(accounts.id, id),
       with: { owner: true },
@@ -1038,16 +975,11 @@ app.post(
   "/:id/unblock",
   tokenRequired,
   scopeRequired(["read:blocks"]),
+  withAccountOwner,
   async (c) => {
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const acct = await db.query.accounts.findFirst({
       where: eq(accounts.id, id),
       with: { owner: true },

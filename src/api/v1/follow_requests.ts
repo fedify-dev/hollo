@@ -16,48 +16,47 @@ import {
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import { accounts, blocks, follows, mutes } from "../../schema";
 import { isUuid } from "../../uuid";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
-app.get("/", tokenRequired, scopeRequired(["read:follows"]), async (c) => {
-  const owner = c.get("token").accountOwner;
-  if (owner == null) {
-    return c.json({ error: "This method requires an authenticated user" }, 422);
-  }
-  const followers = await db.query.follows.findMany({
-    where: and(eq(follows.followingId, owner.id), isNull(follows.approved)),
-    with: { follower: { with: { owner: true, successor: true } } },
-  });
-  return c.json(
-    followers.map((f) =>
-      f.follower.owner == null
-        ? serializeAccount(f.follower, c.req.url)
-        : serializeAccountOwner(
-            { ...f.follower.owner, account: f.follower },
-            c.req.url,
-          ),
-    ),
-  );
-});
+app.get(
+  "/",
+  tokenRequired,
+  scopeRequired(["read:follows"]),
+  withAccountOwner,
+  async (c) => {
+    const owner = c.get("accountOwner");
+    const followers = await db.query.follows.findMany({
+      where: and(eq(follows.followingId, owner.id), isNull(follows.approved)),
+      with: { follower: { with: { owner: true, successor: true } } },
+    });
+    return c.json(
+      followers.map((f) =>
+        f.follower.owner == null
+          ? serializeAccount(f.follower, c.req.url)
+          : serializeAccountOwner(
+              { ...f.follower.owner, account: f.follower },
+              c.req.url,
+            ),
+      ),
+    );
+  },
+);
 
 app.post(
   "/:account_id/authorize",
   tokenRequired,
   scopeRequired(["write:follows"]),
+  withAccountOwner,
   async (c) => {
     const followerId = c.req.param("account_id");
     if (!isUuid(followerId)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const follower = await db.query.accounts.findFirst({
       where: eq(accounts.id, followerId),
       with: { owner: true },
@@ -126,16 +125,11 @@ app.post(
   "/:account_id/reject",
   tokenRequired,
   scopeRequired(["write:follows"]),
+  withAccountOwner,
   async (c) => {
     const followerId = c.req.param("account_id");
     if (!isUuid(followerId)) return c.json({ error: "Record not found" }, 404);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const follower = await db.query.accounts.findFirst({
       where: eq(accounts.id, followerId),
       with: { owner: true },
