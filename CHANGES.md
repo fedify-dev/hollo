@@ -6,6 +6,11 @@ Version 0.8.2
 
 To be released.
 
+ -  Fixed a security vulnerability where the hashtag follow/unfollow API
+    endpoints were missing an ownership filter, allowing a single authenticated
+    request to modify followed tags for all account owners in the database.
+    [[#429] by tomaioo]
+
 
 Version 0.8.1
 -------------
@@ -192,6 +197,19 @@ Released on April 27, 2026.
 [#447]: https://github.com/fedify-dev/hollo/pull/447
 [#448]: https://github.com/fedify-dev/hollo/pull/448
 [Fedify debugger]: https://fedify.dev/manual/debug
+
+
+Version 0.7.14
+--------------
+
+Released on May 5, 2026.
+
+ -  Fixed a security vulnerability where the hashtag follow/unfollow API
+    endpoints were missing an ownership filter, allowing a single authenticated
+    request to modify followed tags for all account owners in the database.
+    [[#429] by tomaioo]
+
+[#429]: https://github.com/fedify-dev/hollo/pull/429
 
 
 Version 0.7.13
