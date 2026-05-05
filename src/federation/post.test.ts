@@ -17,6 +17,7 @@ import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
 import { accounts, follows, instances, posts, timelinePosts } from "../schema";
 import type { Uuid } from "../uuid";
+import { toTemporalInstant } from "./date";
 import { onPostShared } from "./inbox";
 import { persistPost, persistSharingPost, toObject } from "./post";
 
@@ -380,6 +381,102 @@ describe("persistPost", () => {
     const jobs = await db.query.remoteReplyScrapeJobs.findMany();
     expect(post?.repliesCount).toBe(3);
     expect(jobs.map((job) => job.repliesIri)).toEqual([repliesIri]);
+  });
+
+  it("ignores posts with a published date more than 12 hours in the future", async () => {
+    expect.assertions(3);
+    const author = await seedRemoteAccount("author");
+    const futureDate = new Date(Date.now() + 13 * 60 * 60 * 1000);
+    const iri = "https://remote.test/@author/posts/future";
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL(iri),
+        attribution: createPerson(author),
+        content: "<p>From the future</p>",
+        to: PUBLIC_COLLECTION,
+        published: toTemporalInstant(futureDate),
+      }),
+      "https://hollo.test",
+      { account: author },
+    );
+    const row = await db.query.posts.findFirst({ where: eq(posts.iri, iri) });
+    const timelineRows = await db.query.timelinePosts.findMany();
+
+    expect(result).toBeNull();
+    expect(row).toBeUndefined();
+    expect(timelineRows).toHaveLength(0);
+  });
+
+  it("ignores posts with an updated date more than 12 hours in the future", async () => {
+    expect.assertions(3);
+    const author = await seedRemoteAccount("author");
+    const futureDate = new Date(Date.now() + 13 * 60 * 60 * 1000);
+    const iri = "https://remote.test/@author/posts/future-updated";
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL(iri),
+        attribution: createPerson(author),
+        content: "<p>Updated in the future</p>",
+        to: PUBLIC_COLLECTION,
+        updated: toTemporalInstant(futureDate),
+      }),
+      "https://hollo.test",
+      { account: author },
+    );
+    const row = await db.query.posts.findFirst({ where: eq(posts.iri, iri) });
+    const timelineRows = await db.query.timelinePosts.findMany();
+
+    expect(result).toBeNull();
+    expect(row).toBeUndefined();
+    expect(timelineRows).toHaveLength(0);
+  });
+
+  it("accepts posts with a published date slightly in the future (within 12 hours)", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const slightlyFutureDate = new Date(Date.now() + 11 * 60 * 60 * 1000);
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/@author/posts/near-future"),
+        attribution: createPerson(author),
+        content: "<p>Slightly future</p>",
+        to: PUBLIC_COLLECTION,
+        published: toTemporalInstant(slightlyFutureDate),
+      }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result).not.toBeNull();
+  });
+
+  it("accepts posts with a pre-epoch timestamp without crashing", async () => {
+    expect.assertions(2);
+    const author = await seedRemoteAccount("author");
+    // 1963-11-22, before Unix epoch (1970-01-01)
+    const preEpochDate = new Date("1963-11-22T12:30:00Z");
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/@author/posts/old-post"),
+        attribution: createPerson(author),
+        content: "<p>A very old post</p>",
+        to: PUBLIC_COLLECTION,
+        published: toTemporalInstant(preEpochDate),
+      }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result?.published).toEqual(preEpochDate);
   });
 });
 

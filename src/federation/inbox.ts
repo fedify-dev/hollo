@@ -974,8 +974,14 @@ export async function onPostUpdated(
       })
     : null;
 
-  // Persist the updated post
-  await persistPost(db, object, ctx.origin, getPersistOptions(ctx));
+  // Persist the updated post; null means the post was rejected (e.g. future timestamp)
+  const updatedPost = await persistPost(
+    db,
+    object,
+    ctx.origin,
+    getPersistOptions(ctx),
+  );
+  if (updatedPost == null) return;
 
   // Create quoted_update notifications for users who quoted this post
   if (existingPost != null) {
