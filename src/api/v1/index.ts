@@ -11,7 +11,8 @@ import { serializeTag } from "../../entities/tag";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import {
   accounts as accountsTable,
@@ -36,7 +37,7 @@ import statuses from "./statuses";
 import tags from "./tags";
 import timelines from "./timelines";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
 app.route("/apps", apps);
 app.route("/accounts", accounts);
@@ -57,14 +58,9 @@ app.get(
   "/preferences",
   tokenRequired,
   scopeRequired(["read:accounts"]),
+  withAccountOwner,
   (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     return c.json({
       "posting:default:visibility": owner.visibility,
       "posting:default:sensitive": owner.account.sensitive,
@@ -123,6 +119,7 @@ app.get(
   "/favourites",
   tokenRequired,
   scopeRequired(["read:favourites"]),
+  withAccountOwner,
   zValidator(
     "query",
     z.object({
@@ -134,13 +131,7 @@ app.get(
     }),
   ),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     const favourites = await db.query.likes.findMany({
       where: and(
@@ -178,6 +169,7 @@ app.get(
   "/bookmarks",
   tokenRequired,
   scopeRequired(["read:bookmarks"]),
+  withAccountOwner,
   zValidator(
     "query",
     z.object({
@@ -189,13 +181,7 @@ app.get(
     }),
   ),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     const bookmarkList = await db.query.bookmarks.findMany({
       where: and(
@@ -233,14 +219,9 @@ app.get(
   "/followed_tags",
   tokenRequired,
   scopeRequired(["read:follows"]),
+  withAccountOwner,
   (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     return c.json(
       owner.followedTags.map((tag) => serializeTag(tag, owner, c.req.url)),
     );
@@ -251,6 +232,7 @@ app.get(
   "/mutes",
   tokenRequired,
   scopeRequired(["read:mutes"]),
+  withAccountOwner,
   zValidator(
     "query",
     z.object({
@@ -266,13 +248,7 @@ app.get(
     }),
   ),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     const muteList = await db.query.mutes.findMany({
       where: eq(mutes.accountId, owner.id),
@@ -306,6 +282,7 @@ app.get(
   "/blocks",
   tokenRequired,
   scopeRequired(["read:blocks"]),
+  withAccountOwner,
   zValidator(
     "query",
     z.object({
@@ -320,13 +297,7 @@ app.get(
     }),
   ),
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     const query = c.req.valid("query");
     const blockList = await db.query.blocks.findMany({

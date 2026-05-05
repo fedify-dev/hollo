@@ -12,6 +12,7 @@ import {
   type AccountOwner,
   type Application,
   accessTokens,
+  accountOwners,
   applications,
   type Scope,
 } from "../schema.ts";
@@ -19,11 +20,12 @@ import {
 const logger = getLogger(["hollo", "oauth", "middleware"]);
 
 export type Variables = {
-  token: AccessToken & {
-    application: Application;
-    accountOwner:
-      | (AccountOwner & { account: Account & { successor: Account | null } })
-      | null;
+  token: AccessToken;
+};
+
+export type AccountOwnerVariables = Variables & {
+  accountOwner: AccountOwner & {
+    account: Account & { successor: Account | null };
   };
 };
 
@@ -189,10 +191,6 @@ export const tokenRequired = createMiddleware<{ Variables: Variables }>(
 
     const accessToken = await db.query.accessTokens.findFirst({
       where: eq(accessTokens.code, token),
-      with: {
-        accountOwner: { with: { account: { with: { successor: true } } } },
-        application: true,
-      },
     });
 
     if (accessToken === undefined) {
@@ -203,6 +201,28 @@ export const tokenRequired = createMiddleware<{ Variables: Variables }>(
     await next();
   },
 );
+
+export const withAccountOwner = createMiddleware<{
+  Variables: AccountOwnerVariables;
+}>(async (c, next) => {
+  const token = c.get("token");
+  if (token == null) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const { accountOwnerId } = token;
+  if (accountOwnerId == null) {
+    return c.json({ error: "This method requires an authenticated user" }, 422);
+  }
+  const owner = await db.query.accountOwners.findFirst({
+    where: eq(accountOwners.id, accountOwnerId),
+    with: { account: { with: { successor: true } } },
+  });
+  if (owner == null) {
+    return c.json({ error: "invalid_token" }, 401);
+  }
+  c.set("accountOwner", owner);
+  await next();
+});
 
 export function scopeRequired(scopes: Scope[]) {
   return createMiddleware(async (c, next) => {

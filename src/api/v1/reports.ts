@@ -10,7 +10,8 @@ import federation from "../../federation";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import {
   accountOwners,
@@ -22,7 +23,7 @@ import {
 } from "../../schema";
 import { uuid, uuidv7 } from "../../uuid";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
 const reportSchema = z.object({
   comment: z.string().trim().min(1).max(1000).optional().default(""),
@@ -39,15 +40,10 @@ app.post(
   "/",
   tokenRequired,
   scopeRequired(["write:reports"]),
+  withAccountOwner,
   zValidator("json", reportSchema),
   async (c) => {
-    const accountOwner = c.get("token").accountOwner;
-    if (accountOwner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const accountOwner = c.get("accountOwner");
 
     const data = c.req.valid("json");
 

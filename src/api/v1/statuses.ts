@@ -49,7 +49,8 @@ import { getAccessToken } from "../../oauth/helpers";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import { fetchPreviewCard, type PreviewCard } from "../../previewcard";
 import {
@@ -83,7 +84,7 @@ import {
   getPostVisibilityScope,
 } from "../visibility";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 const logger = getLogger(["hollo", "api", "v1", "statuses"]);
 
 const quoteApprovalPolicySchema = z.enum(["public", "followers", "nobody"]);
@@ -289,373 +290,385 @@ const createStatusSchema = statusSchema.extend({
   scheduled_at: z.iso.datetime().optional().nullable(),
 });
 
-app.post("/", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
-  const token = c.get("token");
-  const owner = token.accountOwner;
-  if (owner == null) {
-    return c.json({ error: "This method requires an authenticated user" }, 422);
-  }
-  const idempotencyKey = c.req.header("Idempotency-Key");
-  if (idempotencyKey != null) {
-    const post = await db.query.posts.findFirst({
-      where: and(
-        eq(posts.accountId, owner.id),
-        eq(posts.idempotenceKey, idempotencyKey),
-        gt(posts.published, sql`CURRENT_TIMESTAMP - INTERVAL '1 hour'`),
-      ),
-      with: getPostRelations(owner.id),
-    });
-    if (post != null) return c.json(serializePost(post, owner, c.req.url));
-  }
-
-  const fedCtx = federation.createContext(c.req.raw, undefined);
-  const fmtOpts = {
-    url: fedCtx.url,
-    contextLoader: fedCtx.contextLoader,
-    documentLoader: await fedCtx.getDocumentLoader({
-      username: owner.handle,
-    }),
-  };
-
-  const result = await requestBody(c.req, createStatusSchema);
-
-  if (!result.success) {
-    logger.debug("Invalid request: {error}", { error: result.error.issues });
-    return c.json({ error: "invalid_request", zod_error: result.error }, 422);
-  }
-
-  const data = result.data;
-
-  const handle = owner.handle;
-  const id = uuidv7();
-  const url = fedCtx.getObjectUri(Note, { username: handle, id });
-  const { formatPostContent } = await import("../../text");
-  const content =
-    data.status == null
-      ? null
-      : await formatPostContent(db, data.status, data.language, fmtOpts);
-  const summary =
-    data.spoiler_text == null || data.spoiler_text.trim() === ""
-      ? null
-      : data.spoiler_text;
-  const mentionedIds = content?.mentions ?? [];
-  const hashtags = content?.hashtags ?? [];
-  const emojis = content?.emojis ?? {};
-  const tags = Object.fromEntries(
-    hashtags.map((tag) => [
-      tag.toLowerCase(),
-      new URL(`/tags/${encodeURIComponent(tag.substring(1))}`, c.req.url).href,
-    ]),
-  );
-  let previewCard: PreviewCard | null = null;
-  if (content?.previewLink != null) {
-    previewCard = await fetchPreviewCard(content.previewLink);
-  }
-  let quoteTargetId: Uuid | null = null;
-  let quoteTarget: typeof posts.$inferSelect | null = null;
-  if (data.quoted_status_id != null) quoteTargetId = data.quoted_status_id;
-  else if (data.quote_id != null) quoteTargetId = data.quote_id;
-  else if (content?.quoteTarget != null) {
-    const quoted = await persistPost(
-      db,
-      content.quoteTarget,
-      c.req.url,
-      fmtOpts,
-    );
-    if (quoted != null) quoteTargetId = quoted.id;
-  }
-  let effectiveVisibility = data.visibility ?? owner.visibility;
-  if (quoteTargetId != null) {
-    const validation = await validateQuoteTarget(
-      quoteTargetId,
-      owner,
-      mentionedIds,
-      effectiveVisibility,
-    );
-    if (!validation.ok) {
-      return c.json({ error: validation.error }, validation.status);
+app.post(
+  "/",
+  tokenRequired,
+  scopeRequired(["write:statuses"]),
+  withAccountOwner,
+  async (c) => {
+    const token = c.get("token");
+    const owner = c.get("accountOwner");
+    const idempotencyKey = c.req.header("Idempotency-Key");
+    if (idempotencyKey != null) {
+      const post = await db.query.posts.findFirst({
+        where: and(
+          eq(posts.accountId, owner.id),
+          eq(posts.idempotenceKey, idempotencyKey),
+          gt(posts.published, sql`CURRENT_TIMESTAMP - INTERVAL '1 hour'`),
+        ),
+        with: getPostRelations(owner.id),
+      });
+      if (post != null) return c.json(serializePost(post, owner, c.req.url));
     }
-    quoteTarget = validation.quoteTarget;
-    effectiveVisibility = validation.visibility;
-  }
-  const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
-    data.quote_approval_policy,
-  );
-  let quoteState: "accepted" | "pending" | null = null;
-  if (quoteTarget != null) {
-    const localQuoteTargetOwner =
-      quoteTarget.accountId === owner.id
-        ? owner
-        : await db.query.accountOwners.findFirst({
-            where: eq(accountOwners.id, quoteTarget.accountId),
-          });
-    quoteState =
-      localQuoteTargetOwner == null && quoteTarget.quoteApprovalPolicy != null
-        ? "pending"
-        : "accepted";
-  }
-  await db.transaction(async (tx) => {
-    let poll: Poll | null = null;
-    if (data.poll != null) {
-      const expires = new Date(Date.now() + data.poll.expires_in * 1000);
-      [poll] = await tx
-        .insert(polls)
+
+    const fedCtx = federation.createContext(c.req.raw, undefined);
+    const fmtOpts = {
+      url: fedCtx.url,
+      contextLoader: fedCtx.contextLoader,
+      documentLoader: await fedCtx.getDocumentLoader({
+        username: owner.handle,
+      }),
+    };
+
+    const result = await requestBody(c.req, createStatusSchema);
+
+    if (!result.success) {
+      logger.debug("Invalid request: {error}", { error: result.error.issues });
+      return c.json({ error: "invalid_request", zod_error: result.error }, 422);
+    }
+
+    const data = result.data;
+
+    const handle = owner.handle;
+    const id = uuidv7();
+    const url = fedCtx.getObjectUri(Note, { username: handle, id });
+    const { formatPostContent } = await import("../../text");
+    const content =
+      data.status == null
+        ? null
+        : await formatPostContent(db, data.status, data.language, fmtOpts);
+    const summary =
+      data.spoiler_text == null || data.spoiler_text.trim() === ""
+        ? null
+        : data.spoiler_text;
+    const mentionedIds = content?.mentions ?? [];
+    const hashtags = content?.hashtags ?? [];
+    const emojis = content?.emojis ?? {};
+    const tags = Object.fromEntries(
+      hashtags.map((tag) => [
+        tag.toLowerCase(),
+        new URL(`/tags/${encodeURIComponent(tag.substring(1))}`, c.req.url)
+          .href,
+      ]),
+    );
+    let previewCard: PreviewCard | null = null;
+    if (content?.previewLink != null) {
+      previewCard = await fetchPreviewCard(content.previewLink);
+    }
+    let quoteTargetId: Uuid | null = null;
+    let quoteTarget: typeof posts.$inferSelect | null = null;
+    if (data.quoted_status_id != null) quoteTargetId = data.quoted_status_id;
+    else if (data.quote_id != null) quoteTargetId = data.quote_id;
+    else if (content?.quoteTarget != null) {
+      const quoted = await persistPost(
+        db,
+        content.quoteTarget,
+        c.req.url,
+        fmtOpts,
+      );
+      if (quoted != null) quoteTargetId = quoted.id;
+    }
+    let effectiveVisibility = data.visibility ?? owner.visibility;
+    if (quoteTargetId != null) {
+      const validation = await validateQuoteTarget(
+        quoteTargetId,
+        owner,
+        mentionedIds,
+        effectiveVisibility,
+      );
+      if (!validation.ok) {
+        return c.json({ error: validation.error }, validation.status);
+      }
+      quoteTarget = validation.quoteTarget;
+      effectiveVisibility = validation.visibility;
+    }
+    const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
+      data.quote_approval_policy,
+    );
+    let quoteState: "accepted" | "pending" | null = null;
+    if (quoteTarget != null) {
+      const localQuoteTargetOwner =
+        quoteTarget.accountId === owner.id
+          ? owner
+          : await db.query.accountOwners.findFirst({
+              where: eq(accountOwners.id, quoteTarget.accountId),
+            });
+      quoteState =
+        localQuoteTargetOwner == null && quoteTarget.quoteApprovalPolicy != null
+          ? "pending"
+          : "accepted";
+    }
+    await db.transaction(async (tx) => {
+      let poll: Poll | null = null;
+      if (data.poll != null) {
+        const expires = new Date(Date.now() + data.poll.expires_in * 1000);
+        [poll] = await tx
+          .insert(polls)
+          .values({
+            id: uuidv7(),
+            multiple: data.poll.multiple,
+            expires,
+          })
+          .returning();
+        await tx.insert(pollOptions).values(
+          data.poll.options.map(
+            (title, index) =>
+              ({
+                pollId: poll!.id,
+                index,
+                title,
+              }) satisfies NewPollOption,
+          ),
+        );
+      }
+      const insertedRows = await tx
+        .insert(posts)
         .values({
-          id: uuidv7(),
-          multiple: data.poll.multiple,
-          expires,
+          id,
+          iri: url.href,
+          type: poll == null ? "Note" : "Question",
+          accountId: owner.id,
+          applicationId: token.applicationId,
+          replyTargetId: data.in_reply_to_id,
+          quoteTargetId,
+          quoteTargetIri: quoteTarget?.iri ?? null,
+          quoteState,
+          quoteApprovalPolicy,
+          sharingId: null,
+          visibility: effectiveVisibility,
+          summary,
+          content: data.status,
+          contentHtml: content?.html,
+          language: data.language ?? owner.language,
+          pollId: poll == null ? null : poll.id,
+          tags,
+          emojis,
+          sensitive: data.sensitive,
+          url: url.href,
+          previewCard,
+          idempotenceKey: idempotencyKey,
+          published: sql`CURRENT_TIMESTAMP`,
         })
         .returning();
-      await tx.insert(pollOptions).values(
-        data.poll.options.map(
-          (title, index) =>
-            ({
-              pollId: poll!.id,
-              index,
-              title,
-            }) satisfies NewPollOption,
-        ),
-      );
-    }
-    const insertedRows = await tx
-      .insert(posts)
-      .values({
-        id,
-        iri: url.href,
-        type: poll == null ? "Note" : "Question",
-        accountId: owner.id,
-        applicationId: token.applicationId,
-        replyTargetId: data.in_reply_to_id,
-        quoteTargetId,
-        quoteTargetIri: quoteTarget?.iri ?? null,
-        quoteState,
-        quoteApprovalPolicy,
-        sharingId: null,
-        visibility: effectiveVisibility,
-        summary,
-        content: data.status,
-        contentHtml: content?.html,
-        language: data.language ?? owner.language,
-        pollId: poll == null ? null : poll.id,
-        tags,
-        emojis,
-        sensitive: data.sensitive,
-        url: url.href,
-        previewCard,
-        idempotenceKey: idempotencyKey,
-        published: sql`CURRENT_TIMESTAMP`,
-      })
-      .returning();
-    if (data.media_ids != null && data.media_ids.length > 0) {
-      for (const mediaId of data.media_ids) {
-        const result = await tx
-          .update(media)
-          .set({ postId: id })
-          .where(and(eq(media.id, mediaId), isNull(media.postId)))
-          .returning();
-        if (result.length < 1) {
-          tx.rollback();
-          return c.json({ error: "Media not found" }, 422);
+      if (data.media_ids != null && data.media_ids.length > 0) {
+        for (const mediaId of data.media_ids) {
+          const result = await tx
+            .update(media)
+            .set({ postId: id })
+            .where(and(eq(media.id, mediaId), isNull(media.postId)))
+            .returning();
+          if (result.length < 1) {
+            tx.rollback();
+            return c.json({ error: "Media not found" }, 422);
+          }
         }
       }
+      let mentionObjects: Mention[] = [];
+      if (mentionedIds.length > 0) {
+        mentionObjects = await tx
+          .insert(mentions)
+          .values(
+            mentionedIds.map((accountId) => ({
+              postId: id,
+              accountId,
+            })),
+          )
+          .returning();
+      }
+      if (
+        quoteTargetId != null &&
+        (quoteState == null || quoteState === "accepted")
+      ) {
+        await tx
+          .update(posts)
+          .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
+          .where(eq(posts.id, quoteTargetId));
+      }
+      await updateAccountStats(tx, owner);
+      await appendPostToTimelines(tx, {
+        ...insertedRows[0],
+        sharing: null,
+        mentions: mentionObjects,
+        replyTarget:
+          insertedRows[0].replyTargetId == null
+            ? null
+            : ((await db.query.posts.findFirst({
+                where: eq(posts.id, insertedRows[0].replyTargetId),
+              })) ?? null),
+      });
+    });
+    const post = (await db.query.posts.findFirst({
+      where: eq(posts.id, id),
+      with: getPostRelations(owner.id),
+    }))!;
+    const activity = toCreate(post, fedCtx);
+    const orderingKey = getPostOrderingKey(post.iri);
+    await fedCtx.sendActivity(
+      { username: handle },
+      getRecipients(post),
+      activity,
+      {
+        orderingKey,
+        excludeBaseUris: [new URL(c.req.url)],
+      },
+    );
+    if (post.visibility !== "direct") {
+      await fedCtx.sendActivity({ username: handle }, "followers", activity, {
+        orderingKey,
+        preferSharedInbox: true,
+        excludeBaseUris: [new URL(c.req.url)],
+      });
     }
-    let mentionObjects: Mention[] = [];
-    if (mentionedIds.length > 0) {
-      mentionObjects = await tx
-        .insert(mentions)
-        .values(
+    if (post.quoteState === "pending" && post.quoteTarget != null) {
+      await fedCtx.sendActivity(
+        { username: handle },
+        {
+          id: new URL(post.quoteTarget.account.iri),
+          inboxId: new URL(post.quoteTarget.account.inboxUrl),
+          endpoints:
+            post.quoteTarget.account.sharedInboxUrl == null
+              ? null
+              : {
+                  sharedInbox: new URL(post.quoteTarget.account.sharedInboxUrl),
+                },
+        },
+        new vocab.QuoteRequest({
+          id: new URL("#quote-request", post.iri),
+          actor: new URL(owner.account.iri),
+          object: new URL(post.quoteTarget.iri),
+          instrument: toObject(post, fedCtx, {
+            includeInactiveQuoteTarget: true,
+          }),
+        }),
+        {
+          orderingKey,
+          preferSharedInbox: true,
+          excludeBaseUris: [new URL(c.req.url)],
+        },
+      );
+    }
+    return c.json(serializePost(post, owner, c.req.url));
+  },
+);
+
+app.put(
+  "/:id",
+  tokenRequired,
+  scopeRequired(["write:statuses"]),
+  withAccountOwner,
+  async (c) => {
+    const owner = c.get("accountOwner");
+
+    const id = c.req.param("id");
+    if (!isUuid(id)) {
+      return c.json({ error: "Record not found" }, 404);
+    }
+
+    const result = await requestBody(c.req, statusSchema);
+
+    if (!result.success) {
+      logger.debug("Invalid request: {error}", { error: result.error.issues });
+      return c.json({ error: "invalid_request", zod_error: result.error }, 422);
+    }
+
+    const data = result.data;
+
+    const fedCtx = federation.createContext(c.req.raw, undefined);
+    const fmtOpts = {
+      url: fedCtx.url,
+      contextLoader: fedCtx.contextLoader,
+      documentLoader: await fedCtx.getDocumentLoader({
+        username: owner.handle,
+      }),
+    };
+    const { formatPostContent } = await import("../../text");
+    const content =
+      data.status == null
+        ? null
+        : await formatPostContent(db, data.status, data.language, fmtOpts);
+    const summary =
+      data.spoiler_text == null || data.spoiler_text.trim() === ""
+        ? null
+        : data.spoiler_text;
+    const hashtags = content?.hashtags ?? [];
+    const tags = Object.fromEntries(
+      hashtags.map((tag) => [
+        tag.toLowerCase(),
+        new URL(`/tags/${encodeURIComponent(tag.substring(1))}`, c.req.url)
+          .href,
+      ]),
+    );
+    const emojis = content?.emojis ?? {};
+    let previewCard: PreviewCard | null = null;
+    if (content?.previewLink != null) {
+      previewCard = await fetchPreviewCard(content.previewLink);
+    }
+    const existingPost = await db.query.posts.findFirst({
+      where: and(eq(posts.id, id), eq(posts.accountId, owner.id)),
+    });
+    if (existingPost == null) {
+      return c.json({ error: "Record not found" }, 404);
+    }
+    const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
+      data.quote_approval_policy ?? existingPost.quoteApprovalPolicy,
+    );
+    await db.transaction(async (tx) => {
+      const result = await tx
+        .update(posts)
+        .set({
+          content: data.status,
+          contentHtml: content?.html,
+          sensitive: data.sensitive,
+          summary,
+          language: data.language ?? owner.language,
+          tags,
+          emojis,
+          previewCard,
+          quoteApprovalPolicy,
+          updated: new Date(),
+        })
+        .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)))
+        .returning();
+      if (result.length < 1) return c.json({ error: "Record not found" }, 404);
+      await tx.delete(mentions).where(eq(mentions.postId, id));
+      const mentionedIds = content?.mentions ?? [];
+      if (mentionedIds.length > 0) {
+        await tx.insert(mentions).values(
           mentionedIds.map((accountId) => ({
             postId: id,
             accountId,
           })),
-        )
-        .returning();
-    }
-    if (
-      quoteTargetId != null &&
-      (quoteState == null || quoteState === "accepted")
-    ) {
-      await tx
-        .update(posts)
-        .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
-        .where(eq(posts.id, quoteTargetId));
-    }
-    await updateAccountStats(tx, owner);
-    await appendPostToTimelines(tx, {
-      ...insertedRows[0],
-      sharing: null,
-      mentions: mentionObjects,
-      replyTarget:
-        insertedRows[0].replyTargetId == null
-          ? null
-          : ((await db.query.posts.findFirst({
-              where: eq(posts.id, insertedRows[0].replyTargetId),
-            })) ?? null),
+        );
+      }
     });
-  });
-  const post = (await db.query.posts.findFirst({
-    where: eq(posts.id, id),
-    with: getPostRelations(owner.id),
-  }))!;
-  const activity = toCreate(post, fedCtx);
-  const orderingKey = getPostOrderingKey(post.iri);
-  await fedCtx.sendActivity(
-    { username: handle },
-    getRecipients(post),
-    activity,
-    {
-      orderingKey,
-      excludeBaseUris: [new URL(c.req.url)],
-    },
-  );
-  if (post.visibility !== "direct") {
-    await fedCtx.sendActivity({ username: handle }, "followers", activity, {
-      orderingKey,
-      preferSharedInbox: true,
-      excludeBaseUris: [new URL(c.req.url)],
+    const post = await db.query.posts.findFirst({
+      where: eq(posts.id, id),
+      with: getPostRelations(owner.id),
     });
-  }
-  if (post.quoteState === "pending" && post.quoteTarget != null) {
+    const activity = toUpdate(post!, fedCtx);
+    const orderingKey = getPostOrderingKey(post!.iri);
     await fedCtx.sendActivity(
-      { username: handle },
+      { username: owner.handle },
+      getRecipients(post!),
+      activity,
       {
-        id: new URL(post.quoteTarget.account.iri),
-        inboxId: new URL(post.quoteTarget.account.inboxUrl),
-        endpoints:
-          post.quoteTarget.account.sharedInboxUrl == null
-            ? null
-            : {
-                sharedInbox: new URL(post.quoteTarget.account.sharedInboxUrl),
-              },
+        orderingKey,
+        excludeBaseUris: [new URL(c.req.url)],
       },
-      new vocab.QuoteRequest({
-        id: new URL("#quote-request", post.iri),
-        actor: new URL(owner.account.iri),
-        object: new URL(post.quoteTarget.iri),
-        instrument: toObject(post, fedCtx, {
-          includeInactiveQuoteTarget: true,
-        }),
-      }),
+    );
+    await fedCtx.sendActivity(
+      { username: owner.handle },
+      "followers",
+      activity,
       {
         orderingKey,
         preferSharedInbox: true,
         excludeBaseUris: [new URL(c.req.url)],
       },
     );
-  }
-  return c.json(serializePost(post, owner, c.req.url));
-});
-
-app.put("/:id", tokenRequired, scopeRequired(["write:statuses"]), async (c) => {
-  const token = c.get("token");
-  const owner = token.accountOwner;
-  if (owner == null) {
-    return c.json({ error: "This method requires an authenticated user" }, 422);
-  }
-
-  const id = c.req.param("id");
-  if (!isUuid(id)) {
-    return c.json({ error: "Record not found" }, 404);
-  }
-
-  const result = await requestBody(c.req, statusSchema);
-
-  if (!result.success) {
-    logger.debug("Invalid request: {error}", { error: result.error.issues });
-    return c.json({ error: "invalid_request", zod_error: result.error }, 422);
-  }
-
-  const data = result.data;
-
-  const fedCtx = federation.createContext(c.req.raw, undefined);
-  const fmtOpts = {
-    url: fedCtx.url,
-    contextLoader: fedCtx.contextLoader,
-    documentLoader: await fedCtx.getDocumentLoader({
-      username: owner.handle,
-    }),
-  };
-  const { formatPostContent } = await import("../../text");
-  const content =
-    data.status == null
-      ? null
-      : await formatPostContent(db, data.status, data.language, fmtOpts);
-  const summary =
-    data.spoiler_text == null || data.spoiler_text.trim() === ""
-      ? null
-      : data.spoiler_text;
-  const hashtags = content?.hashtags ?? [];
-  const tags = Object.fromEntries(
-    hashtags.map((tag) => [
-      tag.toLowerCase(),
-      new URL(`/tags/${encodeURIComponent(tag.substring(1))}`, c.req.url).href,
-    ]),
-  );
-  const emojis = content?.emojis ?? {};
-  let previewCard: PreviewCard | null = null;
-  if (content?.previewLink != null) {
-    previewCard = await fetchPreviewCard(content.previewLink);
-  }
-  const existingPost = await db.query.posts.findFirst({
-    where: and(eq(posts.id, id), eq(posts.accountId, owner.id)),
-  });
-  if (existingPost == null) {
-    return c.json({ error: "Record not found" }, 404);
-  }
-  const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
-    data.quote_approval_policy ?? existingPost.quoteApprovalPolicy,
-  );
-  await db.transaction(async (tx) => {
-    const result = await tx
-      .update(posts)
-      .set({
-        content: data.status,
-        contentHtml: content?.html,
-        sensitive: data.sensitive,
-        summary,
-        language: data.language ?? owner.language,
-        tags,
-        emojis,
-        previewCard,
-        quoteApprovalPolicy,
-        updated: new Date(),
-      })
-      .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)))
-      .returning();
-    if (result.length < 1) return c.json({ error: "Record not found" }, 404);
-    await tx.delete(mentions).where(eq(mentions.postId, id));
-    const mentionedIds = content?.mentions ?? [];
-    if (mentionedIds.length > 0) {
-      await tx.insert(mentions).values(
-        mentionedIds.map((accountId) => ({
-          postId: id,
-          accountId,
-        })),
-      );
-    }
-  });
-  const post = await db.query.posts.findFirst({
-    where: eq(posts.id, id),
-    with: getPostRelations(owner.id),
-  });
-  const activity = toUpdate(post!, fedCtx);
-  const orderingKey = getPostOrderingKey(post!.iri);
-  await fedCtx.sendActivity(
-    { username: owner.handle },
-    getRecipients(post!),
-    activity,
-    {
-      orderingKey,
-      excludeBaseUris: [new URL(c.req.url)],
-    },
-  );
-  await fedCtx.sendActivity({ username: owner.handle }, "followers", activity, {
-    orderingKey,
-    preferSharedInbox: true,
-    excludeBaseUris: [new URL(c.req.url)],
-  });
-  return c.json(serializePost(post!, owner, c.req.url));
-});
+    return c.json(serializePost(post!, owner, c.req.url));
+  },
+);
 
 const interactionPolicySchema = z.object({
   quote_approval_policy: quoteApprovalPolicySchema,
@@ -665,15 +678,9 @@ app.put(
   "/:id/interaction_policy",
   tokenRequired,
   scopeRequired(["write:statuses"]),
+  withAccountOwner,
   async (c) => {
-    const token = c.get("token");
-    const owner = token.accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
 
@@ -757,14 +764,9 @@ app.delete(
   "/:id",
   tokenRequired,
   scopeRequired(["write:statuses"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
     const post = await db.query.posts.findFirst({
@@ -896,14 +898,9 @@ app.post(
   "/:id/favourite",
   tokenRequired,
   scopeRequired(["write:favourites"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const postId = c.req.param("id");
     if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
     let like: Like;
@@ -953,14 +950,9 @@ app.post(
   "/:id/unfavourite",
   tokenRequired,
   scopeRequired(["write:favourites"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const postId = c.req.param("id");
     if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
     const result = await db
@@ -1009,14 +1001,8 @@ app.get(
   "/:id/favourited_by",
   tokenRequired,
   scopeRequired(["read:statuses"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
     const likeList = await db.query.likes.findMany({
@@ -1044,15 +1030,10 @@ app.post(
   "/:id/reblog",
   tokenRequired,
   scopeRequired(["write:statuses"]),
+  withAccountOwner,
   async (c) => {
     const token = c.get("token");
-    const owner = token.accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const originalPostId = c.req.param("id");
     if (!isUuid(originalPostId)) {
       return c.json({ error: "Record not found" }, 404);
@@ -1135,14 +1116,9 @@ app.post(
   "/:id/unreblog",
   tokenRequired,
   scopeRequired(["write:statuses"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const originalPostId = c.req.param("id");
     if (!isUuid(originalPostId)) {
       return c.json({ error: "Record not found" }, 404);
@@ -1200,14 +1176,8 @@ app.get(
   "/:id/reblogged_by",
   tokenRequired,
   scopeRequired(["read:statuses"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
     const post = await db.query.posts.findFirst({
@@ -1243,14 +1213,9 @@ app.post(
   "/:id/bookmark",
   tokenRequired,
   scopeRequired(["write:bookmarks"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const postId = c.req.param("id");
     if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
     try {
@@ -1273,14 +1238,9 @@ app.post(
   "/:id/unbookmark",
   tokenRequired,
   scopeRequired(["write:bookmarks"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const postId = c.req.param("id");
     if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
     const result = await db
@@ -1307,14 +1267,9 @@ app.post(
   "/:id/pin",
   tokenRequired,
   scopeRequired(["write:accounts"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const postId = c.req.param("id");
     if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
     const post = await db.query.posts.findFirst({
@@ -1368,14 +1323,9 @@ app.post(
   "/:id/unpin",
   tokenRequired,
   scopeRequired(["write:accounts"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const postId = c.req.param("id");
     if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
     const result = await db
@@ -1419,12 +1369,12 @@ app.post(
 );
 
 async function addEmojiReaction(
-  c: Context<{ Variables: Variables }, "/:id/emoji_reactions/:emoji">,
+  c: Context<
+    { Variables: AccountOwnerVariables },
+    "/:id/emoji_reactions/:emoji"
+  >,
 ): Promise<Response | TypedResponse> {
-  const owner = c.get("token").accountOwner;
-  if (owner == null) {
-    return c.json({ error: "This method requires an authenticated user" }, 422);
-  }
+  const owner = c.get("accountOwner");
   const fedCtx = federation.createContext(c.req.raw, undefined);
   const postId = c.req.param("id");
   if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
@@ -1552,6 +1502,7 @@ app.put(
   "/:id/emoji_reactions/:emoji",
   tokenRequired,
   scopeRequired(["write:favourites"]),
+  withAccountOwner,
   addEmojiReaction,
 );
 
@@ -1559,16 +1510,17 @@ app.post(
   "/:id/react/:emoji",
   tokenRequired,
   scopeRequired(["write:favourites"]),
+  withAccountOwner,
   addEmojiReaction,
 );
 
 async function removeEmojiReaction(
-  c: Context<{ Variables: Variables }, "/:id/emoji_reactions/:emoji">,
+  c: Context<
+    { Variables: AccountOwnerVariables },
+    "/:id/emoji_reactions/:emoji"
+  >,
 ): Promise<Response | TypedResponse> {
-  const owner = c.get("token").accountOwner;
-  if (owner == null) {
-    return c.json({ error: "This method requires an authenticated user" }, 422);
-  }
+  const owner = c.get("accountOwner");
   const fedCtx = federation.createContext(c.req.raw, undefined);
   const postId = c.req.param("id");
   if (!isUuid(postId)) return c.json({ error: "Record not found" }, 404);
@@ -1655,6 +1607,7 @@ app.delete(
   "/:id/emoji_reactions/:emoji",
   tokenRequired,
   scopeRequired(["write:favourites"]),
+  withAccountOwner,
   removeEmojiReaction,
 );
 
@@ -1662,6 +1615,7 @@ app.post(
   "/:id/unreact/:emoji",
   tokenRequired,
   scopeRequired(["write:favourites"]),
+  withAccountOwner,
   removeEmojiReaction,
 );
 
@@ -1731,14 +1685,9 @@ app.post(
   "/:id/quotes/:quoting_status_id/revoke",
   tokenRequired,
   scopeRequired(["write:statuses"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
     const id = c.req.param("id");
     const quotingStatusId = c.req.param("quoting_status_id");
     if (!isUuid(id) || !isUuid(quotingStatusId)) {

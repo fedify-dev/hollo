@@ -30,7 +30,8 @@ import { persistPost } from "../../federation/post";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import { HANDLE_PATTERN } from "../../patterns";
 import { type Account, accounts, posts } from "../../schema";
@@ -40,12 +41,18 @@ import { postMedia } from "../v1/media";
 import instance from "./instance";
 import notificationsRoutes from "./notifications";
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
 app.route("/instance", instance);
 app.route("/notifications", notificationsRoutes);
 
-app.post("/media", tokenRequired, scopeRequired(["write:media"]), postMedia);
+app.post(
+  "/media",
+  tokenRequired,
+  scopeRequired(["write:media"]),
+  withAccountOwner,
+  postMedia,
+);
 
 app.get(
   "/suggestions",
@@ -60,6 +67,7 @@ app.get(
   "/search",
   tokenRequired,
   scopeRequired(["read:search"]),
+  withAccountOwner,
   zValidator(
     "query",
     z.object({
@@ -82,8 +90,7 @@ app.get(
   ),
   async (c) => {
     const logger = getLogger(["hollo", "api", "v2", "search"]);
-    const owner = c.get("token").accountOwner;
-    if (owner == null) return c.json({ error: "invalid_token" }, 401);
+    const owner = c.get("accountOwner");
     const query = c.req.valid("query");
     const q = query.q.trim();
     // Check if query is a URL (for post search optimization)

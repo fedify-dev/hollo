@@ -11,7 +11,8 @@ import { getPostRelations, serializePost } from "../../entities/status";
 import {
   scopeRequired,
   tokenRequired,
-  type Variables,
+  withAccountOwner,
+  type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import {
   accounts,
@@ -25,7 +26,7 @@ import type { Uuid } from "../../uuid";
 
 const logger = getLogger(["hollo", "api", "v2", "notifications"]);
 
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
 // Format notification ID to match v1 API format for consistency
 // This ensures markers work correctly across v1 and v2 APIs
@@ -44,14 +45,9 @@ app.get(
   "/",
   tokenRequired,
   scopeRequired(["read:notifications"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     // Parse query parameters
     let types = c.req.queries("types[]") as NotificationType[];
@@ -299,14 +295,9 @@ app.get(
   "/unread_count",
   tokenRequired,
   scopeRequired(["read:notifications"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     const limit = Math.min(
       Number.parseInt(c.req.query("limit") ?? "100", 10),
@@ -344,14 +335,9 @@ app.get(
   "/:group_key",
   tokenRequired,
   scopeRequired(["read:notifications"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     const groupKey = c.req.param("group_key");
 
@@ -445,14 +431,9 @@ app.post(
   "/:group_key/dismiss",
   tokenRequired,
   scopeRequired(["write:notifications"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     const groupKey = c.req.param("group_key");
 
@@ -491,14 +472,9 @@ app.get(
   "/:group_key/accounts",
   tokenRequired,
   scopeRequired(["read:notifications"]),
+  withAccountOwner,
   async (c) => {
-    const owner = c.get("token").accountOwner;
-    if (owner == null) {
-      return c.json(
-        { error: "This method requires an authenticated user" },
-        422,
-      );
-    }
+    const owner = c.get("accountOwner");
 
     const groupKey = c.req.param("group_key");
 

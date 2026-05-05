@@ -94,6 +94,12 @@ To be released.
         are removed; UnoCSS emits a single _src/public/uno.css_ whose
         URL is cache-busted by file mtime.
 
+ -  Improved the performance of authenticated API requests by replacing the
+    complex multi-table JOIN query in the `tokenRequired` middleware with a
+    lightweight single-table lookup.  Account owner data is now fetched on
+    demand only by routes that actually need it, and requests that fail scope
+    validation no longer touch the accounts table at all.  [[#127], [#467]]
+
  -  Fixed a bug where incoming ActivityPub posts with timestamps more than
     12 hours in the future were accepted and stuck to the top of the
     federated timeline, enabling timeline manipulation via forged timestamps.
@@ -107,11 +113,13 @@ To be released.
 
 [FEP-044f]: https://w3id.org/fep/044f
 [#67]: https://github.com/fedify-dev/hollo/issues/67
+[#127]: https://github.com/fedify-dev/hollo/issues/127
 [#457]: https://github.com/fedify-dev/hollo/pull/457
 [#458]: https://github.com/fedify-dev/hollo/pull/458
 [#459]: https://github.com/fedify-dev/hollo/pull/459
 [#460]: https://github.com/fedify-dev/hollo/pull/460
 [#466]: https://github.com/fedify-dev/hollo/pull/466
+[#467]: https://github.com/fedify-dev/hollo/pull/467
 
 
 Version 0.8.1
