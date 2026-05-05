@@ -48,17 +48,17 @@ importers:
         specifier: ^0.5.0
         version: 0.5.1
       '@logtape/drizzle-orm':
-        specifier: ~2.0.5
-        version: 2.0.5(@logtape/logtape@2.0.5)
+        specifier: ~2.0.7
+        version: 2.0.7(@logtape/logtape@2.0.7)
       '@logtape/file':
-        specifier: ~2.0.5
-        version: 2.0.5(@logtape/logtape@2.0.5)
+        specifier: ~2.0.7
+        version: 2.0.7(@logtape/logtape@2.0.7)
       '@logtape/logtape':
-        specifier: ~2.0.5
-        version: 2.0.5
+        specifier: ~2.0.7
+        version: 2.0.7
       '@logtape/sentry':
-        specifier: ~2.0.5
-        version: 2.0.5(@logtape/logtape@2.0.5)(@sentry/core@10.48.0)
+        specifier: ~2.0.7
+        version: 2.0.7(@logtape/logtape@2.0.7)(@sentry/core@10.48.0)
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -1675,23 +1675,23 @@ packages:
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
 
-  '@logtape/drizzle-orm@2.0.5':
-    resolution: {integrity: sha512-woM4x9J7B4XzoQTY1bzR6uJVlqezn6oY6flV+rDD6lsuwP2llNVvptgCOGjRutDye+6WZldSUIGe7UFK/faBzA==}
+  '@logtape/drizzle-orm@2.0.7':
+    resolution: {integrity: sha512-JndELP5Q1impvcezL6GrlX0AJX+6unskv8lgCL/9Rgcx/9ppsi9OjfyA27E38HO2r803Tm4c2Kj+KL0NcXzBqA==}
     peerDependencies:
-      '@logtape/logtape': ^2.0.5
+      '@logtape/logtape': ^2.0.7
 
-  '@logtape/file@2.0.5':
-    resolution: {integrity: sha512-SJ2UZ00IJptilqDMFwPIGmZLMTYNZbP7k4+7aBfP5DoLVifSmQoaxP2HtXMdExXhGP4/JrFepLE86ryPBUKB/Q==}
+  '@logtape/file@2.0.7':
+    resolution: {integrity: sha512-xLTtspMP0Nax6r8FdCo5K5fljf42/CR8joS+xxqrWiGi1wRfuqWZ+lhk560hWznSLblB1nIOtkruNI83cV3l+Q==}
     peerDependencies:
-      '@logtape/logtape': ^2.0.5
+      '@logtape/logtape': ^2.0.7
 
-  '@logtape/logtape@2.0.5':
-    resolution: {integrity: sha512-UizDkh20ZPJVOddRxG1F77WhHdlNl/sbQgoO8T534R7XvUBMAJ9En9f35u+meW2tRsNLvjz6R87Zanwf53tspQ==}
+  '@logtape/logtape@2.0.7':
+    resolution: {integrity: sha512-SUkjkEIfQ3zCadlLi8rfGfe4l/JRKNbp248bfLeowyUFs9KZME/k8y+5sugWYZet/gMYnmwCc9xa3J+kjDjSSQ==}
 
-  '@logtape/sentry@2.0.5':
-    resolution: {integrity: sha512-cIrbKIfWZatAKbMbZmbHL6rmsZJl/tX3k6rJHzZQtEYuMdKPXtpyQS6XTVsfopiNr0msA6n3DOqdzxU+DtMfqw==}
+  '@logtape/sentry@2.0.7':
+    resolution: {integrity: sha512-UEas9u054DPsLLwNtw1yYHlGJHvHlooK09uvlowyHWj+WTRQaLHxYrphLzGidDrDyp+RqJCs+U4VXLrmNuZ3GQ==}
     peerDependencies:
-      '@logtape/logtape': ^2.0.5
+      '@logtape/logtape': ^2.0.7
       '@sentry/core': '>=8.0.0'
 
   '@mdx-js/mdx@3.1.1':
@@ -6487,14 +6487,14 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.973.8
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.973.8
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
@@ -6502,7 +6502,7 @@ snapshots:
     dependencies:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.973.8
+      '@aws-sdk/types': 3.713.0
       '@aws-sdk/util-locate-window': 3.965.5
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -7926,7 +7926,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.2.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/context-async-hooks': 2.7.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core': 2.7.0(@opentelemetry/api@1.9.1)
@@ -7939,7 +7939,7 @@ snapshots:
       '@fedify/vocab-runtime': 2.2.0
       '@fedify/webfinger': 2.2.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.7.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.7.0(@opentelemetry/api@1.9.1)
@@ -7982,12 +7982,12 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.2.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       postgres: 3.4.8
 
   '@fedify/vocab-runtime@2.2.0':
     dependencies:
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -8008,7 +8008,7 @@ snapshots:
       '@fedify/vocab-tools': 2.2.0
       '@fedify/webfinger': 2.2.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.7
@@ -8019,7 +8019,7 @@ snapshots:
   '@fedify/webfinger@2.2.0':
     dependencies:
       '@fedify/vocab-runtime': 2.2.0
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       '@opentelemetry/api': 1.9.1
       es-toolkit: 1.43.0
 
@@ -8211,19 +8211,19 @@ snapshots:
     dependencies:
       jsbi: 4.3.0
 
-  '@logtape/drizzle-orm@2.0.5(@logtape/logtape@2.0.5)':
+  '@logtape/drizzle-orm@2.0.7(@logtape/logtape@2.0.7)':
     dependencies:
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
 
-  '@logtape/file@2.0.5(@logtape/logtape@2.0.5)':
+  '@logtape/file@2.0.7(@logtape/logtape@2.0.7)':
     dependencies:
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
 
-  '@logtape/logtape@2.0.5': {}
+  '@logtape/logtape@2.0.7': {}
 
-  '@logtape/sentry@2.0.5(@logtape/logtape@2.0.5)(@sentry/core@10.48.0)':
+  '@logtape/sentry@2.0.7(@logtape/logtape@2.0.7)(@sentry/core@10.48.0)':
     dependencies:
-      '@logtape/logtape': 2.0.5
+      '@logtape/logtape': 2.0.7
       '@sentry/core': 10.48.0
 
   '@mdx-js/mdx@3.1.1':
