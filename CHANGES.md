@@ -7,6 +7,16 @@ Version 0.10.0
 To be released.
 
 
+Version 0.9.1
+-------------
+
+Released on May 21, 2026.
+
+ -  Upgraded Fedify to 2.2.3 to fix a security vulnerability in Linked Data
+    Signature verification that could allow certain signed activities to be
+    interpreted differently than intended.  [[CVE-2026-42462]]
+
+
 Version 0.9.0
 -------------
 
@@ -427,6 +437,16 @@ Released on May 20, 2026.
 [#493]: https://github.com/fedify-dev/hollo/pull/493
 
 
+Version 0.8.6
+-------------
+
+Released on May 21, 2026.
+
+ -  Upgraded Fedify to 2.1.14 to fix a security vulnerability in Linked Data
+    Signature verification that could allow certain signed activities to be
+    interpreted differently than intended.  [[CVE-2026-42462]]
+
+
 Version 0.8.5
 -------------
 
@@ -752,6 +772,18 @@ Released on April 27, 2026.
 [#445]: https://github.com/fedify-dev/hollo/issues/445
 [#447]: https://github.com/fedify-dev/hollo/pull/447
 [#448]: https://github.com/fedify-dev/hollo/pull/448
+
+
+Version 0.7.17
+--------------
+
+Released on May 21, 2026.
+
+ -  Upgraded Fedify to 1.10.10 to fix a security vulnerability in Linked Data
+    Signature verification that could allow certain signed activities to be
+    interpreted differently than intended.  [[CVE-2026-42462]]
+
+[CVE-2026-42462]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9rfg-v8g9-9367
 
 
 Version 0.7.16
