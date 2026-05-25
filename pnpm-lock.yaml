@@ -91,8 +91,8 @@ importers:
         specifier: ^13.3.0
         version: 13.3.0
       '@supercharge/promise-pool':
-        specifier: ^3.2.0
-        version: 3.2.0
+        specifier: ^3.3.0
+        version: 3.3.0
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
@@ -3236,8 +3236,8 @@ packages:
     resolution: {integrity: sha512-O/IEdcCUKkubz60tFbGA7ceITTAJsty+lBjNoorP4Z6XRqaFb/OjQjZODophEcuq68nKm6/0r+6/lLQ+XVpk8g==}
     engines: {node: '>=18.0.0'}
 
-  '@supercharge/promise-pool@3.2.0':
-    resolution: {integrity: sha512-pj0cAALblTZBPtMltWOlZTQSLT07jIaFNeM8TWoJD1cQMgDB9mcMlVMoetiB35OzNJpqQ2b+QEtwiR9f20mADg==}
+  '@supercharge/promise-pool@3.3.0':
+    resolution: {integrity: sha512-qGzCltMN05ohRRQAXB8TPWt+0Coz9Va266gr9nYN1qc/f/EIaup3VRg7b59mtRaeKTRcxreF20l/udCM/gOqNg==}
     engines: {node: '>=8'}
 
   '@tokenizer/inflate@0.4.1':
@@ -10077,7 +10077,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@supercharge/promise-pool@3.2.0': {}
+  '@supercharge/promise-pool@3.3.0': {}
 
   '@tokenizer/inflate@0.4.1':
     dependencies:
