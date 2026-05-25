@@ -105,7 +105,7 @@
     "oxlint": "^1.65.0",
     "skills-npm": "^1.1.1",
     "timekeeper": "^2.3.1",
-    "tsdown": "^0.21.10",
+    "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
     "unocss": "^66.6.8",
     "vitest": "^3.1.4"
