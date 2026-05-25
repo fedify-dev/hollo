@@ -7,6 +7,20 @@ Version 0.10.0
 To be released.
 
 
+Version 0.9.2
+-------------
+
+Released on May 25, 2026.
+
+ -  Fixed a bug where the media proxy returned `404 Not Found` for remote media
+    whose upstream server labeled the payload as `application/octet-stream` or
+    `binary/octet-stream` even though the bytes were valid image, video,
+    or audio data.  The proxy now sniffs magic bytes to recover the real
+    MIME type in these cases.  [[#498]]
+
+[#498]: https://github.com/fedify-dev/hollo/issues/498
+
+
 Version 0.9.1
 -------------
 
@@ -15,6 +29,8 @@ Released on May 21, 2026.
  -  Upgraded Fedify to 2.2.3 to fix a security vulnerability in Linked Data
     Signature verification that could allow certain signed activities to be
     interpreted differently than intended.  [[CVE-2026-42462]]
+
+[CVE-2026-42462]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9rfg-v8g9-9367
 
 
 Version 0.9.0
@@ -782,8 +798,6 @@ Released on May 21, 2026.
  -  Upgraded Fedify to 1.10.10 to fix a security vulnerability in Linked Data
     Signature verification that could allow certain signed activities to be
     interpreted differently than intended.  [[CVE-2026-42462]]
-
-[CVE-2026-42462]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9rfg-v8g9-9367
 
 
 Version 0.7.16

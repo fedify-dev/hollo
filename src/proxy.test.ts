@@ -174,6 +174,116 @@ describe.sequential("proxy route", () => {
     expect(response.status).toBe(404);
   });
 
+  it("proxies octet-stream responses whose magic bytes identify them as an image", async () => {
+    expect.assertions(3);
+
+    // Minimal valid 1×1 PNG (67 bytes)
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+      0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+      0x00, 0x00, 0x02, 0x00, 0x01, 0xe2, 0x21, 0xbc, 0x33, 0x00, 0x00, 0x00,
+      0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]);
+    fetchMock.mockResolvedValue(
+      buildResponse(png, { contentType: "application/octet-stream" }),
+    );
+
+    const app = createProxyApp("proxy");
+    const { sig, b64url } = signProxyUrl("https://remote.example/avatar");
+
+    const response = await app.request(`/${sig}/${b64url}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/png");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(png);
+  });
+
+  it("rejects octet-stream responses whose magic bytes are not a recognized media type", async () => {
+    expect.assertions(1);
+
+    fetchMock.mockResolvedValue(
+      buildResponse("not image data at all", {
+        contentType: "application/octet-stream",
+      }),
+    );
+
+    const app = createProxyApp("proxy");
+    const { sig, b64url } = signProxyUrl("https://remote.example/unknown");
+
+    const response = await app.request(`/${sig}/${b64url}`);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects binary/octet-stream responses whose magic bytes are not a recognized media type", async () => {
+    expect.assertions(1);
+
+    fetchMock.mockResolvedValue(
+      buildResponse("not image data at all", {
+        contentType: "binary/octet-stream",
+      }),
+    );
+
+    const app = createProxyApp("proxy");
+    const { sig, b64url } = signProxyUrl("https://remote.example/unknown");
+
+    const response = await app.request(`/${sig}/${b64url}`);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("probes magic bytes via a head-range request for mid-range octet-stream 206 responses", async () => {
+    expect.assertions(4);
+
+    // Minimal 1×1 PNG — returned by the probe (bytes 0-66).
+    const pngProbe = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+      0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+      0x00, 0x00, 0x02, 0x00, 0x01, 0xe2, 0x21, 0xbc, 0x33, 0x00, 0x00, 0x00,
+      0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]);
+    // The actual requested slice (bytes 5000-5999).
+    const partialBody = new Uint8Array(1000).fill(42);
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(partialBody.buffer as ArrayBuffer, {
+          status: 206,
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Range": "bytes 5000-5999/100000",
+            "Accept-Ranges": "bytes",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(pngProbe.buffer as ArrayBuffer, {
+          status: 206,
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Range": "bytes 0-66/100000",
+          },
+        }),
+      );
+
+    const app = createProxyApp("proxy");
+    const url = "https://remote.example/image";
+    const { sig, b64url } = signProxyUrl(url);
+
+    const response = await app.request(`/${sig}/${b64url}`, {
+      headers: { Range: "bytes=5000-5999" },
+    });
+
+    expect(response.status).toBe(206);
+    expect(response.headers.get("Content-Type")).toBe("image/png");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(partialBody);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("propagates failed upstream status as 404", async () => {
     expect.assertions(1);
 

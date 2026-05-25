@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { getLogger } from "@logtape/logtape";
+import { fileTypeFromBuffer } from "file-type";
 // cSpell: ignore ssrfcheck
 import { isSSRFSafeURL } from "ssrfcheck";
 
@@ -23,6 +24,13 @@ const ALLOWED_TYPE_PREFIXES = ["image/", "video/", "audio/"];
 // with the right Content-Type.  Most fediverse media is PNG / JPEG / WebP /
 // MP4, so the loss is small.
 const BLOCKED_CONTENT_TYPES = new Set(["image/svg+xml", "image/svg"]);
+// Some servers (including certain S3-backed object stores) serve all blobs as
+// octet-stream regardless of actual content.  When we see one of these opaque
+// types we fall through to magic-byte sniffing before deciding to reject.
+const OPAQUE_CONTENT_TYPES = new Set([
+  "application/octet-stream",
+  "binary/octet-stream",
+]);
 
 export interface ProxyCacheEntry {
   body: Uint8Array;
@@ -54,6 +62,15 @@ function isAllowedContentType(value: string): boolean {
   const lower = value.toLowerCase().split(";", 1)[0].trim();
   if (BLOCKED_CONTENT_TYPES.has(lower)) return false;
   return ALLOWED_TYPE_PREFIXES.some((p) => lower.startsWith(p));
+}
+
+// Returns the first byte of a Content-Range response header (e.g.
+// "bytes 5000-5999/100000" → 5000).  Returns 0 for missing or malformed
+// headers so callers can treat "unknown" as "starts at beginning".
+function contentRangeStartByte(header: string | null): number {
+  if (header == null) return 0;
+  const m = header.match(/^bytes\s+(\d+)-/i);
+  return m == null ? 0 : Number.parseInt(m[1], 10);
 }
 
 function parseProxyCacheMetadata(
@@ -256,7 +273,9 @@ export async function fetchProxyMedia(
   const status = upstream.status === 206 ? 206 : 200;
   const contentType =
     upstream.headers.get("Content-Type") ?? "application/octet-stream";
-  if (!isAllowedContentType(contentType)) {
+  const normalizedType = contentType.toLowerCase().split(";", 1)[0].trim();
+  const isOpaque = OPAQUE_CONTENT_TYPES.has(normalizedType);
+  if (!isAllowedContentType(contentType) && !isOpaque) {
     await discardBody(upstream);
     return null;
   }
@@ -277,10 +296,41 @@ export async function fetchProxyMedia(
   const body = await readBoundedBody(upstream, MAX_BYTES);
   if (body == null) return null;
 
+  let effectiveContentType = contentType;
+  if (isOpaque) {
+    // The upstream labeled the response as a generic binary blob.  Sniff the
+    // magic bytes to recover the real type so we can apply the same allow/deny
+    // rules as explicitly-typed responses.
+    let sniffBuffer = body;
+    const rangeStart = contentRangeStartByte(
+      upstream.headers.get("Content-Range"),
+    );
+    if (status === 206 && rangeStart > 0) {
+      // The partial body starts mid-file so the file signature is absent.
+      // Issue a small range probe to recover the leading bytes.
+      const probe = await fetchWithSSRFAwareRedirects(url, signal, {
+        ...requestHeaders,
+        Range: "bytes=0-4099",
+      });
+      if (probe == null || !probe.ok) {
+        if (probe != null) await discardBody(probe);
+        return null;
+      }
+      const probeBody = await readBoundedBody(probe, 4100);
+      if (probeBody == null) return null;
+      sniffBuffer = probeBody;
+    }
+    const detected = await fileTypeFromBuffer(sniffBuffer);
+    if (detected == null || !isAllowedContentType(detected.mime)) {
+      return null;
+    }
+    effectiveContentType = detected.mime;
+  }
+
   return {
     status,
     body,
-    contentType,
+    contentType: effectiveContentType,
     contentRange: upstream.headers.get("Content-Range"),
     acceptRanges: upstream.headers.get("Accept-Ranges"),
   };
