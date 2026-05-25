@@ -47,7 +47,7 @@ importers:
         version: 1.19.13(hono@4.12.21)
       '@hono/zod-validator':
         specifier: ^0.7.6
-        version: 0.7.6(hono@4.12.21)(zod@4.3.5)
+        version: 0.7.6(hono@4.12.21)(zod@4.4.3)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -110,7 +110,7 @@ importers:
         version: 1.0.0-rc.2
       drizzle-orm:
         specifier: 1.0.0-rc.2
-        version: 1.0.0-rc.2(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(bun-types@1.1.37)(postgres@3.4.9)(zod@4.3.5)
+        version: 1.0.0-rc.2(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(bun-types@1.1.37)(postgres@3.4.9)(zod@4.4.3)
       es-toolkit:
         specifier: ^1.46.1
         version: 1.46.1
@@ -172,8 +172,8 @@ importers:
         specifier: ^1.0.15
         version: 1.0.15
       zod:
-        specifier: ^4.3.5
-        version: 4.3.5
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@dotenvx/dotenvx':
         specifier: ^1.52.0
@@ -260,8 +260,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.4.3
+        version: 4.4.3
 
 packages:
 
@@ -6447,11 +6447,8 @@ packages:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
 
-  zod@4.3.5:
-    resolution: {integrity: sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==}
-
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -6615,7 +6612,7 @@ snapshots:
     dependencies:
       sitemap: 9.0.1
       stream-replace-string: 2.0.0
-      zod: 4.3.6
+      zod: 4.4.3
 
   '@astrojs/starlight@0.38.4(astro@6.3.6(@types/node@25.9.1)(jiti@2.7.0)(rollup@4.60.4)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
@@ -8141,10 +8138,10 @@ snapshots:
     dependencies:
       hono: 4.12.21
 
-  '@hono/zod-validator@0.7.6(hono@4.12.21)(zod@4.3.5)':
+  '@hono/zod-validator@0.7.6(hono@4.12.21)(zod@4.4.3)':
     dependencies:
       hono: 4.12.21
-      zod: 4.3.5
+      zod: 4.4.3
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -10687,7 +10684,7 @@ snapshots:
       vitefu: 1.1.3(vite@7.3.3(@types/node@25.9.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
       xxhash-wasm: 1.1.0
       yargs-parser: 22.0.0
-      zod: 4.3.6
+      zod: 4.4.3
     optionalDependencies:
       sharp: 0.34.5
     transitivePeerDependencies:
@@ -11020,13 +11017,13 @@ snapshots:
       get-tsconfig: 4.14.0
       jiti: 2.7.0
 
-  drizzle-orm@1.0.0-rc.2(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(bun-types@1.1.37)(postgres@3.4.9)(zod@4.3.5):
+  drizzle-orm@1.0.0-rc.2(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(bun-types@1.1.37)(postgres@3.4.9)(zod@4.4.3):
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/pg': 8.15.6
       bun-types: 1.1.37
       postgres: 3.4.9
-      zod: 4.3.5
+      zod: 4.4.3
 
   dset@3.1.4: {}
 
@@ -13988,8 +13985,6 @@ snapshots:
 
   yocto-queue@1.2.2: {}
 
-  zod@4.3.5: {}
-
-  zod@4.3.6: {}
+  zod@4.4.3: {}
 
   zwitch@2.0.4: {}

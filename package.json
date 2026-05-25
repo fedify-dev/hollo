@@ -84,7 +84,7 @@
     "uuidv7-js": "^1.1.4",
     "x-forwarded-fetch": "^0.2.0",
     "xss": "^1.0.15",
-    "zod": "^4.3.5"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.52.0",
