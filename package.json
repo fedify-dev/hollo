@@ -87,7 +87,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.52.0",
+    "@dotenvx/dotenvx": "^1.70.0",
     "@fedify/lint": "^2.2.3",
     "@iconify-json/lucide": "^1.2.104",
     "@reporters/github": "^1.13.1",
