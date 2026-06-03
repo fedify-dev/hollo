@@ -7,6 +7,22 @@ Version 0.10.0
 To be released.
 
 
+Version 0.9.3
+-------------
+
+Released on June 3, 2026.
+
+ -  Fixed a bug where some remote accounts' custom profile fields were rendered
+    as per-character entries (field names `0`, `1`, `2`, … with one character
+    of HTML in each value) in Mastodon API responses and on profile pages.
+    The affected rows had their `field_htmls` (and potentially `emojis` or
+    `fields`) stored as double-encoded JSON *strings* by an older Drizzle ORM
+    version; a data migration repairs them, and new `CHECK` constraints
+    enforce that these columns always hold JSON objects.  [[#504]]
+
+[#504]: https://github.com/fedify-dev/hollo/issues/504
+
+
 Version 0.9.2
 -------------
 

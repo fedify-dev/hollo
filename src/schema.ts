@@ -160,6 +160,14 @@ export const accounts = pgTable(
       table.handle.op("gin_trgm_ops"),
     ),
     index("accounts_name_trgm_idx").using("gin", table.name.op("gin_trgm_ops")),
+    check(
+      "ck_accounts_field_htmls_object",
+      sql`json_typeof(${table.fieldHtmls}) = 'object'`,
+    ),
+    check(
+      "ck_accounts_emojis_object",
+      sql`jsonb_typeof(${table.emojis}) = 'object'`,
+    ),
   ],
 );
 
@@ -270,6 +278,10 @@ export const accountOwners = pgTable(
     check(
       "ck_account_owners_ed25519_public_key_jwk_object",
       sql`jsonb_typeof(${table.ed25519PublicKeyJwk}) = 'object'`,
+    ),
+    check(
+      "ck_account_owners_fields_object",
+      sql`json_typeof(${table.fields}) = 'object'`,
     ),
   ],
 );
