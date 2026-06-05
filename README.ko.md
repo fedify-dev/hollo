@@ -30,7 +30,7 @@ Hollo를 사용할 수 있습니다.
 
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/%23hollo-users:matrix.org
-[Official Hollo badge]: https://fedi-badge.deno.dev/@hollo@hollo.social/followers.svg
+[Official Hollo badge]: https://fedi-badge.minhee.org/@hollo@hollo.social/followers.svg
 [Official Hollo]: https://hollo.social/@hollo
 [Fedify]: https://fedify.dev/
 [연합우주]: https://ko.wikipedia.org/wiki/%EC%97%B0%ED%95%A9_%EC%9A%B0%EC%A3%BC

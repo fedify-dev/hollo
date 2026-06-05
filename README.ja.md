@@ -30,7 +30,7 @@ Holloは、独自のウェブインタフェースを持たない「ヘッドレ
 
 [Matrix badge]: https://img.shields.io/matrix/fedify%3Amatrix.org?logo=matrix
 [Matrix]: https://matrix.to/#/%23hollo-users:matrix.org
-[Official Hollo badge]: https://fedi-badge.deno.dev/@hollo@hollo.social/followers.svg
+[Official Hollo badge]: https://fedi-badge.minhee.org/@hollo@hollo.social/followers.svg
 [Official Hollo]: https://hollo.social/@hollo
 [Fedify]: https://fedify.dev/
 [フェディバース]: https://ja.wikipedia.org/wiki/Fediverse
