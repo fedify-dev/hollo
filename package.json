@@ -62,7 +62,7 @@
     "cheerio": "^1.2.0",
     "cssfilter": "^0.0.11",
     "csv-writer-portable": "^1.7.6",
-    "drizzle-kit": "1.0.0-rc.2",
+    "drizzle-kit": "1.0.0-rc.4-273829f",
     "drizzle-orm": "1.0.0-rc.4-273829f",
     "es-toolkit": "^1.46.1",
     "file-type": "^22.0.1",
