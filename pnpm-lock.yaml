@@ -106,8 +106,8 @@ importers:
         specifier: ^1.7.6
         version: 1.7.6
       drizzle-kit:
-        specifier: 1.0.0-rc.2
-        version: 1.0.0-rc.2
+        specifier: 1.0.0-rc.4-273829f
+        version: 1.0.0-rc.4-273829f
       drizzle-orm:
         specifier: 1.0.0-rc.4-273829f
         version: 1.0.0-rc.4-273829f(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(bun-types@1.1.37)(postgres@3.4.9)(zod@4.4.3)
@@ -3915,8 +3915,8 @@ packages:
     resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
-  drizzle-kit@1.0.0-rc.2:
-    resolution: {integrity: sha512-TRxUmj1wDA2QCt3GvuhfamvIa66wJ7+MzSxBMKkpRtYScjHTumT9BE+x6daSzuEacSrPEuUH5/cW1uo5RkoPIg==}
+  drizzle-kit@1.0.0-rc.4-273829f:
+    resolution: {integrity: sha512-VaF0Rlvk+0OScBWUbvk91wqlBPffPFE4dmZX//NTyzoC15BCeqiq0zP3xWXnAucOV10j+1Rb0T+b4SInzOMfNg==}
     hasBin: true
 
   drizzle-orm@1.0.0-rc.4-273829f:
@@ -10828,7 +10828,7 @@ snapshots:
 
   dotenv@17.4.2: {}
 
-  drizzle-kit@1.0.0-rc.2:
+  drizzle-kit@1.0.0-rc.4-273829f:
     dependencies:
       '@drizzle-team/brocli': 0.11.0
       '@js-temporal/polyfill': 0.5.1
