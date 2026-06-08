@@ -39,7 +39,7 @@
     "@fedify/markdown-it-mention": "~0.3.0",
     "@fedify/postgres": "^2.2.4",
     "@fedify/vocab": "^2.2.4",
-    "@fedify/webfinger": "^2.2.4",
+    "@fedify/webfinger": "^2.2.5",
     "@hexagon/base64": "^2.0.4",
     "@hono/node-server": "^1.19.13",
     "@hono/zod-validator": "^0.7.6",
