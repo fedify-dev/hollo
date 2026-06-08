@@ -42,7 +42,7 @@
     "@fedify/webfinger": "^2.2.5",
     "@hexagon/base64": "^2.0.4",
     "@hono/node-server": "^1.19.13",
-    "@hono/zod-validator": "^0.7.6",
+    "@hono/zod-validator": "^0.8.0",
     "@js-temporal/polyfill": "^0.5.0",
     "@logtape/drizzle-orm": "~2.1.0",
     "@logtape/file": "~2.1.0",
