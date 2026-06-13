@@ -77,16 +77,19 @@ if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
     { startImportWorker, stopImportWorker },
     { startCleanupWorker, stopCleanupWorker },
     { startRemoteReplyScrapeWorker, stopRemoteReplyScrapeWorker },
+    { startPollNotificationWorker, stopPollNotificationWorker },
   ] = await Promise.all([
     import("../src/federation"),
     import("../src/import/worker"),
     import("../src/cleanup/worker"),
     import("../src/federation/replies-worker"),
+    import("../src/poll-notification-worker"),
   ]);
   stopWorkers = () => {
     stopImportWorker();
     stopCleanupWorker();
     stopRemoteReplyScrapeWorker();
+    stopPollNotificationWorker();
   };
 
   // Start the Fedify message queue
@@ -102,9 +105,10 @@ if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
   startImportWorker();
   startCleanupWorker();
   startRemoteReplyScrapeWorker();
+  startPollNotificationWorker();
 
   console.log(
-    "Worker started (Fedify queue + Import worker + Cleanup worker + Remote reply scrape worker)",
+    "Worker started (Fedify queue + Import worker + Cleanup worker + Remote reply scrape worker + Poll notification worker)",
   );
 }
 

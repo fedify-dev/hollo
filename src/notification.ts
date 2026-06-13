@@ -1,12 +1,15 @@
 import { getLogger } from "@logtape/logtape";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "./db";
 import type { Account, AccountOwner, Poll, Post } from "./schema";
 import {
+  accountOwners,
   type NotificationType,
   notificationGroups,
   notifications,
+  pollVotes,
+  posts,
 } from "./schema";
 import type { Uuid } from "./uuid";
 import { uuidv7 } from "./uuid";
@@ -20,6 +23,7 @@ export interface NotificationContext {
   targetPostId?: Uuid;
   targetAccountId?: Uuid;
   targetPollId?: Uuid;
+  created?: Date;
 }
 
 /**
@@ -28,7 +32,12 @@ export interface NotificationContext {
  * type and target (post or account) created within a similar timeframe share a group_key.
  */
 export function generateGroupKey(context: NotificationContext): string {
-  const { type, targetPostId, targetAccountId, accountOwnerId } = context;
+  const { type, targetPostId, targetAccountId, targetPollId, accountOwnerId } =
+    context;
+
+  if (type === "poll" && targetPollId != null) {
+    return `${accountOwnerId}:poll:${targetPollId}`;
+  }
 
   // Types that support grouping according to Mastodon spec
   const groupableTypes: NotificationType[] = [
@@ -60,8 +69,8 @@ export async function createNotification(
   context: NotificationContext,
 ): Promise<Uuid> {
   const groupKey = generateGroupKey(context);
-  const notificationId = uuidv7();
-  const now = new Date();
+  const created = context.created ?? new Date();
+  const notificationId = uuidv7(Math.max(0, +created));
 
   return await db.transaction(async (tx) => {
     // Check for existing duplicate notification to prevent duplicates from
@@ -69,19 +78,28 @@ export async function createNotification(
     const existingNotification = await tx.query.notifications.findFirst({
       where: {
         RAW: (notifications, { and, eq, sql }) =>
-          and(
-            eq(notifications.accountOwnerId, context.accountOwnerId),
-            eq(notifications.type, context.type),
-            context.actorAccountId != null
-              ? eq(notifications.actorAccountId, context.actorAccountId)
-              : sql`${notifications.actorAccountId} IS NULL`,
-            context.targetPostId != null
-              ? eq(notifications.targetPostId, context.targetPostId)
-              : sql`${notifications.targetPostId} IS NULL`,
-            context.targetAccountId != null
-              ? eq(notifications.targetAccountId, context.targetAccountId)
-              : sql`${notifications.targetAccountId} IS NULL`,
-          )!,
+          context.type === "poll" && context.targetPollId != null
+            ? and(
+                eq(notifications.accountOwnerId, context.accountOwnerId),
+                eq(notifications.type, context.type),
+                eq(notifications.targetPollId, context.targetPollId),
+              )!
+            : and(
+                eq(notifications.accountOwnerId, context.accountOwnerId),
+                eq(notifications.type, context.type),
+                context.actorAccountId != null
+                  ? eq(notifications.actorAccountId, context.actorAccountId)
+                  : sql`${notifications.actorAccountId} IS NULL`,
+                context.targetPostId != null
+                  ? eq(notifications.targetPostId, context.targetPostId)
+                  : sql`${notifications.targetPostId} IS NULL`,
+                context.targetAccountId != null
+                  ? eq(notifications.targetAccountId, context.targetAccountId)
+                  : sql`${notifications.targetAccountId} IS NULL`,
+                context.targetPollId != null
+                  ? eq(notifications.targetPollId, context.targetPollId)
+                  : sql`${notifications.targetPollId} IS NULL`,
+              )!,
       },
     });
 
@@ -97,18 +115,54 @@ export async function createNotification(
     }
 
     // Insert the notification
-    await tx.insert(notifications).values({
-      id: notificationId,
-      accountOwnerId: context.accountOwnerId,
-      type: context.type,
-      actorAccountId: context.actorAccountId,
-      targetPostId: context.targetPostId,
-      targetAccountId: context.targetAccountId,
-      targetPollId: context.targetPollId,
-      groupKey,
-      created: now,
-      readAt: null,
-    });
+    const insertedNotifications = await tx
+      .insert(notifications)
+      .values({
+        id: notificationId,
+        accountOwnerId: context.accountOwnerId,
+        type: context.type,
+        actorAccountId: context.actorAccountId,
+        targetPostId: context.targetPostId,
+        targetAccountId: context.targetAccountId,
+        targetPollId: context.targetPollId,
+        groupKey,
+        created,
+        readAt: null,
+      })
+      .onConflictDoNothing()
+      .returning({ id: notifications.id });
+
+    if (insertedNotifications.length < 1) {
+      const conflictedNotification = await tx.query.notifications.findFirst({
+        where: {
+          RAW: (notifications, { and, eq, sql }) =>
+            context.type === "poll" && context.targetPollId != null
+              ? and(
+                  eq(notifications.accountOwnerId, context.accountOwnerId),
+                  eq(notifications.type, context.type),
+                  eq(notifications.targetPollId, context.targetPollId),
+                )!
+              : and(
+                  eq(notifications.accountOwnerId, context.accountOwnerId),
+                  eq(notifications.type, context.type),
+                  context.actorAccountId != null
+                    ? eq(notifications.actorAccountId, context.actorAccountId)
+                    : sql`${notifications.actorAccountId} IS NULL`,
+                  context.targetPostId != null
+                    ? eq(notifications.targetPostId, context.targetPostId)
+                    : sql`${notifications.targetPostId} IS NULL`,
+                  context.targetAccountId != null
+                    ? eq(notifications.targetAccountId, context.targetAccountId)
+                    : sql`${notifications.targetAccountId} IS NULL`,
+                  context.targetPollId != null
+                    ? eq(notifications.targetPollId, context.targetPollId)
+                    : sql`${notifications.targetPollId} IS NULL`,
+                )!,
+        },
+      });
+      if (conflictedNotification != null) return conflictedNotification.id;
+      throw new Error(`Failed to create ${context.type} notification`);
+    }
 
     // Update or create notification group
     const existingGroup = await tx.query.notificationGroups.findFirst({
@@ -132,9 +186,9 @@ export async function createNotification(
           notificationsCount: sql`${notificationGroups.notificationsCount} + 1`,
           mostRecentNotificationId: notificationId,
           sampleAccountIds,
-          latestPageNotificationAt: now,
+          latestPageNotificationAt: created,
           pageMaxId: notificationId,
-          updated: now,
+          updated: created,
         })
         .where(eq(notificationGroups.groupKey, groupKey));
     } else {
@@ -149,11 +203,11 @@ export async function createNotification(
         sampleAccountIds: context.actorAccountId
           ? [context.actorAccountId]
           : [],
-        latestPageNotificationAt: now,
+        latestPageNotificationAt: created,
         pageMinId: notificationId,
         pageMaxId: notificationId,
-        created: now,
-        updated: now,
+        created,
+        updated: created,
       });
     }
 
@@ -353,6 +407,7 @@ export async function createPollNotifications(
       type: "poll",
       targetPostId: post.id,
       targetPollId: poll.id,
+      created: poll.expires,
     });
     notificationIds.push(authorNotificationId);
   }
@@ -372,11 +427,91 @@ export async function createPollNotifications(
       type: "poll",
       targetPostId: post.id,
       targetPollId: poll.id,
+      created: poll.expires,
     });
     notificationIds.push(participantNotificationId);
   }
 
   return notificationIds;
+}
+
+/**
+ * Materializes expired poll notifications that were previously synthesized by
+ * the v1 notifications endpoint.
+ */
+export async function materializeExpiredPollNotifications(
+  options: { limit?: number; now?: Date } = {},
+): Promise<number> {
+  const limit = options.limit ?? 100;
+  const now = options.now ?? new Date();
+  const pollRows = await db.query.polls.findMany({
+    where: {
+      RAW: (pollsTable, { and }) =>
+        and(
+          lte(pollsTable.expires, now),
+          sql`EXISTS (
+            SELECT 1
+            FROM ${posts}
+            LEFT JOIN ${accountOwners} AS author_owner
+              ON author_owner.id = ${posts.accountId}
+            WHERE ${posts.pollId} = ${pollsTable.id}
+              AND (
+                (
+                  author_owner.id IS NOT NULL
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM ${notifications}
+                    WHERE ${notifications.accountOwnerId} = author_owner.id
+                      AND ${notifications.type} = 'poll'
+                      AND ${notifications.targetPollId} = ${pollsTable.id}
+                  )
+                )
+                OR EXISTS (
+                  SELECT 1
+                  FROM ${pollVotes}
+                  INNER JOIN ${accountOwners} AS participant_owner
+                    ON participant_owner.id = ${pollVotes.accountId}
+                  WHERE ${pollVotes.pollId} = ${pollsTable.id}
+                    AND NOT EXISTS (
+                      SELECT 1
+                      FROM ${notifications}
+                      WHERE ${notifications.accountOwnerId} = participant_owner.id
+                        AND ${notifications.type} = 'poll'
+                        AND ${notifications.targetPollId} = ${pollsTable.id}
+                    )
+                )
+              )
+          )`,
+        )!,
+    },
+    orderBy: (pollsTable, { asc }) => [asc(pollsTable.expires)],
+    limit,
+    with: {
+      posts: { with: { account: { with: { owner: true } } } },
+      votes: { with: { account: { with: { owner: true } } } },
+    },
+  });
+
+  let count = 0;
+  for (const poll of pollRows) {
+    const post = poll.posts[0];
+    if (post == null) continue;
+    const participantOwnerIds = Array.from(
+      new Set(
+        poll.votes
+          .map((vote) => vote.account.owner?.id)
+          .filter((id): id is Uuid => id != null),
+      ),
+    );
+    const notificationIds = await createPollNotifications(
+      poll,
+      post,
+      participantOwnerIds,
+    );
+    count += notificationIds.length;
+  }
+
+  return count;
 }
 
 /**

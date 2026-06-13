@@ -18,6 +18,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -571,15 +572,21 @@ export const media = pgTable(
 export type Medium = typeof media.$inferSelect;
 export type NewMedium = typeof media.$inferInsert;
 
-export const polls = pgTable("polls", {
-  id: uuid("id").$type<Uuid>().primaryKey(),
-  multiple: boolean("multiple").notNull().default(false),
-  votersCount: bigint("voters_count", { mode: "number" }).notNull().default(0),
-  expires: timestamp("expires", { withTimezone: true }).notNull(),
-  created: timestamp("created", { withTimezone: true })
-    .notNull()
-    .default(currentTimestamp),
-});
+export const polls = pgTable(
+  "polls",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    multiple: boolean("multiple").notNull().default(false),
+    votersCount: bigint("voters_count", { mode: "number" })
+      .notNull()
+      .default(0),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+  },
+  (table) => [index("polls_expires_index").on(table.expires)],
+);
 
 export type Poll = typeof polls.$inferSelect;
 export type NewPoll = typeof polls.$inferInsert;
@@ -993,6 +1000,9 @@ export const notifications = pgTable(
     index().on(table.accountOwnerId, table.readAt),
     index().on(table.groupKey),
     index().on(table.created),
+    uniqueIndex("notifications_poll_account_owner_id_target_poll_id_unique")
+      .on(table.accountOwnerId, table.targetPollId)
+      .where(sql`${table.type} = 'poll' AND ${table.targetPollId} IS NOT NULL`),
   ],
 );
 

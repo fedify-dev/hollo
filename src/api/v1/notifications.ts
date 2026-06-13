@@ -1,5 +1,4 @@
 import { getLogger } from "@logtape/logtape";
-import { and, desc, eq, gt, lt, lte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { db } from "../../db";
@@ -17,13 +16,7 @@ import {
   withAccountOwner,
   type AccountOwnerVariables,
 } from "../../oauth/middleware";
-import {
-  notificationTypeEnum,
-  polls,
-  pollVotes,
-  posts,
-  type NotificationType,
-} from "../../schema";
+import { notificationTypeEnum, type NotificationType } from "../../schema";
 import type { Uuid } from "../../uuid";
 
 const logger = getLogger(["hollo", "notifications"]);
@@ -210,104 +203,7 @@ app.get(
       );
     }
 
-    // Query poll expiry notifications dynamically (not stored in DB)
-    type StoredNotification = (typeof notificationsData)[number];
-    type PollNotification = {
-      id: string;
-      type: "poll";
-      created: Date;
-      targetPost: NonNullable<StoredNotification["targetPost"]>;
-      actorAccount: null;
-      targetAccount: null;
-      targetPollId: null;
-      groupKey: string;
-      readAt: null;
-    };
-    const pollNotificationsData: PollNotification[] = [];
-
-    if (types.includes("poll")) {
-      const now = new Date();
-
-      // Build poll pagination conditions using timestamps from parsed IDs
-      const pollPaginationConditions = [];
-      if (olderThan != null) {
-        pollPaginationConditions.push(lt(polls.expires, olderThan));
-      }
-      if (maxIdParsed?.timestamp != null) {
-        pollPaginationConditions.push(lt(polls.expires, maxIdParsed.timestamp));
-      }
-      if (sinceIdParsed?.timestamp != null) {
-        pollPaginationConditions.push(
-          gt(polls.expires, sinceIdParsed.timestamp),
-        );
-      }
-      if (minIdParsed?.timestamp != null) {
-        pollPaginationConditions.push(gt(polls.expires, minIdParsed.timestamp));
-      }
-
-      // Find expired polls where user is the author or has voted
-      // Note: We don't join with accountOwners here because that would filter out
-      // polls from remote users. Instead, we check the conditions directly.
-      const expiredPollIds = await db
-        .selectDistinct({ pollId: polls.id, expires: polls.expires })
-        .from(polls)
-        .innerJoin(posts, eq(posts.pollId, polls.id))
-        .where(
-          and(
-            lte(polls.expires, now),
-            or(
-              // User is the post author (owner.id equals the account ID)
-              eq(posts.accountId, owner.id),
-              // User has voted in the poll
-              sql`EXISTS (
-                SELECT 1 FROM ${pollVotes}
-                WHERE ${pollVotes.pollId} = ${polls.id}
-                  AND ${pollVotes.accountId} = ${owner.id}
-              )`,
-            ),
-            ...pollPaginationConditions,
-          ),
-        )
-        .orderBy(desc(polls.expires))
-        .limit(limit);
-
-      if (expiredPollIds.length > 0) {
-        // Load all posts with relations in one query
-        const expiredPosts = await db.query.posts.findMany({
-          where: {
-            RAW: (posts, { inArray }) =>
-              inArray(
-                posts.pollId,
-                expiredPollIds.map((p) => p.pollId),
-              ),
-          },
-          with: getPostRelations(owner.id),
-        });
-
-        // Create poll notifications
-        for (const pollInfo of expiredPollIds) {
-          const post = expiredPosts.find((p) => p.pollId === pollInfo.pollId);
-          if (post) {
-            pollNotificationsData.push({
-              id: `poll-${pollInfo.pollId}`,
-              type: "poll",
-              created: pollInfo.expires,
-              targetPost: post,
-              actorAccount: null,
-              targetAccount: null,
-              targetPollId: null,
-              groupKey: `ungrouped:poll-${pollInfo.pollId}`,
-              readAt: null,
-            });
-          }
-        }
-      }
-    }
-
-    // Merge stored notifications and poll notifications, then sort and limit
-    const allNotifications = [...notificationsData, ...pollNotificationsData]
-      .sort((a, b) => b.created.getTime() - a.created.getTime())
-      .slice(0, limit);
+    const allNotifications = notificationsData;
 
     let nextLink: URL | null = null;
     let prevLink: URL | null = null;

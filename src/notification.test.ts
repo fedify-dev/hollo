@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { cleanDatabase } from "../tests/helpers";
 import { createAccount } from "../tests/helpers/oauth";
+import { createExpiredPollPost } from "../tests/helpers/poll";
 import db from "./db";
 import {
+  createNotification,
   createMentionNotifications,
+  materializeExpiredPollNotifications,
   createQuotedUpdateNotifications,
   createQuoteNotification,
   createReplyMentionNotification,
@@ -170,6 +173,119 @@ describe("Reply mention notifications", () => {
     });
 
     expect(notifications).toHaveLength(1);
+  });
+});
+
+describe("Poll notifications", () => {
+  let localAccount: Awaited<ReturnType<typeof createAccount>>;
+  let remoteAccount: Schema.Account;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+    localAccount = await createAccount();
+    remoteAccount = await createRemoteAccount("remote_user");
+  });
+
+  it("materializes expired poll notifications for local voters", async () => {
+    expect.assertions(9);
+
+    const expires = new Date("2026-01-01T00:00:00.000Z");
+    const { pollId, postId } = await createExpiredPollPost(
+      remoteAccount.id,
+      expires,
+    );
+    await db.insert(Schema.pollVotes).values({
+      pollId,
+      optionIndex: 0,
+      accountId: localAccount.id as Uuid,
+    });
+
+    expect(
+      await materializeExpiredPollNotifications({
+        now: new Date("2026-01-01T00:00:01.000Z"),
+      }),
+    ).toBe(1);
+
+    const notification = await db.query.notifications.findFirst({
+      where: {
+        RAW: (notifications, { and, eq }) =>
+          and(
+            eq(notifications.accountOwnerId, localAccount.id as Uuid),
+            eq(notifications.type, "poll"),
+            eq(notifications.targetPollId, pollId),
+          )!,
+      },
+    });
+
+    expect(notification).not.toBeNull();
+    expect(notification?.actorAccountId).toBeNull();
+    expect(notification?.targetPostId).toBe(postId);
+    expect(notification?.created.toISOString()).toBe(expires.toISOString());
+
+    const group = await db.query.notificationGroups.findFirst({
+      where: { groupKey: { eq: `${localAccount.id}:poll:${pollId}` } },
+    });
+    expect(group).not.toBeNull();
+    expect(group?.mostRecentNotificationId).toBe(notification?.id);
+    expect(group?.targetPostId).toBe(postId);
+
+    expect(
+      await materializeExpiredPollNotifications({
+        now: new Date("2026-01-01T00:00:02.000Z"),
+      }),
+    ).toBe(0);
+  });
+
+  it("deduplicates poll notifications by owner and poll", async () => {
+    expect.assertions(3);
+
+    const expires = new Date("2026-01-01T00:00:00.000Z");
+    const { pollId, postId } = await createExpiredPollPost(
+      remoteAccount.id,
+      expires,
+    );
+    const alternatePostId = crypto.randomUUID() as Uuid;
+    await db.insert(Schema.posts).values({
+      id: alternatePostId,
+      iri: `https://remote.test/@remote_user/${alternatePostId}`,
+      type: "Question",
+      accountId: remoteAccount.id,
+      visibility: "public",
+      contentHtml: "<p>Which option?</p>",
+      content: "Which option?",
+      pollId,
+      published: new Date(+expires - 30_000),
+    });
+
+    const notificationId = await createNotification({
+      accountOwnerId: localAccount.id as Uuid,
+      type: "poll",
+      targetPostId: postId,
+      targetPollId: pollId,
+      created: expires,
+    });
+    const duplicateNotificationId = await createNotification({
+      accountOwnerId: localAccount.id as Uuid,
+      type: "poll",
+      targetPostId: alternatePostId,
+      targetPollId: pollId,
+      created: expires,
+    });
+
+    expect(duplicateNotificationId).toBe(notificationId);
+
+    const notifications = await db.query.notifications.findMany({
+      where: {
+        RAW: (notifications, { and, eq }) =>
+          and(
+            eq(notifications.accountOwnerId, localAccount.id as Uuid),
+            eq(notifications.type, "poll"),
+            eq(notifications.targetPollId, pollId),
+          )!,
+      },
+    });
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].targetPostId).toBe(postId);
   });
 });
 

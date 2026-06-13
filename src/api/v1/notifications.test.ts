@@ -7,8 +7,10 @@ import {
   createOAuthApplication,
   getAccessToken,
 } from "../../../tests/helpers/oauth";
+import { createExpiredPollPost } from "../../../tests/helpers/poll";
 import db from "../../db";
 import app from "../../index";
+import { materializeExpiredPollNotifications } from "../../notification";
 import * as Schema from "../../schema";
 import type { Uuid } from "../../uuid";
 
@@ -361,6 +363,66 @@ describe.sequential("/api/v1/notifications", () => {
 
       const body = await response.json();
       expect(body).toHaveLength(0);
+    });
+  });
+
+  describe("Poll notifications", () => {
+    it("returns materialized poll notifications", async () => {
+      expect.assertions(9);
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      const expires = new Date("2026-01-01T00:00:00.000Z");
+      const { pollId } = await createExpiredPollPost(
+        account.id as Uuid,
+        expires,
+      );
+
+      const beforeMaterialization = await app.request(
+        "/api/v1/notifications?types[]=poll",
+        {
+          method: "GET",
+          headers: {
+            authorization: bearerAuthorization(accessToken),
+          },
+        },
+      );
+      expect(beforeMaterialization.status).toBe(200);
+      expect(await beforeMaterialization.json()).toHaveLength(0);
+
+      expect(
+        await materializeExpiredPollNotifications({
+          now: new Date("2026-01-01T00:00:01.000Z"),
+        }),
+      ).toBe(1);
+
+      const notification = await db.query.notifications.findFirst({
+        where: {
+          RAW: (notifications, { and, eq }) =>
+            and(
+              eq(notifications.accountOwnerId, account.id as Uuid),
+              eq(notifications.type, "poll"),
+              eq(notifications.targetPollId, pollId),
+            )!,
+        },
+      });
+      expect(notification).not.toBeNull();
+      expect(notification?.created.toISOString()).toBe(expires.toISOString());
+
+      const response = await app.request("/api/v1/notifications?types[]=poll", {
+        method: "GET",
+        headers: {
+          authorization: bearerAuthorization(accessToken),
+        },
+      });
+      expect(response.status).toBe(200);
+
+      const notifications = await response.json();
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0].id).toBe(
+        `${expires.toISOString()}/poll/${notification?.id}`,
+      );
+      expect(notifications[0].type).toBe("poll");
     });
   });
 

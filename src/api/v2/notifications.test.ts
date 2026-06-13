@@ -7,8 +7,10 @@ import {
   createOAuthApplication,
   getAccessToken,
 } from "../../../tests/helpers/oauth";
+import { createExpiredPollPost } from "../../../tests/helpers/poll";
 import db from "../../db";
 import app from "../../index";
+import { materializeExpiredPollNotifications } from "../../notification";
 import * as Schema from "../../schema";
 import type { Uuid } from "../../uuid";
 
@@ -118,6 +120,62 @@ describe.sequential("/api/v2/notifications", () => {
 
       const body = await response.json();
       expect(body.notification_groups).toHaveLength(0);
+    });
+  });
+
+  describe("Poll notifications", () => {
+    it("returns materialized poll notifications as groups", async () => {
+      expect.assertions(9);
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      const expires = new Date("2026-01-01T00:00:00.000Z");
+      const { pollId, postId } = await createExpiredPollPost(
+        account.id as Uuid,
+        expires,
+      );
+
+      expect(
+        await materializeExpiredPollNotifications({
+          now: new Date("2026-01-01T00:00:01.000Z"),
+        }),
+      ).toBe(1);
+
+      const notification = await db.query.notifications.findFirst({
+        where: {
+          RAW: (notifications, { and, eq }) =>
+            and(
+              eq(notifications.accountOwnerId, account.id as Uuid),
+              eq(notifications.type, "poll"),
+              eq(notifications.targetPollId, pollId),
+            )!,
+        },
+      });
+      expect(notification).not.toBeNull();
+
+      const response = await app.request("/api/v2/notifications?types[]=poll", {
+        method: "GET",
+        headers: {
+          authorization: bearerAuthorization(accessToken),
+        },
+      });
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.notification_groups).toHaveLength(1);
+      expect(body.statuses).toHaveLength(1);
+      expect(body.notification_groups[0]).toMatchObject({
+        group_key: `${account.id}:poll:${pollId}`,
+        type: "poll",
+        status_id: postId,
+      });
+      expect(body.notification_groups[0].most_recent_notification_id).toBe(
+        `${expires.toISOString()}/poll/${notification?.id}`,
+      );
+      expect(body.notification_groups[0].latest_page_notification_at).toBe(
+        expires.toISOString(),
+      );
+      expect(body.statuses[0].id).toBe(postId);
     });
   });
 });

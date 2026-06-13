@@ -7,6 +7,22 @@ Version 0.10.0
 To be released.
 
 
+Version 0.9.5
+-------------
+
+Released on June 13, 2026.
+
+ -  Fixed a bug where expired poll notifications appeared in
+    `/api/v1/notifications` but not in the grouped
+    `/api/v2/notifications` feed, which could leave Mastodon-compatible
+    clients such as Phanpy showing a permanent unread notification badge.
+    Poll notifications are now materialized into the `notifications` and
+    `notification_groups` tables like other notification types, and existing
+    expired polls are backfilled during migration.  [[#517]]
+
+[#517]: https://github.com/fedify-dev/hollo/issues/517
+
+
 Version 0.9.4
 -------------
 
