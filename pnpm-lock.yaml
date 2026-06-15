@@ -176,8 +176,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@dotenvx/dotenvx':
-        specifier: ^1.70.0
-        version: 1.70.0
+        specifier: ^1.71.3
+        version: 1.71.3
       '@fedify/lint':
         specifier: ^2.2.5
         version: 2.2.5(@fedify/fedify@2.2.5)(eslint@10.2.1(jiti@2.7.0))(typescript@6.0.3)
@@ -725,8 +725,8 @@ packages:
     resolution: {integrity: sha512-6lMpxpt9BOmqHKGs9Xm6DP4LlZTBFer/ZjHvP3FcW3IaUWYIWC7dw5RFZnvw4fP57kAVcm1dp3IF+Y50qhBvAw==}
     engines: {node: '>=18.0'}
 
-  '@dotenvx/dotenvx@1.70.0':
-    resolution: {integrity: sha512-vC/rom87ym8HEyVdzZZS6/PYGg1Z5fmozUZ8l6cw1sYAxdL1lEyvE/JbK8cMFQoq3GsR/P1PiQRY+VXMtDN9bw==}
+  '@dotenvx/dotenvx@1.71.3':
+    resolution: {integrity: sha512-WSmox5aD+XxJEUEOTk7gKLpd5+Iz9Nik89Zpbu5DijMln6LsFiv3xpNKBMc/b9sSkUlKvAblzrhik2TqKFE7NA==}
     hasBin: true
 
   '@drizzle-team/brocli@0.11.0':
@@ -7522,7 +7522,7 @@ snapshots:
       ky: 1.14.3
       undici: 6.25.0
 
-  '@dotenvx/dotenvx@1.70.0':
+  '@dotenvx/dotenvx@1.71.3':
     dependencies:
       commander: 11.1.0
       dotenv: 17.4.2
