@@ -112,8 +112,8 @@ importers:
         specifier: 1.0.0-rc.4-273829f
         version: 1.0.0-rc.4-273829f(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(bun-types@1.1.37)(postgres@3.4.9)(zod@4.4.3)
       es-toolkit:
-        specifier: ^1.46.1
-        version: 1.46.1
+        specifier: ^1.47.1
+        version: 1.47.1
       file-type:
         specifier: ^22.0.1
         version: 22.0.1
@@ -4112,8 +4112,8 @@ packages:
   es-toolkit@1.43.0:
     resolution: {integrity: sha512-SKCT8AsWvYzBBuUqMk4NPwFlSdqLpJwmy6AP322ERn8W2YLIB6JBXnwMI2Qsh2gfphT3q7EKAxKb23cvFHFwKA==}
 
-  es-toolkit@1.46.1:
-    resolution: {integrity: sha512-5eNtXOs3tbfxXOj04tjjseeWkRWaoCjdEI+96DgwzZoe6c9juL49pXlzAFTI72aWC9Y8p7168g6XIKjh7k6pyQ==}
+  es-toolkit@1.47.1:
+    resolution: {integrity: sha512-5RAqEwf4P4E17p+W75KLOWw/nOvKZzSQpxM32IpI2KZLaVonjTrZ0Ai5ghMaVI9eKC2p8eoQgcBdkEDgzFk6+Q==}
 
   esast-util-from-estree@2.0.0:
     resolution: {integrity: sha512-4CyanoAudUSBAn5K13H4JhsMH6L9ZP7XbLVe/dKybkxMO7eDyLsT8UHl9TRNrU2Gr9nz+FovfSIjuXWJ81uVwQ==}
@@ -7965,7 +7965,7 @@ snapshots:
     dependencies:
       '@cfworker/json-schema': 4.1.1
       byte-encodings: 1.0.11
-      es-toolkit: 1.46.1
+      es-toolkit: 1.47.1
       yaml: 2.9.0
 
   '@fedify/vocab@2.2.5':
@@ -10936,7 +10936,7 @@ snapshots:
 
   es-toolkit@1.43.0: {}
 
-  es-toolkit@1.46.1: {}
+  es-toolkit@1.47.1: {}
 
   esast-util-from-estree@2.0.0:
     dependencies:
