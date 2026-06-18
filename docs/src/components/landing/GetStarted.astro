@@ -1,0 +1,126 @@
+---
+import { Icon } from "astro-icon/components";
+import type { Landing } from "../../i18n/landing";
+import SectionHeading from "./SectionHeading.astro";
+
+interface Props {
+  getStarted: Landing["getStarted"];
+}
+
+const { getStarted } = Astro.props;
+---
+
+<section class="gs" aria-labelledby="sh-getstarted">
+  <div class="gs__inner">
+    <SectionHeading
+      eyebrow={getStarted.eyebrow}
+      heading={getStarted.heading}
+      intro={getStarted.intro}
+      id="sh-getstarted"
+    />
+    <ol class="gs__steps">
+      {
+        getStarted.steps.map((step, i) => (
+          <li class="gs__step" data-reveal style={`--reveal-delay: ${i * 60}ms`}>
+            <a class="gs__card" href={step.href}>
+              <span class="gs__icon" aria-hidden="true">
+                <Icon name={step.icon} />
+              </span>
+              <span class="gs__text">
+                <span class="gs__title">
+                  {step.title}
+                  <Icon class="gs__arrow" name="lucide:arrow-right" />
+                </span>
+                <span class="gs__body">{step.body}</span>
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .gs {
+    padding-block: var(--l-section-pad);
+  }
+  .gs__inner {
+    max-width: var(--l-width-wide);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+  .gs__steps {
+    list-style: none;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 50rem) {
+    .gs__steps {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .gs__card {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    height: 100%;
+    padding: 1.5rem;
+    border: 1px solid rgb(var(--l-border));
+    border-radius: var(--hollo-radius-card);
+    background: rgb(var(--l-surface));
+    text-decoration: none;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease;
+  }
+  .gs__card:hover {
+    border-color: rgb(var(--l-accent) / 0.5);
+  }
+  .gs__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    background: rgb(var(--l-icon-bg));
+    color: rgb(var(--l-icon));
+    flex: none;
+  }
+  .gs__icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+  .gs__text {
+    display: flex;
+    flex-direction: column;
+  }
+  .gs__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    color: rgb(var(--l-heading));
+  }
+  .gs__arrow {
+    width: 1em;
+    height: 1em;
+    color: rgb(var(--l-accent));
+    transition: transform 150ms ease;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .gs__card:hover .gs__arrow {
+      transform: translateX(2px);
+    }
+  }
+  .gs__body {
+    margin-top: 0.35rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: rgb(var(--l-text));
+  }
+</style>

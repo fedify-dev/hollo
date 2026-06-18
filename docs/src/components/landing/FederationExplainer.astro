@@ -1,0 +1,84 @@
+---
+import type { Landing } from "../../i18n/landing";
+import SectionHeading from "./SectionHeading.astro";
+
+interface Props {
+  federation: Landing["federation"];
+}
+
+const { federation } = Astro.props;
+---
+
+<section class="fed" aria-labelledby="sh-federation">
+  <div class="fed__panel" data-reveal>
+    <SectionHeading
+      eyebrow={federation.eyebrow}
+      heading={federation.heading}
+      id="sh-federation"
+    />
+    <p class="fed__body">{federation.body}</p>
+    <p class="fed__label">{federation.platformsLabel}</p>
+    <ul class="fed__platforms">
+      {
+        federation.platforms.map((platform) => (
+          <li>
+            <a href={platform.href} rel="noopener noreferrer" target="_blank">
+              {platform.name}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .fed {
+    padding-block: var(--l-section-pad);
+  }
+  .fed__panel {
+    max-width: var(--l-width-wide);
+    margin-inline: auto;
+    padding: clamp(2rem, 5vw, 3.5rem) 1.5rem;
+    border: 1px solid rgb(var(--l-border));
+    border-radius: 1rem;
+    background: rgb(var(--l-surface-raised));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .fed__body {
+    max-width: var(--l-width-prose);
+    margin: 1.5rem 0 0;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: rgb(var(--l-text));
+  }
+  .fed__label {
+    margin: 2rem 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(var(--l-muted));
+  }
+  .fed__platforms {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    justify-content: center;
+  }
+  .fed__platforms a {
+    font-weight: 600;
+    color: rgb(var(--l-accent));
+    text-decoration: none;
+  }
+  .fed__platforms a:hover {
+    color: rgb(var(--l-accent-dot));
+    text-decoration: underline;
+  }
+</style>

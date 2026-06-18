@@ -1,0 +1,11 @@
+/*
+ * Web fonts for the Hollo docs/website.
+ *
+ * These mirror the main app's type stack (see ../../../DESIGN.md): Inter for
+ * Latin, the three Noto Sans CJK families for Korean/Japanese/Chinese, and
+ * JetBrains Mono for code.  Like the app, they are served from fonts.bunny.net,
+ * a privacy-respecting Google Fonts mirror, so initial paint never blocks on the
+ * network (`display=swap`).  Weights match the app's presetWebFonts config
+ * in ../../../uno.config.ts (sans 400/500/600/700, CJK + mono 400/500/700).
+ */
+@import url("https://fonts.bunny.net/css?family=inter:400,500,600,700|jetbrains-mono:400,500,700|noto-sans-kr:400,500,700|noto-sans-jp:400,500,700|noto-sans-sc:400,500,700&display=swap");

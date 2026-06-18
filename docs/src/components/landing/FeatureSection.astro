@@ -1,0 +1,71 @@
+---
+import type { FeatureSection } from "../../i18n/landing";
+import SectionHeading from "./SectionHeading.astro";
+import FeatureCard from "./FeatureCard.astro";
+import Button from "./Button.astro";
+
+interface Props {
+  section: FeatureSection;
+}
+
+const { section } = Astro.props;
+// 3 features → 3 columns; 2 or 4 features → 2 columns (a tidy row or 2×2 grid).
+const cols = section.features.length === 3 ? 3 : 2;
+---
+
+<section class="fs" aria-labelledby={`sh-${section.id}`}>
+  <div class="fs__inner">
+    <SectionHeading
+      eyebrow={section.eyebrow}
+      heading={section.heading}
+      intro={section.intro}
+      id={`sh-${section.id}`}
+    />
+    <div class:list={["fs__grid", `fs__grid--${cols}`]}>
+      {
+        section.features.map((feature, i) => (
+          <FeatureCard feature={feature} index={i} />
+        ))
+      }
+    </div>
+    {
+      section.link && (
+        <div class="fs__link">
+          <Button action={section.link} variant="link" />
+        </div>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .fs {
+    padding-block: var(--l-section-pad);
+  }
+  .fs__inner {
+    max-width: var(--l-width-wide);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+  .fs__grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 38rem) {
+    .fs__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 60rem) {
+    .fs__grid--3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .fs__link {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+</style>

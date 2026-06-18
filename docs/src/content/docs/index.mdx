@@ -1,83 +1,11 @@
 ---
 title: Welcome to Hollo
 description: >-
-  Hollo is a federated microblogging software for single-users.
+  A single-user microblogging server for the fediverse, federated over
+  ActivityPub with a Mastodon-compatible API.
 template: splash
-hero:
-  tagline: >-
-    A federated microblogging software for single-users.
-    ActivityPub-enabled, Mastodon-compatible API, supports CommonMark and
-    FEP-044f-compliant quotes.
-  image:
-    light: ../../assets/logo-black.svg
-    dark: ../../assets/logo-white.svg
-  actions:
-  - text: What is Hollo?
-    link: /intro
-    icon: right-arrow
-    variant: secondary
-  - text: Install
-    link: /install/railway
-    icon: rocket
-    variant: primary
-  - text: Official instance
-    link: https://hollo.social/@hollo
-    icon: external
-    variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import Landing from "../../components/landing/Landing.astro";
 
-<CardGrid stagger>
-  <Card title="For single-users" icon="seti:lock">
-    Hollo is designed for single-users, so you can own your instance
-    and have full control over your data. It's perfect for personal microblogs,
-    notes, and journals.
-  </Card>
-  <Card title="Multiple accounts" icon="seti:folder">
-    Although Hollo is designed for single-users, you can have multiple accounts
-    on the same instance. You can switch between accounts easily, and each
-    account has its own profile, posts, and settings.
-  </Card>
-  <Card title="Mastodon-compatible API" icon="puzzle">
-    Hollo is headless; instead, it complies with the [Mastodon API],
-    so that you can use any Mastodon-compatible client to interact with it.
-
-    [Mastodon API]: https://docs.joinmastodon.org/methods/
-  </Card>
-  <Card title="CommonMark" icon="seti:markdown">
-    You can compose your posts in [CommonMark] (so-called Markdown),
-    and Hollo will render them for you&mdash;of course, other fediverse software
-    will render them as well.  Moreover, you're allowed up to 10,000 characters
-    per post.
-
-    [CommonMark]: https://commonmark.org/
-  </Card>
-  <Card title="Quote posts" icon="comment">
-    Hollo supports [FEP-044f]-compliant quotes, so you can quote other posts
-    in your own posts. It's compatible with both Misskey-style and
-    Mastodon-style quote implementations, including [Mastodon], [Misskey],
-    [Akkoma], [Fedibird], and [Threads].
-
-    [FEP-044f]: https://w3id.org/fep/044f
-    [Mastodon]: https://joinmastodon.org/
-    [Misskey]: https://misskey-hub.net/
-    [Akkoma]: https://akkoma.social/
-    [Fedibird]: https://github.com/fedibird/mastodon
-    [Threads]: https://www.threads.net/
-  </Card>
-  <Card title="Misskey-style emoji reactions" icon="heart">
-    Hollo supports [Misskey]-style emoji reactions, so you can react to posts
-    with Unicode emojis and custom emojis. It's compatible with other fediverse
-    software that supports Misskey-style emoji reactions, e.g., Misskey,
-    [Akkoma].
-
-    [Misskey]: https://misskey-hub.net/
-    [Akkoma]: https://akkoma.social/
-  </Card>
-  <Card title="Powered by Fedify" icon="deno">
-    Hollo is powered by [Fedify], an ActivityPub server framework for TypeScript.
-
-    [Fedify]: https://fedify.dev/
-  </Card>
-</CardGrid>
+<Landing locale="en" />

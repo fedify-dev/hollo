@@ -1,76 +1,10 @@
 ---
 title: 歡迎使用 Hollo
 description: >-
-  Hollo 是一款面向單用戶的聯邦式微博軟體。
+  面向單用戶的聯邦宇宙微博伺服器。透過 ActivityPub 聯邦互通，並提供相容 Mastodon 的 API。
 template: splash
-hero:
-  tagline: >-
-    一款面向單用戶的聯邦式微博軟體。
-    支援 ActivityPub，相容 Mastodon API，支援 CommonMark 和符合 FEP-044f 標準的引用。
-  image:
-    light: ../../../assets/logo-black.svg
-    dark: ../../../assets/logo-white.svg
-  actions:
-  - text: 什麼是 Hollo？
-    link: /zh-tw/intro
-    icon: right-arrow
-    variant: secondary
-  - text: 安裝
-    link: /zh-tw/install/railway
-    icon: rocket
-    variant: primary
-  - text: 官方實例
-    link: https://hollo.social/@hollo
-    icon: external
-    variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import Landing from "../../../components/landing/Landing.astro";
 
-<CardGrid stagger>
-  <Card title="為單用戶設計" icon="seti:lock">
-    Hollo 專為單用戶設計，讓您可以擁有自己的實例並完全掌控您的資料。
-    非常適合個人微博、筆記和日記。
-  </Card>
-  <Card title="多帳號支援" icon="seti:folder">
-    雖然 Hollo 是為單用戶設計的，但您可以在同一實例上擁有多個帳號。
-    您可以輕鬆切換帳號，每個帳號都有自己的個人資料頁、貼文和設定。
-  </Card>
-  <Card title="相容 Mastodon API" icon="puzzle">
-    Hollo 是無頭的；它遵循 [Mastodon API]，因此您可以使用任何相容 Mastodon 的用戶端與其互動。
-
-    [Mastodon API]: https://docs.joinmastodon.org/methods/
-  </Card>
-  <Card title="支援 CommonMark" icon="seti:markdown">
-    您可以使用 [CommonMark]（即 Markdown）撰寫貼文，Hollo 會為您呈現——當然，其他聯邦宇宙軟體也會呈現。
-    此外，每個貼文允許最多 10,000 個字元。
-
-    [CommonMark]: https://commonmark.org/
-  </Card>
-  <Card title="引用貼文" icon="comment">
-    Hollo 支援符合 [FEP-044f] 標準的引用，您可以在自己的貼文中引用其他貼文。
-    它同時相容 Misskey 風格和 Mastodon 風格的引用實作，
-    包括 [Mastodon]、[Misskey]、[Akkoma]、[Fedibird] 和 [Threads]。
-
-    [FEP-044f]: https://w3id.org/fep/044f
-    [Mastodon]: https://joinmastodon.org/zh
-    [Misskey]: https://misskey-hub.net/
-    [Akkoma]: https://akkoma.social/
-    [Fedibird]: https://github.com/fedibird/mastodon
-    [Threads]: https://www.threads.net/
-  </Card>
-  <Card title="支援 Misskey 風格表情回應" icon="heart">
-    Hollo 支援 [Misskey] 風格的表情回應，
-    您可以使用 Unicode 表情符號和自訂表情符號對貼文進行回應。
-    它相容其他支援 Misskey 風格表情回應的聯邦宇宙軟體，
-    例如 Misskey 和 [Akkoma]。
-
-    [Misskey]: https://misskey-hub.net/
-    [Akkoma]: https://akkoma.social/
-  </Card>
-  <Card title="由 Fedify 提供支援" icon="deno">
-    Hollo 由 [Fedify] 提供支援，這是一個用於 TypeScript 的 ActivityPub 伺服端框架。
-
-    [Fedify]: https://fedify.dev/
-  </Card>
-</CardGrid>
+<Landing locale="zh-tw" />

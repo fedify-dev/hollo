@@ -1,0 +1,109 @@
+---
+import type { Locale } from "../../i18n/landing";
+import { getLanding } from "../../i18n/landing";
+import Hero from "./Hero.astro";
+import SectionHeading from "./SectionHeading.astro";
+import FederationExplainer from "./FederationExplainer.astro";
+import FeatureSection from "./FeatureSection.astro";
+import PoweredByFedify from "./PoweredByFedify.astro";
+import GetStarted from "./GetStarted.astro";
+import Closing from "./Closing.astro";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const l = getLanding(locale);
+---
+
+<div class="not-content landing">
+  <Hero hero={l.hero} />
+
+  <section class="about" aria-labelledby="sh-about">
+    <div class="about__inner">
+      <SectionHeading
+        eyebrow={l.about.eyebrow}
+        heading={l.about.heading}
+        align="start"
+        id="sh-about"
+      />
+      <div class="about__body">
+        {l.about.body.map((paragraph) => <p>{paragraph}</p>)}
+      </div>
+    </div>
+  </section>
+
+  <FederationExplainer federation={l.federation} />
+
+  {l.sections.map((section) => <FeatureSection section={section} />)}
+
+  <PoweredByFedify fedify={l.fedify} />
+  <GetStarted getStarted={l.getStarted} />
+  <Closing closing={l.closing} />
+</div>
+
+<style>
+  .about {
+    padding-block: var(--l-section-pad);
+  }
+  .about__inner {
+    max-width: var(--l-width-prose);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+  .about__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-top: 1.75rem;
+  }
+  .about__body p {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: rgb(var(--l-text));
+  }
+</style>
+
+<style is:global>
+  /*
+   * Entrance reveals, a progressive enhancement only.  The .reveal-ready class is
+   * added by the script below, so without JavaScript content stays fully
+   * visible.  Disabled entirely under prefers-reduced-motion.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    .landing.reveal-ready [data-reveal] {
+      opacity: 0;
+      transform: translateY(8px);
+      transition:
+        opacity 450ms ease,
+        transform 450ms ease;
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+    .landing.reveal-ready [data-reveal].is-visible {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  const root = document.querySelector(".landing");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (root && !reduce && "IntersectionObserver" in window) {
+    root.classList.add("reveal-ready");
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            obs.unobserve(entry.target);
+          }
+        }
+      },
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.12 },
+    );
+    for (const el of root.querySelectorAll("[data-reveal]")) observer.observe(el);
+  }
+</script>

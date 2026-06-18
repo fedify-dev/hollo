@@ -1,29 +1,169 @@
-/* Dark mode colors. */
+/*
+ * Hollo docs/website theme.
+ *
+ * Mirrors the main app's design language (see ../../../DESIGN.md): achromatic
+ * Wind4 `neutral` surfaces with a single azure brand accent, and the app's
+ * Inter / Noto Sans CJK / JetBrains Mono type stack.  Colour values are the RGB
+ * triples from the app's ../../../src/theme/colors.ts (azure hue) and the Wind4
+ * neutral scale.  Following Starlight's convention, dark values live on :root
+ * (the docs default) and light values on :root[data-theme="light"].
+ */
+
+/* Type stack; the fonts themselves are loaded in fonts.css. */
 :root {
-  --sl-color-accent-low: #00273d;
-  --sl-color-accent: #0071a7;
-  --sl-color-accent-high: #92d1fe;
-  --sl-color-white: #ffffff;
-  --sl-color-gray-1: #e7eff2;
-  --sl-color-gray-2: #bac4c8;
-  --sl-color-gray-3: #7b8f96;
-  --sl-color-gray-4: #495c62;
-  --sl-color-gray-5: #2a3b41;
-  --sl-color-gray-6: #182a2f;
-  --sl-color-black: #121a1c;
+  --sl-font:
+    "Inter", "Noto Sans KR", "Noto Sans JP", "Noto Sans SC", ui-sans-serif,
+    system-ui, sans-serif;
+  --sl-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
-/* Light mode colors. */
+
+/* Dark scheme (Starlight default). */
+:root {
+  --sl-color-accent-low: #0c4a6e; /* azure-900 */
+  --sl-color-accent: #0284c7; /* azure-600 */
+  --sl-color-accent-high: #7dd3fc; /* azure-300: link text on near-black (AA) */
+  --sl-color-white: #fafafa; /* neutral-50: headings */
+  --sl-color-gray-1: #f5f5f5; /* neutral-100: body text */
+  --sl-color-gray-2: #d4d4d4; /* neutral-300 */
+  --sl-color-gray-3: #a3a3a3; /* neutral-400: muted text */
+  --sl-color-gray-4: #737373; /* neutral-500 */
+  --sl-color-gray-5: #404040; /* neutral-700: borders */
+  --sl-color-gray-6: #262626; /* neutral-800: surfaces */
+  --sl-color-black: #0a0a0a; /* neutral-950: page background */
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+}
+
+/* Light scheme. */
 :root[data-theme="light"] {
-  --sl-color-accent-low: #b0deff;
-  --sl-color-accent: #0073aa;
-  --sl-color-accent-high: #003653;
-  --sl-color-white: #121a1c;
-  --sl-color-gray-1: #182a2f;
-  --sl-color-gray-2: #2a3b41;
-  --sl-color-gray-3: #495c62;
-  --sl-color-gray-4: #7b8f96;
-  --sl-color-gray-5: #bac4c8;
-  --sl-color-gray-6: #e7eff2;
-  --sl-color-gray-7: #f3f7f9;
-  --sl-color-black: #ffffff;
+  --sl-color-accent-low: #e0f2fe; /* azure-100 */
+  --sl-color-accent: #0284c7; /* azure-600 */
+  --sl-color-accent-high: #075985; /* azure-800: link text on white (AA) */
+  --sl-color-white: #171717; /* neutral-900: headings (darkest foreground) */
+  --sl-color-gray-1: #262626; /* neutral-800: body text */
+  --sl-color-gray-2: #404040; /* neutral-700 */
+  --sl-color-gray-3: #737373; /* neutral-500: muted text */
+  --sl-color-gray-4: #a3a3a3; /* neutral-400 */
+  --sl-color-gray-5: #d4d4d4; /* neutral-300: borders */
+  --sl-color-gray-6: #f5f5f5; /* neutral-100: surfaces */
+  --sl-color-gray-7: #fafafa; /* neutral-50 */
+  --sl-color-black: #ffffff; /* page background */
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+}
+
+/*
+ * Token bridge for the landing components (src/components/landing/*).
+ *
+ * Scoped component CSS reads these as rgb(var(--hollo-…)) so the landing uses
+ * the exact app palette without pulling UnoCSS into the docs build.  Values are
+ * RGB channel triples (space-separated) from ../../../src/theme/colors.ts
+ * (azure) and the Wind4 neutral scale.  These raw stops are scheme-independent;
+ * the semantic --l-* tokens below resolve them per scheme.
+ */
+:root {
+  --hollo-brand-300: 125 211 252;
+  --hollo-brand-400: 56 189 248;
+  --hollo-brand-500: 14 165 233;
+  --hollo-brand-600: 2 132 199;
+  --hollo-brand-700: 3 105 161;
+  --hollo-brand-800: 7 89 133;
+  --hollo-neutral-50: 250 250 250;
+  --hollo-neutral-100: 245 245 245;
+  --hollo-neutral-200: 229 229 229;
+  --hollo-neutral-300: 212 212 212;
+  --hollo-neutral-400: 163 163 163;
+  --hollo-neutral-500: 115 115 115;
+  --hollo-neutral-600: 82 82 82;
+  --hollo-neutral-700: 64 64 64;
+  --hollo-neutral-800: 38 38 38;
+  --hollo-neutral-900: 23 23 23;
+  --hollo-neutral-950: 10 10 10;
+  --hollo-radius-card: 0.75rem; /* rounded-xl */
+  --hollo-radius-btn: 0.375rem; /* rounded-md */
+  /* Landing layout rhythm. */
+  --l-section-pad: clamp(3.5rem, 7vw, 6.5rem);
+  --l-width-wide: 64rem;
+  --l-width-prose: 44rem;
+}
+
+/*
+ * Semantic tokens for the landing components.
+ *
+ * Unlike the main app (which switches on prefers-color-scheme), Starlight uses a
+ * manual `data-theme` toggle on <html>, so the landing follows it too: dark
+ * values are the default on :root (the docs default scheme) and light values
+ * override under [data-theme="light"].  Components reference only these
+ * rgb(var(--l-…)) tokens, so no component needs its own per-scheme overrides.
+ */
+:root {
+  --l-page-bg: 10 10 10; /* neutral-950 */
+  --l-heading: 250 250 250; /* neutral-50 */
+  --l-text: 212 212 212; /* neutral-300 */
+  --l-muted: 163 163 163; /* neutral-400 */
+  --l-surface: 23 23 23; /* neutral-900 */
+  --l-surface-raised: 23 23 23; /* neutral-900 */
+  --l-border: 38 38 38; /* neutral-800 */
+  --l-accent: 125 211 252; /* azure-300: link text on dark (AA) */
+  --l-accent-dot: 56 189 248; /* azure-400: eyebrow dot / rule on dark */
+  --l-btn-bg: 3 105 161; /* azure-700 */
+  --l-btn-bg-hover: 7 89 133; /* azure-800 */
+  --l-icon: 125 211 252; /* azure-300 */
+  --l-icon-bg: 12 74 110; /* azure-900 */
+  --l-code-bg: 38 38 38; /* neutral-800 */
+}
+:root[data-theme="light"] {
+  --l-page-bg: 255 255 255;
+  --l-heading: 23 23 23; /* neutral-900 */
+  --l-text: 64 64 64; /* neutral-700 */
+  --l-muted: 115 115 115; /* neutral-500 */
+  --l-surface: 255 255 255; /* white */
+  --l-surface-raised: 245 245 245; /* neutral-100 */
+  --l-border: 229 229 229; /* neutral-200 */
+  --l-accent: 3 105 161; /* azure-700: link text on white (AA) */
+  --l-accent-dot: 2 132 199; /* azure-600 */
+  --l-btn-bg: 2 132 199; /* azure-600 */
+  --l-btn-bg-hover: 3 105 161; /* azure-700 */
+  --l-icon: 2 132 199; /* azure-600 */
+  --l-icon-bg: 224 242 254; /* azure-100 */
+  --l-code-bg: 229 229 229; /* neutral-200 */
+}
+
+/*
+ * Landing pages render their own hero inside the Landing component, and the
+ * PageTitle override drops the default page title on splash pages.  Collapse the
+ * now-empty content panel Starlight leaves above the landing so there is no
+ * stray gap or divider line.  Scoped to pages that actually contain .landing.
+ */
+main:has(.landing) > .content-panel:first-of-type {
+  display: none;
+}
+main:has(.landing) > .content-panel:first-of-type + .content-panel {
+  border-top: 0;
+}
+
+/*
+ * Headline line-breaking for the landing.
+ *
+ * Balance heading line lengths across locales (text-wrap: balance).  For Korean,
+ * break only at word (eojeol) boundaries rather than mid-word, since Korean
+ * separates words with spaces (word-break: keep-all applied to the whole
+ * landing).  Japanese and Chinese keep per-character wrapping but use stricter
+ * kinsoku so a heading line doesn't start or end on punctuation.  These target
+ * the classes rendered by the components in src/components/landing/.
+ */
+.hero__title,
+.hero__subhead,
+.sh__heading,
+.sh__intro,
+.cl__heading {
+  text-wrap: balance;
+}
+html[lang="ko"] .landing {
+  word-break: keep-all;
+}
+html[lang="ja"] .landing :is(h1, h2),
+html[lang="zh-CN"] .landing :is(h1, h2),
+html[lang="zh-TW"] .landing :is(h1, h2) {
+  line-break: strict;
+  /* Phrase-based breaking where supported (Chromium); falls back gracefully. */
+  word-break: auto-phrase;
 }

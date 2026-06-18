@@ -1,0 +1,59 @@
+---
+import type { Landing } from "../../i18n/landing";
+import Button from "./Button.astro";
+
+interface Props {
+  closing: Landing["closing"];
+}
+
+const { closing } = Astro.props;
+---
+
+<section class="cl" aria-labelledby="cl-heading">
+  <div class="cl__panel" data-reveal>
+    <h2 class="cl__heading" id="cl-heading">{closing.heading}</h2>
+    <p class="cl__body">{closing.body}</p>
+    <div class="cl__actions">
+      <Button action={closing.primary} variant="primary" icon="lucide:rocket" />
+      <Button action={closing.secondary} variant="secondary" icon="lucide:github" />
+    </div>
+  </div>
+</section>
+
+<style>
+  .cl {
+    padding-block: var(--l-section-pad);
+  }
+  .cl__panel {
+    max-width: var(--l-width-wide);
+    margin-inline: auto;
+    padding: clamp(2.5rem, 6vw, 4rem) 1.5rem;
+    border: 1px solid rgb(var(--l-border));
+    border-radius: 1rem;
+    background: rgb(var(--l-surface-raised));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .cl__heading {
+    margin: 0;
+    font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: rgb(var(--l-heading));
+  }
+  .cl__body {
+    margin: 1rem 0 0;
+    font-size: 1.05rem;
+    color: rgb(var(--l-text));
+  }
+  .cl__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+</style>

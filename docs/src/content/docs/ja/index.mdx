@@ -1,85 +1,10 @@
 ---
 title: ようこそHolloへ！
 description: >-
-  Holloは1人用の連合マイクロブログソフトウェアです。
+  フェディバースのための一人様向けマイクロブログサーバー。ActivityPubで連合し、Mastodon互換APIを提供します。
 template: splash
-hero:
-  tagline: >-
-    1人用の連合マイクロブログソフトウェア。
-    ActivityPub、Mastodon互換API、CommonMark、FEP-044f準拠の引用をサポート。
-  image:
-    light: ../../../assets/logo-black.svg
-    dark: ../../../assets/logo-white.svg
-  actions:
-  - text: Holloとは？
-    link: /ja/intro
-    icon: right-arrow
-    variant: secondary
-  - text: インストール
-    link: /ja/install/railway
-    icon: rocket
-    variant: primary
-  - text: 公式インスタンス
-    link: https://hollo.social/@hollo
-    icon: external
-    variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import Landing from "../../../components/landing/Landing.astro";
 
-<CardGrid stagger>
-  <Card title="1人用" icon="seti:lock">
-    Holloは1人用に設計されているため、
-    インスタンスを所有し、データに完全な制御権を持つことができます。
-    個人用のマイクロブログ、ノート、日記に最適です。
-  </Card>
-  <Card title="複数アカウント" icon="seti:folder">
-    Holloは1人用に設計されていますが、
-    同じインスタンスで複数のアカウントを作ることができます。
-    アカウント間の切り替えも簡単で、
-    各アカウントにはそれぞれ別のプロフィール、投稿、設定があります。
-  </Card>
-  <Card title="Mastodon互換API" icon="puzzle">
-    Holloには独自のウェブインターフェースがありません。
-    代わりに、[Mastodon API]と互換性があり、
-    どんなMastodon互換クライアントアプリからも
-    Holloを利用できます。
-
-    [Mastodon API]: https://docs.joinmastodon.org/methods/
-  </Card>
-  <Card title="CommonMark" icon="seti:markdown">
-    [CommonMark]（通称Markdown）で投稿を作成できます。
-    そのようにして作成した投稿は、
-    フェディバース（fediverse）の他のソフトウェアでもうまく表示されます。
-    また、最大10,000文字の投稿を作成できます。
-
-    [CommonMark]: https://commonmark.org/
-  </Card>
-  <Card title="引用投稿" icon="comment">
-    Holloは[FEP-044f]準拠の引用機能をサポートしているため、
-    他の投稿を引用して自分の投稿に含めることができます。
-    MisskeyスタイルとMastodonスタイルの両方の引用形式に対応しており、
-    [Mastodon]、[Misskey]、[Akkoma]、[Fedibird]、[Threads]などと互換性があります。
-
-    [FEP-044f]: https://w3id.org/fep/044f
-    [Mastodon]: https://joinmastodon.org/
-    [Misskey]: https://misskey-hub.net/ja/
-    [Akkoma]: https://akkoma.social/
-    [Fedibird]: https://github.com/fedibird/mastodon
-    [Threads]: https://www.threads.net/
-  </Card>
-  <Card title="Misskeyスタイルの絵文字リアクション" icon="heart">
-    Holloは[Misskey]スタイルの絵文字リアクション機能をサポートしているため、
-    他の投稿に絵文字リアクションを追加することができます。
-    これはMisskey、[Akkoma]など、
-    Misskeyスタイルの絵文字リアクションをサポートする他のフェディバースソフトウェアとも互換性があります。
-
-    [Misskey]: https://misskey-hub.net/ja/
-    [Akkoma]: https://akkoma.social/
-  </Card>
-  <Card title="Fedifyベース" icon="deno">
-    HolloはTypeScript向けのActivityPubサーバーフレームワークである[Fedify]で作られています。
-
-    [Fedify]: https://fedify.dev/
-  </Card>
-</CardGrid>
+<Landing locale="ja" />

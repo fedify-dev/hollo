@@ -1,14 +1,17 @@
 import starlight from "@astrojs/starlight";
 // @ts-check
 import { defineConfig } from "astro/config";
+import icon from "astro-icon";
 
 // https://astro.build/config
 export default defineConfig({
   site: "https://docs.hollo.social",
   integrations: [
+    icon(),
     starlight({
       components: {
         SocialIcons: "./src/components/SocialIcons.astro",
+        PageTitle: "./src/components/PageTitle.astro",
       },
       title: "Hollo",
       logo: {
@@ -16,7 +19,7 @@ export default defineConfig({
         light: "./src/assets/logo-black.svg",
         replacesTitle: true,
       },
-      customCss: ["./src/styles/custom.css"],
+      customCss: ["./src/styles/fonts.css", "./src/styles/custom.css"],
       social: [
         {
           icon: "matrix",
@@ -163,6 +166,14 @@ export default defineConfig({
         },
       ],
       head: [
+        {
+          tag: "link",
+          attrs: {
+            rel: "preconnect",
+            href: "https://fonts.bunny.net",
+            crossorigin: true,
+          },
+        },
         {
           tag: "link",
           attrs: {

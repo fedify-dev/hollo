@@ -1,0 +1,108 @@
+---
+import type { Landing } from "../../i18n/landing";
+import Button from "./Button.astro";
+import logoBlack from "../../assets/logo-black.svg?url";
+import logoWhite from "../../assets/logo-white.svg?url";
+
+interface Props {
+  hero: Landing["hero"];
+}
+
+const { hero } = Astro.props;
+---
+
+<header class="hero">
+  <div class="hero__inner">
+    <span class="hero__logo">
+      <img
+        class="hero__logo-img hero__logo-img--light"
+        src={logoBlack}
+        alt="Hollo"
+        width="88"
+        height="88"
+      />
+      <img
+        class="hero__logo-img hero__logo-img--dark"
+        src={logoWhite}
+        alt=""
+        aria-hidden="true"
+        width="88"
+        height="88"
+      />
+    </span>
+    <h1 class="hero__title">{hero.tagline}</h1>
+    <p class="hero__subhead">{hero.subhead}</p>
+    <div class="hero__actions">
+      <Button action={hero.primary} variant="primary" icon="lucide:rocket" />
+      <Button action={hero.secondary} variant="secondary" icon="lucide:circle-help" />
+    </div>
+    <div class="hero__tertiary">
+      <Button action={hero.tertiary} variant="link" />
+    </div>
+    <p class="hero__meta">{hero.meta}</p>
+  </div>
+</header>
+
+<style>
+  .hero {
+    padding-block: clamp(3rem, 7vw, 5.5rem) clamp(2.5rem, 5vw, 4rem);
+  }
+  .hero__inner {
+    max-width: 48rem;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .hero__logo {
+    line-height: 0;
+    margin-bottom: 1.75rem;
+  }
+  .hero__logo-img {
+    width: 84px;
+    height: 84px;
+  }
+  /* Follow Starlight's manual data-theme toggle, not the OS scheme. */
+  .hero__logo-img--dark {
+    display: none;
+  }
+  :global([data-theme="dark"]) .hero__logo-img--dark {
+    display: block;
+  }
+  :global([data-theme="dark"]) .hero__logo-img--light {
+    display: none;
+  }
+  .hero__title {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.1rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: rgb(var(--l-heading));
+  }
+  .hero__subhead {
+    max-width: 40rem;
+    margin: 1.25rem 0 0;
+    font-size: clamp(1.05rem, 2vw, 1.2rem);
+    line-height: 1.6;
+    color: rgb(var(--l-text));
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+  .hero__tertiary {
+    margin-top: 1rem;
+  }
+  .hero__meta {
+    margin: 1.75rem 0 0;
+    font-family: var(--sl-font-mono);
+    font-size: 0.85rem;
+    color: rgb(var(--l-muted));
+  }
+</style>

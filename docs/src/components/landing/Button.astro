@@ -1,0 +1,95 @@
+---
+import { Icon } from "astro-icon/components";
+import type { Action } from "../../i18n/landing";
+
+interface Props {
+  action: Action;
+  variant?: "primary" | "secondary" | "link";
+  icon?: string;
+}
+
+const { action, variant = "primary", icon } = Astro.props;
+const rel = action.external ? "noopener noreferrer" : undefined;
+const target = action.external ? "_blank" : undefined;
+---
+
+<a
+  class:list={["btn", `btn--${variant}`]}
+  href={action.href}
+  rel={rel}
+  target={target}
+>
+  {icon && <Icon class="btn__icon" name={icon} />}
+  <span>{action.text}</span>
+  {variant === "link" && <Icon class="btn__arrow" name="lucide:arrow-right" />}
+</a>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--hollo-radius-btn);
+    padding: 0.625rem 1.1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+  .btn:focus-visible {
+    outline: 2px solid rgb(var(--l-accent-dot));
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn:active {
+      transform: scale(0.98);
+    }
+  }
+
+  .btn--primary {
+    background: rgb(var(--l-btn-bg));
+    color: #fff;
+  }
+  .btn--primary:hover {
+    background: rgb(var(--l-btn-bg-hover));
+  }
+
+  .btn--secondary {
+    background: rgb(var(--l-surface));
+    color: rgb(var(--l-text));
+    border: 1px solid rgb(var(--l-border));
+  }
+  .btn--secondary:hover {
+    color: rgb(var(--l-accent));
+    border-color: rgb(var(--l-accent) / 0.5);
+  }
+
+  .btn--link {
+    padding: 0.25rem 0;
+    gap: 0.3rem;
+    color: rgb(var(--l-accent));
+  }
+  .btn--link:hover {
+    color: rgb(var(--l-accent-dot));
+  }
+  .btn--link .btn__arrow {
+    transition: transform 150ms ease;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .btn--link:hover .btn__arrow {
+      transform: translateX(2px);
+    }
+  }
+
+  .btn__icon,
+  .btn__arrow {
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+  }
+</style>

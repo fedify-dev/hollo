@@ -1,82 +1,11 @@
 ---
 title: Hollo에 어서 오세요!
 description: >-
-  Hollo는 1인 사용자용 연합 마이크로블로그 소프트웨어입니다.
+  연합우주를 위한 1인용 마이크로블로그 서버. ActivityPub로 연합하고 Mastodon 호환 API를
+  제공합니다.
 template: splash
-hero:
-  tagline: >-
-    1인 사용자용 연합 마이크로블로그 소프트웨어.
-    ActivityPub, Mastodon 호환 API, CommonMark 및 FEP-044f 준수 인용 지원.
-  image:
-    light: ../../../assets/logo-black.svg
-    dark: ../../../assets/logo-white.svg
-  actions:
-  - text: Hollo란?
-    link: /ko/intro
-    icon: right-arrow
-    variant: secondary
-  - text: 설치
-    link: /ko/install/railway
-    icon: rocket
-    variant: primary
-  - text: 공식 인스턴스
-    link: https://hollo.social/@hollo
-    icon: external
-    variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import Landing from "../../../components/landing/Landing.astro";
 
-<CardGrid stagger>
-  <Card title="1인 사용자용" icon="seti:lock">
-    Hollo는 1인 사용자용으로 설계되어 있어,
-    인스턴스를 스스로 소유하고 데이터에 대한 제어권을 완전히 가질 수 있습니다.
-    개인용 마이크로블로그, 노트, 일기 등에 안성맞춤입니다.
-  </Card>
-  <Card title="다중 계정" icon="seti:folder">
-    비록 Hollo는 1인 사용자용으로 설계되어 있지만,
-    한 인스턴스 안에서 여러 계정을 만드는 것이 가능합니다.
-    계정 간 전환도 쉽고, 각 계정은 자신만의 프로필, 게시물, 설정을 갖습니다.
-  </Card>
-  <Card title="Mastodon 호환 API" icon="puzzle">
-    Hollo는 자체 웹 인터페이스가 없습니다.
-    대신, [Mastodon API]와 호환되어, 아무 Mastodon 호환 클라이언트 앱으로
-    Hollo를 이용할 수 있습니다.
-
-    [Mastodon API]: https://docs.joinmastodon.org/methods/
-  </Card>
-  <Card title="CommonMark" icon="seti:markdown">
-    [CommonMark](일명 Markdown)으로 게시물을 작성할 수 있으며,
-    그렇게 작성한 게시물은 연합우주의 다른 소프트웨어들에서도 잘 보여집니다.
-    또한, 게시물 당 최대 10,000자까지 작성할 수 있습니다.
-
-    [CommonMark]: https://commonmark.org/
-  </Card>
-  <Card title="인용 게시물" icon="comment">
-    Hollo는 [FEP-044f] 준수 인용 기능을 지원하므로,
-    다른 게시물을 인용하여 자신의 게시물에 포함시킬 수 있습니다.
-    Misskey 스타일과 Mastodon 스타일 인용 형식 모두와 호환되며,
-    [Mastodon], [Misskey], [Akkoma], [Fedibird], [Threads] 등과 호환됩니다.
-
-    [FEP-044f]: https://w3id.org/fep/044f
-    [Mastodon]: https://joinmastodon.org/ko
-    [Misskey]: https://misskey-hub.net/ko/
-    [Akkoma]: https://akkoma.social/
-    [Fedibird]: https://github.com/fedibird/mastodon
-    [Threads]: https://www.threads.net/
-  </Card>
-  <Card title="Misskey 스타일 에모지 리액션" icon="heart">
-    Hollo는 [Misskey] 스타일의 에모지 리액션을 지원하므로,
-    게시물에 Unicode 에모지나 커스텀 에모지를 리액션으로 달 수 있습니다.
-    이는 Misskey, [Akkoma] 등 Misskey 스타일 에모지 리액션을 지원하는
-    다른 연합우주 소프트웨어들과도 호환됩니다.
-
-    [Misskey]: https://misskey-hub.net/
-    [Akkoma]: https://akkoma.social/
-  </Card>
-  <Card title="Fedify로 제작됨" icon="deno">
-    Hollo는 TypeScript를 위한 ActivityPub 서버 프레임워크인 [Fedify]로 제작되었습니다.
-
-    [Fedify]: https://fedify.dev/
-  </Card>
-</CardGrid>
+<Landing locale="ko" />

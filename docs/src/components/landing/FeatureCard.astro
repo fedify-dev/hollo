@@ -1,0 +1,112 @@
+---
+import { Icon } from "astro-icon/components";
+import type { Feature } from "../../i18n/landing";
+
+interface Props {
+  feature: Feature;
+  index?: number;
+}
+
+const { feature, index = 0 } = Astro.props;
+const link = feature.link;
+// When a feature has a related docs page, the whole card becomes a link.
+const Tag = link ? "a" : "article";
+const linkAttrs = link
+  ? {
+      href: link.href,
+      ...(link.external ? { rel: "noopener noreferrer", target: "_blank" } : {}),
+    }
+  : {};
+---
+
+<Tag
+  class:list={["fc", { "fc--link": link }]}
+  data-reveal
+  style={`--reveal-delay: ${(index % 4) * 60}ms`}
+  {...linkAttrs}
+>
+  <span class="fc__icon" aria-hidden="true"><Icon name={feature.icon} /></span>
+  <h3 class="fc__title">
+    {feature.title}
+    {link && <Icon class="fc__arrow" name="lucide:arrow-right" />}
+  </h3>
+  <p class="fc__body" set:html={feature.body}></p>
+</Tag>
+
+<style>
+  .fc {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    height: 100%;
+    padding: 1.5rem;
+    border: 1px solid rgb(var(--l-border));
+    border-radius: var(--hollo-radius-card);
+    background: rgb(var(--l-surface));
+  }
+  .fc--link {
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 150ms ease;
+  }
+  .fc--link:hover {
+    border-color: rgb(var(--l-accent) / 0.5);
+  }
+  .fc--link:focus-visible {
+    outline: 2px solid rgb(var(--l-accent-dot));
+    outline-offset: 2px;
+  }
+  .fc__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 1rem;
+    border-radius: 0.625rem;
+    background: rgb(var(--l-icon-bg));
+    color: rgb(var(--l-icon));
+  }
+  .fc__icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+  .fc__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: rgb(var(--l-heading));
+  }
+  .fc__arrow {
+    width: 1em;
+    height: 1em;
+    flex: none;
+    color: rgb(var(--l-accent));
+    transition: transform 150ms ease;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .fc--link:hover .fc__arrow {
+      transform: translateX(2px);
+    }
+  }
+  .fc__body {
+    margin: 0.5rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: rgb(var(--l-text));
+  }
+  /* Operators and other literals in the body are wrapped in <code>; the body is
+     rendered with set:html, so the selector must be :global. */
+  .fc__body :global(code) {
+    font-family: var(--sl-font-mono);
+    font-size: 0.85em;
+    white-space: nowrap;
+    padding: 0.1em 0.35em;
+    border-radius: 0.25rem;
+    background: rgb(var(--l-code-bg));
+    color: rgb(var(--l-heading));
+  }
+</style>

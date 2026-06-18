@@ -1,0 +1,44 @@
+---
+import type { Landing } from "../../i18n/landing";
+import SectionHeading from "./SectionHeading.astro";
+import Button from "./Button.astro";
+
+interface Props {
+  fedify: Landing["fedify"];
+}
+
+const { fedify } = Astro.props;
+---
+
+<section class="pf" aria-labelledby="sh-fedify">
+  <div class="pf__inner" data-reveal>
+    <SectionHeading
+      eyebrow={fedify.eyebrow}
+      heading={fedify.heading}
+      id="sh-fedify"
+    />
+    <p class="pf__body">{fedify.body}</p>
+    <Button action={fedify.link} variant="link" />
+  </div>
+</section>
+
+<style>
+  .pf {
+    padding-block: var(--l-section-pad);
+  }
+  .pf__inner {
+    max-width: var(--l-width-prose);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .pf__body {
+    margin: 1.5rem 0 1.25rem;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: rgb(var(--l-text));
+  }
+</style>

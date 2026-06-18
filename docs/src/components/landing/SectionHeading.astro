@@ -1,0 +1,75 @@
+---
+interface Props {
+  eyebrow: string;
+  heading: string;
+  intro?: string;
+  align?: "center" | "start";
+  id?: string;
+}
+
+const { eyebrow, heading, intro, align = "center", id } = Astro.props;
+---
+
+<header class:list={["sh", `sh--${align}`]}>
+  <p class="sh__eyebrow">
+    <span class="sh__dot" aria-hidden="true"></span>{eyebrow}
+  </p>
+  <h2 class="sh__heading" id={id}>{heading}</h2>
+  <div class="sh__rule" aria-hidden="true"></div>
+  {intro && <p class="sh__intro">{intro}</p>}
+</header>
+
+<style>
+  .sh {
+    display: flex;
+    flex-direction: column;
+  }
+  .sh--center {
+    align-items: center;
+    text-align: center;
+  }
+  .sh--start {
+    align-items: flex-start;
+    text-align: start;
+  }
+  .sh__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(var(--l-muted));
+  }
+  .sh__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: rgb(var(--l-accent-dot));
+    flex: none;
+  }
+  .sh__heading {
+    margin: 0.75rem 0 0;
+    font-size: clamp(1.6rem, 3.2vw, 2.1rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: rgb(var(--l-heading));
+  }
+  .sh__rule {
+    width: 2.5rem;
+    height: 2px;
+    margin-top: 1rem;
+    background: rgb(var(--l-accent-dot));
+    border-radius: 2px;
+  }
+  .sh__intro {
+    max-width: var(--l-width-prose);
+    margin: 1.1rem 0 0;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: rgb(var(--l-text));
+  }
+</style>
