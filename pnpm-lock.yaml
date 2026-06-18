@@ -23,7 +23,7 @@ importers:
         version: 2.2.5
       '@fedify/hono':
         specifier: ^2.2.5
-        version: 2.2.5(@fedify/fedify@2.2.5)(hono@4.12.21)
+        version: 2.2.5(@fedify/fedify@2.2.5)(hono@4.12.25)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -44,10 +44,10 @@ importers:
         version: 2.0.4
       '@hono/node-server':
         specifier: ^1.19.13
-        version: 1.19.13(hono@4.12.21)
+        version: 1.19.13(hono@4.12.25)
       '@hono/zod-validator':
         specifier: ^0.8.0
-        version: 0.8.0(hono@4.12.21)(zod@4.4.3)
+        version: 0.8.0(hono@4.12.25)(zod@4.4.3)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -121,17 +121,17 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0(@aws-sdk/client-s3@3.713.0)(@aws-sdk/s3-request-presigner@3.713.0)
       hono:
-        specifier: ^4.12.18
-        version: 4.12.21
+        specifier: ^4.12.25
+        version: 4.12.25
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.5
       markdown-it:
-        specifier: ^14.1.1
-        version: 14.1.1
+        specifier: ^14.2.0
+        version: 14.2.0
       markdown-it-replace-link:
         specifier: ^1.2.2
-        version: 1.2.2(@types/markdown-it@14.1.2)(markdown-it@14.1.1)
+        version: 1.2.2(@types/markdown-it@14.1.2)(markdown-it@14.2.0)
       mime:
         specifier: ^4.1.0
         version: 4.1.0
@@ -4055,8 +4055,8 @@ packages:
     resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==}
     engines: {node: '>=0.12'}
 
-  entities@6.0.0:
-    resolution: {integrity: sha512-aKstq2TDOndCn4diEyp9Uq/Flu2i1GlLkc6XIDQSDMuaFE3OPW5OphLCyQ5SpSJZTb4reN+kTcYru5yIfXoRPw==}
+  entities@6.0.1:
+    resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
   entities@7.0.1:
@@ -4426,8 +4426,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hono@4.12.21:
-    resolution: {integrity: sha512-uV63apnb0kyPtAUwoWgaGh9HyIFcv8lgmzPZSiTBQAFOFGIzka5EZ1dZocmGnn0XdX0+XTqJ6Tqv7selMuGLRQ==}
+  hono@4.12.25:
+    resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
     engines: {node: '>=16.9.0'}
 
   hookable@6.1.1:
@@ -4669,8 +4669,8 @@ packages:
       canvas:
         optional: true
 
-  linkify-it@5.0.0:
-    resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==}
+  linkify-it@5.0.1:
+    resolution: {integrity: sha512-wVoTjP4Q6R0NW5hiZkVJaFZPWgtXfoGF+6LucL3/FtiNjmcHhYjEr5f1Kqjirc1nBW07J/ZuRFumqr2oqccEWg==}
 
   local-pkg@1.2.1:
     resolution: {integrity: sha512-++gUqRDEvcnN6Zhqrr+y/CkVEHhlrR96vZn3nZZPYzMcBUyBtTKzB9NadClFIsIVSsu+3i9tfk/erqy9kAmt7Q==}
@@ -4718,8 +4718,8 @@ packages:
       '@types/markdown-it': '*'
       markdown-it: '*'
 
-  markdown-it@14.1.1:
-    resolution: {integrity: sha512-BuU2qnTti9YKgK5N+IeMubp14ZUKUUw7yeJbkjtosvHiP0AZ5c8IAgEMk79D0eC8F23r4Ac/q8cAIFdm2FtyoA==}
+  markdown-it@14.2.0:
+    resolution: {integrity: sha512-1TGiQiJVRQ3NPmZH6sx5Cfnmg6GQm9jvC1ch4TK511NjSJvjzKLzn5pPfZRNZkRPZP0HqCioSndqH8v2nRaWVQ==}
     hasBin: true
 
   markdown-table@3.0.4:
@@ -7825,7 +7825,7 @@ snapshots:
       '@opentelemetry/context-async-hooks': 2.8.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core': 2.8.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.8.0(@opentelemetry/api@1.9.1)
-      hono: 4.12.21
+      hono: 4.12.25
 
   '@fedify/fedify@2.2.5':
     dependencies:
@@ -7847,10 +7847,10 @@ snapshots:
       url-template: 3.1.1
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@2.2.5(@fedify/fedify@2.2.5)(hono@4.12.21)':
+  '@fedify/hono@2.2.5(@fedify/fedify@2.2.5)(hono@4.12.25)':
     dependencies:
       '@fedify/fedify': 2.2.5
-      hono: 4.12.21
+      hono: 4.12.25
 
   '@fedify/lint@2.2.5(@fedify/fedify@2.2.5)(eslint@10.2.1(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
@@ -7866,11 +7866,11 @@ snapshots:
 
   '@fedify/markdown-it-hashtag@0.3.0':
     dependencies:
-      markdown-it: 14.1.1
+      markdown-it: 14.2.0
 
   '@fedify/markdown-it-mention@0.3.0':
     dependencies:
-      markdown-it: 14.1.1
+      markdown-it: 14.2.0
 
   '@fedify/postgres@2.2.5(@fedify/fedify@2.2.5)(postgres@3.4.9)':
     dependencies:
@@ -7926,13 +7926,13 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@1.19.13(hono@4.12.21)':
+  '@hono/node-server@1.19.13(hono@4.12.25)':
     dependencies:
-      hono: 4.12.21
+      hono: 4.12.25
 
-  '@hono/zod-validator@0.8.0(hono@4.12.21)(zod@4.4.3)':
+  '@hono/zod-validator@0.8.0(hono@4.12.25)(zod@4.4.3)':
     dependencies:
-      hono: 4.12.21
+      hono: 4.12.25
       zod: 4.4.3
 
   '@humanfs/core@0.19.2':
@@ -9090,7 +9090,7 @@ snapshots:
 
   '@shikijs/markdown-it@4.0.2':
     dependencies:
-      markdown-it: 14.1.1
+      markdown-it: 14.2.0
       shiki: 4.0.2
 
   '@shikijs/primitive@4.0.2':
@@ -10848,7 +10848,7 @@ snapshots:
 
   entities@4.5.0: {}
 
-  entities@6.0.0: {}
+  entities@6.0.1: {}
 
   entities@7.0.1: {}
 
@@ -11456,7 +11456,7 @@ snapshots:
       property-information: 7.2.0
       space-separated-tokens: 2.0.2
 
-  hono@4.12.21: {}
+  hono@4.12.25: {}
 
   hookable@6.1.1: {}
 
@@ -11473,7 +11473,7 @@ snapshots:
       domelementtype: 2.3.0
       domhandler: 5.0.3
       domutils: 3.2.1
-      entities: 6.0.0
+      entities: 6.0.1
 
   htmlparser2@10.1.0:
     dependencies:
@@ -11655,7 +11655,7 @@ snapshots:
       htmlparser2: 10.0.0
       uhyphen: 0.2.0
 
-  linkify-it@5.0.0:
+  linkify-it@5.0.1:
     dependencies:
       uc.micro: 2.1.0
 
@@ -11707,19 +11707,19 @@ snapshots:
 
   markdown-extensions@2.0.0: {}
 
-  markdown-it-replace-link@1.2.2(@types/markdown-it@14.1.2)(markdown-it@14.1.1):
+  markdown-it-replace-link@1.2.2(@types/markdown-it@14.1.2)(markdown-it@14.2.0):
     dependencies:
       '@types/markdown-it': 14.1.2
-      markdown-it: 14.1.1
+      markdown-it: 14.2.0
     optionalDependencies:
       dom-serializer: 2.0.0
       htmlparser2: 8.0.2
 
-  markdown-it@14.1.1:
+  markdown-it@14.2.0:
     dependencies:
       argparse: 2.0.1
       entities: 4.5.0
-      linkify-it: 5.0.0
+      linkify-it: 5.0.1
       mdurl: 2.0.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
@@ -12468,7 +12468,7 @@ snapshots:
 
   parse5@7.3.0:
     dependencies:
-      entities: 6.0.0
+      entities: 6.0.1
 
   path-browserify@1.0.1: {}
 
