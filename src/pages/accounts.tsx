@@ -63,7 +63,12 @@ const HOLLO_OFFICIAL_ACCOUNT = "@hollo@hollo.social";
 
 const logger = getLogger(["hollo", "pages", "accounts"]);
 
-const allowedImageMimeTypes = ["image/gif", "image/jpeg", "image/png"];
+const allowedImageMimeTypes = [
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
 
 export function parseFields(
   form: FormData,
@@ -194,7 +199,7 @@ accounts.post("/", async (c) => {
           news,
           fields: parsedFields,
         }}
-        errors={{ avatar: "Avatar must be a JPEG, PNG, or GIF." }}
+        errors={{ avatar: "Avatar must be a JPEG, PNG, WebP, or GIF." }}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
         host={getInstanceHost(new URL(c.req.url))}
       />,
@@ -222,7 +227,7 @@ accounts.post("/", async (c) => {
           news,
           fields: parsedFields,
         }}
-        errors={{ header: "Header image must be a JPEG, PNG, or GIF." }}
+        errors={{ header: "Header image must be a JPEG, PNG, WebP, or GIF." }}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
         host={getInstanceHost(new URL(c.req.url))}
       />,
@@ -596,7 +601,7 @@ accounts.post("/:id", async (c) => {
           coverUrl: accountOwner.account.coverUrl,
           fields: parsedFields,
         }}
-        errors={{ avatar: "Avatar must be a JPEG, PNG, or GIF." }}
+        errors={{ avatar: "Avatar must be a JPEG, PNG, WebP, or GIF." }}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
         host={getInstanceHost(new URL(c.req.url))}
       />,
@@ -627,7 +632,7 @@ accounts.post("/:id", async (c) => {
           coverUrl: accountOwner.account.coverUrl,
           fields: parsedFields,
         }}
-        errors={{ header: "Header image must be a JPEG, PNG, or GIF." }}
+        errors={{ header: "Header image must be a JPEG, PNG, WebP, or GIF." }}
         officialAccount={HOLLO_OFFICIAL_ACCOUNT}
         host={getInstanceHost(new URL(c.req.url))}
       />,

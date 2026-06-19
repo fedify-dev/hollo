@@ -50,7 +50,12 @@ import { isUuid, type Uuid } from "../../uuid";
 import { timelineQuerySchema } from "./timelines";
 
 const app = new Hono<{ Variables: AccountOwnerVariables }>();
-const allowedImageMimeTypes = ["image/gif", "image/jpeg", "image/png"];
+const allowedImageMimeTypes = [
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
 
 app.get(
   "/verify_credentials",
