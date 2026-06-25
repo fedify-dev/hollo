@@ -6,6 +6,13 @@ Version 0.10.0
 
 To be released.
 
+ -  Upgraded Fedify to 2.3.0, which adds an outbound delivery circuit
+    breaker (enabled by default for queued outbox delivery),
+    `MessageQueue.getDepth()` support, OpenTelemetry metrics for
+    federation operations, `mapActorAlias()` for fixed-path actor
+    dispatchers, and significantly faster TypeScript type-checking of
+    dispatcher paths.
+
  -  Added WebP (`image/webp`) as an accepted format for profile avatar and
     banner image uploads.  Previously only JPEG, PNG, and GIF were accepted
     by both the Mastodon-compatible
