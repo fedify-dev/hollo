@@ -1,12 +1,20 @@
 import type { Context, InboxContext } from "@fedify/fedify";
 import {
   Announce,
+  Article,
+  Collection,
+  Emoji,
+  EmojiReact,
+  Image,
   InteractionPolicy,
   InteractionRule,
   Mention,
   Note,
+  OrderedCollection,
+  OrderedCollectionPage,
   Person,
   PUBLIC_COLLECTION,
+  Question,
   QuoteAuthorization,
   type RemoteDocument,
 } from "@fedify/vocab";
@@ -81,6 +89,15 @@ function createAnnounce(id: string, actor: Person, object: string | Note) {
     object: typeof object === "string" ? new URL(object) : object,
     to: PUBLIC_COLLECTION,
   });
+}
+
+function createRemotePostObject(
+  type: "Note" | "Question" | "Article",
+  values: ConstructorParameters<typeof Note>[0],
+) {
+  if (type === "Question") return new Question(values);
+  if (type === "Article") return new Article(values);
+  return new Note(values);
 }
 
 function createCtx() {
@@ -500,6 +517,309 @@ describe("persistPost", () => {
     const jobs = await db.query.remoteReplyScrapeJobs.findMany();
     expect(post?.repliesCount).toBe(3);
     expect(jobs.map((job) => job.repliesIri)).toEqual([repliesIri]);
+  });
+
+  it.each(["Note", "Question", "Article"] as const)(
+    "persists remote emojiReactions for %s objects",
+    async (type) => {
+      expect.assertions(3);
+      const author = await seedRemoteAccount("author");
+      const reactor = await seedRemoteAccount(`reactor-${type}`);
+      const postIri = `https://remote.test/@author/posts/reactable-${type}`;
+
+      const result = await persistPost(
+        db,
+        createRemotePostObject(type, {
+          id: new URL(postIri),
+          attribution: createPerson(author),
+          content: "<p>Hello</p>",
+          emojiReactions: new Collection({
+            items: [
+              new EmojiReact({
+                actor: createPerson(reactor),
+                object: new URL(postIri),
+                content: "👍",
+              }),
+            ],
+          }),
+          to: PUBLIC_COLLECTION,
+        }),
+        "https://hollo.test",
+        { account: author },
+      );
+
+      if (result == null) throw new Error("Failed to persist post");
+      const rows = await db.query.reactions.findMany({
+        where: { postId: { eq: result.id } },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.accountId).toBe(reactor.id);
+      expect(rows[0]?.emoji).toBe("👍");
+    },
+  );
+
+  it("persists custom remote emojiReactions idempotently", async () => {
+    expect.assertions(5);
+    const author = await seedRemoteAccount("author");
+    const unicodeReactor = await seedRemoteAccount("unicode-reactor");
+    const customReactor = await seedRemoteAccount("custom-reactor");
+    const postIri = "https://remote.test/@author/posts/custom-reactions";
+    const note = new Note({
+      id: new URL(postIri),
+      attribution: createPerson(author),
+      content: "<p>Hello</p>",
+      emojiReactions: new Collection({
+        items: [
+          new EmojiReact({
+            actor: createPerson(unicodeReactor),
+            object: new URL(postIri),
+            content: "🔥",
+          }),
+          new EmojiReact({
+            actor: createPerson(customReactor),
+            object: new URL(postIri),
+            content: ":blob:",
+            tags: [
+              new Emoji({
+                id: new URL("https://remote.test/emojis/blob"),
+                name: ":blob:",
+                icon: new Image({
+                  url: new URL("https://remote.test/emoji/blob.png"),
+                }),
+              }),
+            ],
+          }),
+        ],
+      }),
+      to: PUBLIC_COLLECTION,
+    });
+
+    const first = await persistPost(db, note, "https://hollo.test", {
+      account: author,
+    });
+    const second = await persistPost(db, note, "https://hollo.test", {
+      account: author,
+    });
+    if (first == null || second == null) {
+      throw new Error("Failed to persist post");
+    }
+
+    const rows = await db.query.reactions.findMany({
+      where: { postId: { eq: first.id } },
+    });
+    const customReaction = rows.find((row) => row.emoji === ":blob:");
+    expect(second.id).toBe(first.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.emoji).toSorted()).toEqual([":blob:", "🔥"]);
+    expect(customReaction?.emojiIri).toBe("https://remote.test/emojis/blob");
+    expect(customReaction?.customEmoji).toBe(
+      "https://remote.test/emoji/blob.png",
+    );
+  });
+
+  it("keeps remote emojiReactions import best-effort for broken custom emoji icons", async () => {
+    expect.assertions(4);
+    const author = await seedRemoteAccount("author");
+    const reactor = await seedRemoteAccount("broken-custom-reactor");
+    const postIri = "https://remote.test/@author/posts/broken-custom-reaction";
+    const iconIri = "https://remote.test/emoji/missing.png";
+    const documentLoader = vi.fn(
+      async (url: string): Promise<RemoteDocument> => {
+        if (url === iconIri) throw new Error("Broken emoji icon");
+        throw new Error(`Unexpected fetch: ${url}`);
+      },
+    );
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL(postIri),
+        attribution: createPerson(author),
+        content: "<p>Hello</p>",
+        emojiReactions: new Collection({
+          items: [
+            new EmojiReact({
+              actor: createPerson(reactor),
+              object: new URL(postIri),
+              content: ":missing:",
+              tags: [
+                new Emoji({
+                  id: new URL("https://remote.test/emojis/missing"),
+                  name: ":missing:",
+                  icon: new URL(iconIri),
+                }),
+              ],
+            }),
+          ],
+        }),
+        to: PUBLIC_COLLECTION,
+      }),
+      "https://hollo.test",
+      { account: author, documentLoader },
+    );
+    if (result == null) throw new Error("Failed to persist post");
+
+    const rows = await db.query.reactions.findMany({
+      where: { postId: { eq: result.id } },
+    });
+    expect(documentLoader).toHaveBeenCalledWith(iconIri);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.emoji).toBe(":missing:");
+    expect(rows[0]?.customEmoji).toBeNull();
+  });
+
+  it("fetches paged remote emojiReactions collections", async () => {
+    expect.assertions(3);
+    const author = await seedRemoteAccount("author");
+    const alice = await seedRemoteAccount("alice");
+    const bob = await seedRemoteAccount("bob");
+    const postIri = "https://remote.test/@author/posts/paged-reactions";
+    const collectionIri = `${postIri}/reactions`;
+    const firstPageIri = `${collectionIri}?cursor=0`;
+    const secondPageIri = `${collectionIri}?cursor=1`;
+    const documentLoader = vi.fn(
+      async (url: string): Promise<RemoteDocument> => {
+        if (url === firstPageIri) {
+          return {
+            contextUrl: null,
+            document: await new OrderedCollectionPage({
+              id: new URL(firstPageIri),
+              items: [
+                new EmojiReact({
+                  actor: createPerson(alice),
+                  object: new URL(postIri),
+                  content: "🍕",
+                }),
+              ],
+              next: new URL(secondPageIri),
+            }).toJsonLd(),
+            documentUrl: url,
+          };
+        }
+        if (url === secondPageIri) {
+          return {
+            contextUrl: null,
+            document: await new OrderedCollectionPage({
+              id: new URL(secondPageIri),
+              items: [
+                new EmojiReact({
+                  actor: createPerson(bob),
+                  object: new URL(postIri),
+                  content: "🍜",
+                }),
+              ],
+            }).toJsonLd(),
+            documentUrl: url,
+          };
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      },
+    );
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL(postIri),
+        attribution: createPerson(author),
+        content: "<p>Hello</p>",
+        emojiReactions: new OrderedCollection({
+          id: new URL(collectionIri),
+          first: new URL(firstPageIri),
+        }),
+        to: PUBLIC_COLLECTION,
+      }),
+      "https://hollo.test",
+      { account: author, documentLoader },
+    );
+    if (result == null) throw new Error("Failed to persist post");
+
+    const rows = await db.query.reactions.findMany({
+      where: { postId: { eq: result.id } },
+      orderBy: (reactions, { asc }) => [asc(reactions.emoji)],
+    });
+    expect(documentLoader).toHaveBeenCalledWith(firstPageIri);
+    expect(documentLoader).toHaveBeenCalledWith(secondPageIri);
+    expect(rows.map((row) => row.emoji)).toEqual(["🍕", "🍜"]);
+  });
+
+  it("ignores invalid remote emojiReactions items", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const reactor = await seedRemoteAccount("reactor");
+    const postIri = "https://remote.test/@author/posts/invalid-reactions";
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL(postIri),
+        attribution: createPerson(author),
+        content: "<p>Hello</p>",
+        emojiReactions: new Collection({
+          items: [
+            new EmojiReact({
+              actor: createPerson(reactor),
+              object: new URL("https://remote.test/@author/posts/other"),
+              content: "👍",
+            }),
+            new EmojiReact({
+              actor: createPerson(reactor),
+              object: new URL(postIri),
+              content: " ",
+            }),
+            new Note({
+              id: new URL("https://remote.test/@author/posts/not-a-reaction"),
+              attribution: createPerson(author),
+              content: "<p>not a reaction</p>",
+            }),
+          ],
+        }),
+        to: PUBLIC_COLLECTION,
+      }),
+      "https://hollo.test",
+      { account: author },
+    );
+    if (result == null) throw new Error("Failed to persist post");
+
+    const rows = await db.query.reactions.findMany({
+      where: { postId: { eq: result.id } },
+    });
+    expect(rows).toHaveLength(0);
+  });
+
+  it("does not fetch remote emojiReactions when disabled", async () => {
+    expect.assertions(3);
+    const author = await seedRemoteAccount("author");
+    const postIri = "https://remote.test/@author/posts/no-reactions-fetch";
+    const collectionIri = `${postIri}/reactions`;
+    const documentLoader = vi.fn(
+      async (url: string): Promise<RemoteDocument> => {
+        if (url === collectionIri) {
+          throw new Error("emojiReactions collection was fetched");
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      },
+    );
+
+    const result = await persistPost(
+      db,
+      new Note({
+        id: new URL(postIri),
+        attribution: createPerson(author),
+        content: "<p>Hello</p>",
+        emojiReactions: new URL(collectionIri),
+        to: PUBLIC_COLLECTION,
+      }),
+      "https://hollo.test",
+      { account: author, documentLoader, fetchEmojiReactions: false },
+    );
+    if (result == null) throw new Error("Failed to persist post");
+
+    const rows = await db.query.reactions.findMany({
+      where: { postId: { eq: result.id } },
+    });
+    expect(result).not.toBeNull();
+    expect(documentLoader).not.toHaveBeenCalled();
+    expect(rows).toHaveLength(0);
   });
 
   it("ignores posts with a published date more than 12 hours in the future", async () => {

@@ -279,6 +279,7 @@ async function processRemoteReplyScrapeJob(
       const reply = await persistPost(db, item, job.baseUrl, {
         documentLoader: recordingDocumentLoader,
         enqueueRemoteReplies: false,
+        fetchEmojiReactions: false,
         replyTarget: post,
         skipUpdate: true,
       });

@@ -8,13 +8,10 @@ import {
   ChatMessage,
   type Create,
   type Delete,
-  Emoji,
   EmojiReact,
   Follow,
-  Image,
   isActor,
   Like,
-  Link,
   type Move,
   Note,
   Question,
@@ -73,6 +70,7 @@ import {
   toUpdate,
   updatePostStats,
 } from "./post";
+import { getEmojiReactionCustomEmoji } from "./reactions";
 
 const inboxLogger = getLogger(["hollo", "inbox"]);
 
@@ -1416,24 +1414,10 @@ export async function onEmojiReactionAdded(
   if (REFRESH_ACTORS_ON_INTERACTION) {
     refreshActorIfStale(db, account, ctx.origin, ctx);
   }
-  let emojiIri: URL | null = null;
-  let customEmoji: URL | null = null;
-  if (emoji.startsWith(":") && emoji.endsWith(":")) {
-    for await (const tag of react.getTags()) {
-      if (
-        tag.id == null ||
-        !(tag instanceof Emoji) ||
-        tag.name?.toString()?.trim() !== emoji
-      ) {
-        continue;
-      }
-      const icon = await tag.getIcon();
-      if (!(icon instanceof Image) || icon.url == null) continue;
-      customEmoji = icon.url instanceof Link ? icon.url.href : icon.url;
-      emojiIri = tag.id;
-      if (customEmoji != null) break;
-    }
-  }
+  const { customEmoji, emojiIri } = await getEmojiReactionCustomEmoji(
+    react,
+    emoji,
+  );
   await db
     .insert(reactions)
     .values({

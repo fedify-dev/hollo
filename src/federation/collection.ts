@@ -10,6 +10,7 @@ export interface IterateCollectionOptions {
   documentLoader?: DocumentLoader;
   contextLoader?: DocumentLoader;
   suppressError?: boolean;
+  crossOrigin?: "ignore" | "throw" | "trust";
 }
 
 export async function* iterateCollection(

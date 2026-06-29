@@ -426,6 +426,7 @@ STORAGE_URL_BASE=https://your-bucket.s3.amazonaws.com
 | `REFRESH_ACTORS_ON_INTERACTION`          | false   | Refresh actors on all activity types                                                                            |
 | `REMOTE_REPLIES_SCRAPE_DEPTH`            | 2       | Reply scraping depth for remote posts                                                                           |
 | `REMOTE_REPLIES_SCRAPE_MAX_ITEMS`        | 100     | Replies to process per scraping job                                                                             |
+| `REMOTE_EMOJI_REACTIONS_FETCH_MAX_ITEMS` | 100     | Emoji reactions to import from remote posts                                                                     |
 | `REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS` | 5       | Delay between scrape requests per origin                                                                        |
 | `REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS`  | 300     | Backoff for 429 without `Retry-After`                                                                           |
 | `REMOTE_REPLIES_SCRAPE_COOLDOWN_SECONDS` | 300     | Completed scrape deduplication window                                                                           |

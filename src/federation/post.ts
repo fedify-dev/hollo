@@ -67,6 +67,7 @@ import {
 } from "./account";
 import { toDate, toTemporalInstant } from "./date";
 import { toEmoji } from "./emoji";
+import { persistRemoteEmojiReactions } from "./reactions";
 import { enqueueRemoteReplyScrape } from "./replies";
 import { appendPostToTimelines } from "./timeline";
 
@@ -179,6 +180,7 @@ export async function persistPost(
   options: PersistAccountOptions & {
     account?: Account & { owner: AccountOwner | null };
     enqueueRemoteReplies?: boolean;
+    fetchEmojiReactions?: boolean;
     replyTarget?: Post;
   } = {},
 ): Promise<
@@ -437,6 +439,31 @@ export async function persistPost(
     where: { iri: { eq: object.id.href } },
   });
   if (post == null) return null;
+  if (
+    options.fetchEmojiReactions !== false &&
+    account.owner == null &&
+    (object instanceof Note ||
+      object instanceof Question ||
+      object instanceof Article)
+  ) {
+    const emojiReactions = await object.getEmojiReactions({
+      ...options,
+      crossOrigin: "trust",
+      suppressError: true,
+    });
+    if (emojiReactions != null) {
+      await persistRemoteEmojiReactions(
+        db,
+        emojiReactions,
+        {
+          ...post,
+          account,
+        },
+        baseUrl,
+        options,
+      );
+    }
+  }
   if (object instanceof Question) {
     const options: [string, number][] = [];
     let multiple = false;

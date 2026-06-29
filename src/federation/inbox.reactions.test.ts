@@ -1,5 +1,5 @@
 import type { InboxContext } from "@fedify/fedify";
-import { EmojiReact, Like, Person } from "@fedify/fedify/vocab";
+import { Emoji, EmojiReact, Image, Like, Person } from "@fedify/fedify/vocab";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../tests/helpers";
@@ -133,5 +133,39 @@ describe("federation inbox reaction target fallback", () => {
     expect(foundReactions).toHaveLength(1);
     expect(foundReactions[0]?.emoji).toBe("👍");
     expect(forwardActivity).not.toHaveBeenCalled();
+  });
+
+  it("preserves custom emoji metadata for Like-based emoji reactions", async () => {
+    expect.assertions(4);
+    const target = await seedRemoteTargetPost();
+    const liker = await seedLocalLiker();
+    const person = createLocalPerson(liker.iri);
+    const { ctx } = createCtx();
+    const activity = new Like({
+      actor: person,
+      object: new URL(target.iri),
+      content: ":blob:",
+      tags: [
+        new Emoji({
+          id: new URL("https://remote.test/emojis/blob"),
+          name: ":blob:",
+          icon: new Image({
+            url: new URL("https://remote.test/emoji/blob.png"),
+          }),
+        }),
+      ],
+    });
+
+    await onEmojiReactionAdded(ctx, activity);
+
+    const foundReaction = await db.query.reactions.findFirst({
+      where: { postId: { eq: target.id } },
+    });
+    expect(foundReaction?.emoji).toBe(":blob:");
+    expect(foundReaction?.emojiIri).toBe("https://remote.test/emojis/blob");
+    expect(foundReaction?.customEmoji).toBe(
+      "https://remote.test/emoji/blob.png",
+    );
+    expect(foundReaction?.postId).toBe(target.id);
   });
 });
