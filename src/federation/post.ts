@@ -74,6 +74,8 @@ const logger = getLogger(["hollo", "federation", "post"]);
 
 export type ASPost = Article | Note | Question | ChatMessage;
 
+const EMOJI_REACTIONS_COLLECTION = "emojiReactions";
+
 const HREF_ATTRIBUTE_REGEXP =
   /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/giu;
 const CLASS_ATTRIBUTE_REGEXP =
@@ -93,6 +95,30 @@ export function isPost(object?: vocab.Object | Link | null): object is ASPost {
     object instanceof Note ||
     object instanceof Question ||
     object instanceof ChatMessage
+  );
+}
+
+function getEmojiReactionsUri(
+  post: Post & { account: Account & { owner: AccountOwner | null } },
+  ctx: Context<unknown>,
+): URL | null {
+  if (
+    post.type !== "Note" &&
+    post.type !== "Question" &&
+    post.type !== "Article"
+  ) {
+    return null;
+  }
+  if (post.account.owner == null) return null;
+  if (typeof ctx.getCollectionUri === "function") {
+    return ctx.getCollectionUri(EMOJI_REACTIONS_COLLECTION, {
+      username: post.account.owner.handle,
+      id: post.id,
+    });
+  }
+  return new URL(
+    `/@${post.account.owner.handle}/${post.id}/reactions`,
+    post.iri,
   );
 }
 
@@ -1055,6 +1081,7 @@ export function toObject(
             id: new URL("#likes", post.iri),
             totalItems: post.likesCount,
           }),
+    emojiReactions: getEmojiReactionsUri(post, ctx),
     attachments: post.media.map((medium) =>
       medium.type.startsWith("video/")
         ? new Video({

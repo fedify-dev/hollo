@@ -1,11 +1,30 @@
-import { Emoji, Flag, Note, QuoteAuthorization } from "@fedify/vocab";
+import { type RequestContext } from "@fedify/fedify";
+import {
+  Emoji,
+  EmojiReact,
+  Flag,
+  Image,
+  Note,
+  QuoteAuthorization,
+} from "@fedify/vocab";
+import { count, eq } from "drizzle-orm";
 
 import { db } from "../db";
-import { accounts } from "../schema";
+import {
+  type Account,
+  type AccountOwner,
+  accounts,
+  reactions,
+  type Post,
+} from "../schema";
 import { isUuid, type Uuid } from "../uuid";
+import { toTemporalInstant } from "./date";
 import { toEmoji } from "./emoji";
 import { federation } from "./federation";
 import { toObject } from "./post";
+
+const EMOJI_REACTIONS_COLLECTION = "emojiReactions";
+const EMOJI_REACTIONS_PAGE_SIZE = 40;
 
 export async function hasApprovedFollowFromKeyOwner(
   keyOwnerId: URL,
@@ -28,6 +47,56 @@ export async function hasApprovedFollowFromKeyOwner(
     },
   });
   return found != null;
+}
+
+type LocalPostForAuthorization = Post & {
+  account: Account & { owner: AccountOwner | null };
+  mentions: { account: Account }[];
+};
+
+async function canFetchLocalPost(
+  ctx: RequestContext<unknown>,
+  post: LocalPostForAuthorization,
+): Promise<boolean> {
+  if (post.visibility === "private") {
+    if (post.account.owner == null) return false;
+    const keyOwner = await ctx.getSignedKeyOwner();
+    if (keyOwner?.id == null) return false;
+    return await hasApprovedFollowFromKeyOwner(
+      keyOwner.id,
+      post.account.owner.id,
+    );
+  } else if (post.visibility === "direct") {
+    const keyOwner = await ctx.getSignedKeyOwner();
+    const keyOwnerId = keyOwner?.id;
+    if (keyOwnerId == null) return false;
+    return post.mentions.some((m) => m.account.iri === keyOwnerId.href);
+  }
+  return true;
+}
+
+async function findAuthorizedLocalPost(
+  ctx: RequestContext<unknown>,
+  values: Record<"username" | "id", string>,
+): Promise<LocalPostForAuthorization | null> {
+  if (!values.id.match(/^[-a-f0-9]+$/) || !isUuid(values.id)) return null;
+  const owner = await db.query.accountOwners.findFirst({
+    where: { handle: { like: values.username } },
+    with: { account: true },
+  });
+  if (owner == null) return null;
+  const post = await db.query.posts.findFirst({
+    where: {
+      id: { eq: values.id },
+      accountId: { eq: owner.account.id },
+    },
+    with: {
+      account: { with: { owner: true } },
+      mentions: { with: { account: true } },
+    },
+  });
+  if (post == null) return null;
+  return (await canFetchLocalPost(ctx, post)) ? post : null;
 }
 
 federation.setObjectDispatcher(
@@ -57,24 +126,77 @@ federation.setObjectDispatcher(
       },
     });
     if (post == null) return null;
-    if (post.visibility === "private") {
-      const keyOwner = await ctx.getSignedKeyOwner();
-      if (keyOwner?.id == null) return null;
-      if (!(await hasApprovedFollowFromKeyOwner(keyOwner.id, owner.id))) {
-        return null;
-      }
-    } else if (post.visibility === "direct") {
-      const keyOwner = await ctx.getSignedKeyOwner();
-      const keyOwnerId = keyOwner?.id;
-      if (keyOwnerId == null) return null;
-      const found = post.mentions.some(
-        (m) => m.account.iri === keyOwnerId.href,
-      );
-      if (!found) return null;
-    }
+    if (!(await canFetchLocalPost(ctx, post))) return null;
     return toObject(post, ctx);
   },
 );
+
+federation
+  .setOrderedCollectionDispatcher(
+    EMOJI_REACTIONS_COLLECTION,
+    EmojiReact,
+    "/@{username}/{id}/reactions",
+    async (ctx, values, cursor) => {
+      if (cursor == null || !cursor.match(/^\d+$/)) return null;
+      const offset = Number.parseInt(cursor, 10);
+      if (!Number.isInteger(offset) || offset < 0) return null;
+      const post = await findAuthorizedLocalPost(ctx, values);
+      if (post == null) return null;
+      const rows = await db.query.reactions.findMany({
+        where: { postId: { eq: post.id } },
+        orderBy: (reactions, { desc }) => [desc(reactions.created)],
+        offset,
+        limit: EMOJI_REACTIONS_PAGE_SIZE + 1,
+        with: { account: true },
+      });
+      const items = rows.slice(0, EMOJI_REACTIONS_PAGE_SIZE).map((reaction) => {
+        const tags =
+          reaction.emojiIri == null || reaction.customEmoji == null
+            ? []
+            : [
+                new Emoji({
+                  id: new URL(reaction.emojiIri),
+                  name: reaction.emoji,
+                  icon: new Image({ url: new URL(reaction.customEmoji) }),
+                }),
+              ];
+        return new EmojiReact({
+          id: new URL(
+            `#emoji-reactions/${reaction.accountId}/${encodeURIComponent(
+              reaction.emoji,
+            )}`,
+            post.iri,
+          ),
+          actor: new URL(reaction.account.iri),
+          object: new URL(post.iri),
+          content: reaction.emoji,
+          tags,
+          published: toTemporalInstant(reaction.created),
+        });
+      });
+      return {
+        items,
+        nextCursor:
+          rows.length > EMOJI_REACTIONS_PAGE_SIZE
+            ? `${offset + EMOJI_REACTIONS_PAGE_SIZE}`
+            : null,
+      };
+    },
+  )
+  .setFirstCursor(async () => "0")
+  .setCounter(async (ctx, values) => {
+    const post = await findAuthorizedLocalPost(ctx, values);
+    if (post == null) return null;
+    const result = await db
+      .select({ cnt: count() })
+      .from(reactions)
+      .where(eq(reactions.postId, post.id));
+    if (result.length < 1) return 0;
+    return result[0].cnt;
+  })
+  .authorize(async (ctx, values) => {
+    return (await findAuthorizedLocalPost(ctx, values)) != null;
+  });
 
 federation.setObjectDispatcher(
   Emoji,

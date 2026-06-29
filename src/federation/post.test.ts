@@ -20,6 +20,7 @@ import { accounts, follows, instances, posts } from "../schema";
 import type { Uuid } from "../uuid";
 import { toTemporalInstant } from "./date";
 import { onPostShared } from "./inbox";
+import federation from "./index";
 import { persistPost, persistSharingPost, toObject } from "./post";
 
 async function seedRemoteAccount(username: string) {
@@ -653,10 +654,13 @@ describe("toObject", () => {
   });
 
   async function getObjectJson(postId: Uuid) {
-    return await getObjectJsonWithContext(postId, {} as Context<unknown>);
+    return await getObjectJsonWithContext(postId);
   }
 
-  async function getObjectJsonWithContext(postId: Uuid, ctx: Context<unknown>) {
+  async function getObjectJsonWithContext(
+    postId: Uuid,
+    ctxOverrides: Partial<Context<unknown>> = {},
+  ) {
     const post = await db.query.posts.findFirst({
       where: { id: { eq: postId } },
       with: {
@@ -670,6 +674,10 @@ describe("toObject", () => {
       },
     });
     if (post == null) throw new Error("Failed to load post");
+    const ctx = Object.assign(
+      federation.createContext(new Request("https://hollo.test/"), undefined),
+      ctxOverrides,
+    );
     return await toObject(post, ctx).toJsonLd();
   }
 
