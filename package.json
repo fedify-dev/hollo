@@ -97,7 +97,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.7.1",
     "@typescript/native-preview": "7.0.0-dev.20260614.1",
-    "@unocss/cli": "^66.6.8",
+    "@unocss/cli": "^66.7.3",
     "@vitest/coverage-v8": "4.1.8",
     "concurrently": "^9.2.1",
     "linkedom": "^0.18.12",
