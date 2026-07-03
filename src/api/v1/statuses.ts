@@ -296,9 +296,46 @@ async function validateQuoteTarget(
   return { ok: true, quoteTarget, localTargetOwner, visibility };
 }
 
-const statusSchema = z.object({
+function normalizeStatusParams(input: unknown): unknown {
+  if (input == null || typeof input !== "object" || Array.isArray(input)) {
+    return input;
+  }
+
+  const params = input as Record<string, unknown>;
+  if (params.media_attributes != null) return input;
+
+  const mediaAttributes = new Map<number, Record<string, unknown>>();
+  for (const [key, value] of Object.entries(params)) {
+    const match = /^media_attributes\[(\d+)\]\[(id|description|focus)\]$/.exec(
+      key,
+    );
+    if (match == null) continue;
+    const index = Number.parseInt(match[1], 10);
+    const attribute = mediaAttributes.get(index) ?? {};
+    attribute[match[2]] = value;
+    mediaAttributes.set(index, attribute);
+  }
+
+  const compactMediaAttributes = [...mediaAttributes.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([, attr]) => attr);
+  if (compactMediaAttributes.length < 1) return input;
+  return { ...params, media_attributes: compactMediaAttributes };
+}
+
+const statusSchemaBase = z.object({
   status: z.string().min(1).optional().nullable(),
   media_ids: z.array(uuid).optional().nullable(),
+  media_attributes: z
+    .array(
+      z.object({
+        id: uuid,
+        description: z.string().optional().nullable(),
+        focus: z.string().optional().nullable(),
+      }),
+    )
+    .optional()
+    .nullable(),
   poll: z
     .object({
       options: z.array(z.string()),
@@ -320,16 +357,21 @@ const statusSchema = z.object({
   quote_approval_policy: quoteApprovalPolicySchema.optional().nullable(),
 });
 
-const createStatusSchema = statusSchema.extend({
-  in_reply_to_id: uuid.optional().nullable(),
-  quote_id: uuid.optional().nullable(),
-  quoted_status_id: uuid.optional().nullable(),
-  visibility: z
-    .enum(["public", "unlisted", "private", "direct"])
-    .optional()
-    .nullable(),
-  scheduled_at: z.iso.datetime().optional().nullable(),
-});
+const statusSchema = z.preprocess(normalizeStatusParams, statusSchemaBase);
+
+const createStatusSchema = z.preprocess(
+  normalizeStatusParams,
+  statusSchemaBase.extend({
+    in_reply_to_id: uuid.optional().nullable(),
+    quote_id: uuid.optional().nullable(),
+    quoted_status_id: uuid.optional().nullable(),
+    visibility: z
+      .enum(["public", "unlisted", "private", "direct"])
+      .optional()
+      .nullable(),
+    scheduled_at: z.iso.datetime().optional().nullable(),
+  }),
+);
 
 app.post(
   "/",
@@ -664,6 +706,17 @@ app.put(
     if (existingPost == null) {
       return c.json({ error: "Record not found" }, 404);
     }
+    const mediaAttributes =
+      data.media_attributes?.filter((attr) => attr.description !== undefined) ??
+      [];
+    for (const attr of mediaAttributes) {
+      const existingMedium = await db.query.media.findFirst({
+        where: { id: { eq: attr.id }, postId: { eq: id } },
+      });
+      if (existingMedium == null) {
+        return c.json({ error: "Media not found" }, 422);
+      }
+    }
     const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
       data.quote_approval_policy ?? existingPost.quoteApprovalPolicy,
     );
@@ -694,6 +747,12 @@ app.put(
             accountId,
           })),
         );
+      }
+      for (const attr of mediaAttributes) {
+        await tx
+          .update(media)
+          .set({ description: attr.description })
+          .where(and(eq(media.id, attr.id), eq(media.postId, id)));
       }
     });
     const post = await db.query.posts.findFirst({
