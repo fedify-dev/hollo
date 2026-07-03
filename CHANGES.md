@@ -6,6 +6,13 @@ Version 0.8.8
 
 To be released.
 
+ -  Fixed a Mastodon API compatibility bug where editing a post through
+    `PUT /api/v1/statuses/:id` ignored updated media attachment descriptions,
+    causing alt text changes from clients like Phanpy and Moshidon to appear
+    successful without being saved.  [[#538]]
+
+[#538]: https://github.com/fedify-dev/hollo/issues/538
+
 
 Version 0.8.7
 -------------
