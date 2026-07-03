@@ -34,6 +34,19 @@ To be released.
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 
 
+Version 0.9.6
+-------------
+
+Released on July 3, 2026.
+
+ -  Fixed a Mastodon API compatibility bug where editing a post through
+    `PUT /api/v1/statuses/:id` ignored updated media attachment descriptions,
+    causing alt text changes from clients like Phanpy and Moshidon to appear
+    successful without being saved.  [[#538]]
+
+[#538]: https://github.com/fedify-dev/hollo/issues/538
+
+
 Version 0.9.5
 -------------
 
@@ -521,6 +534,17 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.8
+-------------
+
+Released on July 3, 2026.
+
+ -  Fixed a Mastodon API compatibility bug where editing a post through
+    `PUT /api/v1/statuses/:id` ignored updated media attachment descriptions,
+    causing alt text changes from clients like Phanpy and Moshidon to appear
+    successful without being saved.  [[#538]]
 
 
 Version 0.8.7

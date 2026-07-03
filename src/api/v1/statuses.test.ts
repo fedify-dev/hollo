@@ -10,7 +10,14 @@ import {
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
 import app from "../../index";
-import { accounts, follows, instances, mentions, posts } from "../../schema";
+import {
+  accounts,
+  follows,
+  instances,
+  media,
+  mentions,
+  posts,
+} from "../../schema";
 import { uuidv7 } from "../../uuid";
 
 describe.sequential("/api/v1/accounts/verify_credentials", () => {
@@ -170,6 +177,165 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
 
     expect(typeof updateJson).toBe("object");
     expect(updateJson.content).toBe("<p>Test Update</p>\n");
+  });
+
+  it("Can update media descriptions when updating a status", async () => {
+    expect.assertions(5);
+
+    const postId = uuidv7();
+    const mediumId = uuidv7();
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@hollo/${postId}`,
+      type: "Note",
+      accountId: account.id,
+      visibility: "public",
+      content: "Hello world",
+      contentHtml: "<p>Hello world</p>",
+      published: new Date(),
+    });
+    await db.insert(media).values({
+      id: mediumId,
+      postId,
+      type: "image/png",
+      url: "https://hollo.test/media/original.png",
+      width: 100,
+      height: 100,
+      description: "Old alt text",
+      thumbnailType: "image/png",
+      thumbnailUrl: "https://hollo.test/media/thumbnail.png",
+      thumbnailWidth: 100,
+      thumbnailHeight: 100,
+    });
+
+    const response = await app.request(`/api/v1/statuses/${postId}`, {
+      method: "PUT",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "Edited status",
+        media_attributes: [{ id: mediumId, description: "New alt text" }],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.content).toBe("<p>Edited status</p>\n");
+    expect(json.media_attachments[0].description).toBe("New alt text");
+
+    const medium = await db.query.media.findFirst({
+      where: { id: { eq: mediumId } },
+    });
+    expect(medium).not.toBeNull();
+    expect(medium?.description).toBe("New alt text");
+  });
+
+  it("Can update media descriptions from form data when updating a status", async () => {
+    expect.assertions(4);
+
+    const postId = uuidv7();
+    const mediumId = uuidv7();
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@hollo/${postId}`,
+      type: "Note",
+      accountId: account.id,
+      visibility: "public",
+      content: "Hello world",
+      contentHtml: "<p>Hello world</p>",
+      published: new Date(),
+    });
+    await db.insert(media).values({
+      id: mediumId,
+      postId,
+      type: "image/png",
+      url: "https://hollo.test/media/original.png",
+      width: 100,
+      height: 100,
+      description: "Old alt text",
+      thumbnailType: "image/png",
+      thumbnailUrl: "https://hollo.test/media/thumbnail.png",
+      thumbnailWidth: 100,
+      thumbnailHeight: 100,
+    });
+
+    const body = new FormData();
+    body.append("status", "Edited status");
+    body.append("media_attributes[0][id]", mediumId);
+    body.append("media_attributes[0][description]", "New alt text");
+
+    const response = await app.request(`/api/v1/statuses/${postId}`, {
+      method: "PUT",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+      },
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.media_attachments[0].description).toBe("New alt text");
+
+    const medium = await db.query.media.findFirst({
+      where: { id: { eq: mediumId } },
+    });
+    expect(medium).not.toBeNull();
+    expect(medium?.description).toBe("New alt text");
+  });
+
+  it("Can update media descriptions from sparse form data indexes", async () => {
+    expect.assertions(4);
+
+    const postId = uuidv7();
+    const mediumId = uuidv7();
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@hollo/${postId}`,
+      type: "Note",
+      accountId: account.id,
+      visibility: "public",
+      content: "Hello world",
+      contentHtml: "<p>Hello world</p>",
+      published: new Date(),
+    });
+    await db.insert(media).values({
+      id: mediumId,
+      postId,
+      type: "image/png",
+      url: "https://hollo.test/media/original.png",
+      width: 100,
+      height: 100,
+      description: "Old alt text",
+      thumbnailType: "image/png",
+      thumbnailUrl: "https://hollo.test/media/thumbnail.png",
+      thumbnailWidth: 100,
+      thumbnailHeight: 100,
+    });
+
+    const body = new FormData();
+    body.append("status", "Edited status");
+    body.append("media_attributes[1000000000][id]", mediumId);
+    body.append("media_attributes[1000000000][description]", "New alt text");
+
+    const response = await app.request(`/api/v1/statuses/${postId}`, {
+      method: "PUT",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+      },
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.media_attachments[0].description).toBe("New alt text");
+
+    const medium = await db.query.media.findFirst({
+      where: { id: { eq: mediumId } },
+    });
+    expect(medium).not.toBeNull();
+    expect(medium?.description).toBe("New alt text");
   });
 
   it("Issue 177: successfully creates a status with null values, setting appropriate defaults", async () => {
