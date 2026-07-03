@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.8.8
 -------------
 
-To be released.
+Released on July 3, 2026.
 
  -  Fixed a Mastodon API compatibility bug where editing a post through
     `PUT /api/v1/statuses/:id` ignored updated media attachment descriptions,
