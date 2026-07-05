@@ -2,7 +2,7 @@ import { and, count, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 
 import { Layout } from "../../components/Layout.tsx";
-import { Profile } from "../../components/Profile.tsx";
+import { type ProfileAccount, Profile } from "../../components/Profile.tsx";
 import { PublicAccountList } from "../../components/PublicAccountList.tsx";
 import { db } from "../../db.ts";
 import {
@@ -25,7 +25,7 @@ async function loadOwner(c: Context) {
   if (handle.startsWith("@")) handle = handle.substring(1);
   const owner = await db.query.accountOwners.findFirst({
     where: { handle: { eq: handle } },
-    with: { account: true },
+    with: { account: { with: { successor: true } } },
   });
   return owner ?? null;
 }
@@ -139,7 +139,7 @@ followsApp.get("/following", (c) => renderFollowsPage(c, "following"));
 
 interface FollowsPageProps {
   readonly kind: Kind;
-  readonly accountOwner: AccountOwner & { account: Account };
+  readonly accountOwner: AccountOwner & { account: ProfileAccount };
   readonly accounts: Account[];
   readonly total: number;
   readonly query: string | undefined;

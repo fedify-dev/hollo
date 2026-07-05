@@ -4,14 +4,9 @@ import xss from "xss";
 
 import { Layout } from "../../components/Layout.tsx";
 import { type PostForView, Post as PostView } from "../../components/Post.tsx";
-import { Profile } from "../../components/Profile.tsx";
+import { type ProfileAccount, Profile } from "../../components/Profile.tsx";
 import { db } from "../../db.ts";
-import {
-  type Account,
-  type AccountOwner,
-  type FeaturedTag,
-  posts,
-} from "../../schema.ts";
+import { type AccountOwner, type FeaturedTag, posts } from "../../schema.ts";
 import { isUuid } from "../../uuid.ts";
 import follows from "./follows.tsx";
 import postReactions from "./postReactions.tsx";
@@ -31,7 +26,7 @@ profile.get<"/:handle">(async (c) => {
   if (handle.startsWith("@")) handle = handle.substring(1);
   const owner = await db.query.accountOwners.findFirst({
     where: { handle: { eq: handle } },
-    with: { account: true },
+    with: { account: { with: { successor: true } } },
   });
   if (owner == null) return c.notFound();
   const contStr = c.req.query("cont");
@@ -117,7 +112,7 @@ profile.get("/tagged/:tag", async (c) => {
   if (handle.startsWith("@")) handle = handle.substring(1);
   const owner = await db.query.accountOwners.findFirst({
     where: { handle: { eq: handle } },
-    with: { account: true },
+    with: { account: { with: { successor: true } } },
   });
   if (owner == null) return c.notFound();
   const hashtag = `${tag.startsWith("#") ? tag : `#${tag}`}`.toLowerCase();
@@ -182,7 +177,7 @@ profile.get("/tagged/:tag", async (c) => {
 });
 
 interface ProfilePageProps {
-  readonly accountOwner: AccountOwner & { account: Account };
+  readonly accountOwner: AccountOwner & { account: ProfileAccount };
   readonly tag?: string;
   readonly posts: PostForView[];
   readonly pinnedPosts: PostForView[];

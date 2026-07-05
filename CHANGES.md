@@ -29,6 +29,10 @@ To be released.
     from remote `Note`, `Question`, and `Article` objects when they are
     persisted.
 
+ -  Public profile pages now make moved accounts more obvious by showing the
+    successor account at the top of the profile card and muting the old
+    profile's visual treatment.
+
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [#524]: https://github.com/fedify-dev/hollo/issues/524
 [#526]: https://github.com/fedify-dev/hollo/pull/526

@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
@@ -91,6 +92,53 @@ describe.sequential("profile tagged page", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toContain('href="/@hollo/tagged/TestTag"');
+  });
+
+  it("marks profiles whose account has moved", async () => {
+    expect.assertions(7);
+
+    const successor = await createAccount({ username: "newhome" });
+    await db
+      .update(accounts)
+      .set({
+        avatarUrl: "https://hollo.test/avatar.png",
+        coverUrl: "https://hollo.test/cover.png",
+        successorId: successor.id,
+      })
+      .where(eq(accounts.id, account.id));
+
+    const response = await app.request("/@hollo");
+
+    expect(response.status).toBe(200);
+
+    const html = await response.text();
+
+    expect(html).toContain("This account has moved to:");
+    expect(html).toContain("Test: newhome");
+    expect(html).toContain("@newhome@hollo.test");
+    expect(html).toContain('href="https://hollo.test/@newhome"');
+    expect(html).toContain("View profile");
+    expect(html).toContain("grayscale opacity-60");
+  });
+
+  it("shows the moved-account notice on profile collection pages", async () => {
+    expect.assertions(4);
+
+    const successor = await createAccount({ username: "newhome" });
+    await db
+      .update(accounts)
+      .set({ successorId: successor.id })
+      .where(eq(accounts.id, account.id));
+
+    const response = await app.request("/@hollo/followers");
+
+    expect(response.status).toBe(200);
+
+    const html = await response.text();
+
+    expect(html).toContain("This account has moved to:");
+    expect(html).toContain("@newhome@hollo.test");
+    expect(html).toContain("No followers yet.");
   });
 
   it("hides quote-inline fallback content on profile pages", async () => {
