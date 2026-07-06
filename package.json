@@ -46,7 +46,7 @@
     "@js-temporal/polyfill": "^0.5.0",
     "@logtape/drizzle-orm": "~2.1.0",
     "@logtape/file": "~2.1.0",
-    "@logtape/logtape": "~2.1.0",
+    "@logtape/logtape": "~2.2.3",
     "@logtape/sentry": "~2.1.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/context-async-hooks": "^2.8.0",

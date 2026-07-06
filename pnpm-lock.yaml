@@ -53,16 +53,16 @@ importers:
         version: 0.5.1
       '@logtape/drizzle-orm':
         specifier: ~2.1.0
-        version: 2.1.1(@logtape/logtape@2.1.1)
+        version: 2.1.1(@logtape/logtape@2.2.3)
       '@logtape/file':
         specifier: ~2.1.0
-        version: 2.1.1(@logtape/logtape@2.1.1)
+        version: 2.1.1(@logtape/logtape@2.2.3)
       '@logtape/logtape':
-        specifier: ~2.1.0
-        version: 2.1.1
+        specifier: ~2.2.3
+        version: 2.2.3
       '@logtape/sentry':
         specifier: ~2.1.0
-        version: 2.1.1(@logtape/logtape@2.1.1)(@sentry/core@10.51.0)
+        version: 2.1.1(@logtape/logtape@2.2.3)(@sentry/core@10.51.0)
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -249,13 +249,13 @@ importers:
         version: 0.9.9(prettier@3.8.3)(typescript@6.0.3)
       '@astrojs/starlight':
         specifier: ^0.40.0
-        version: 0.40.0(astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))(typescript@6.0.3)
+        version: 0.40.0(astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))(typescript@6.0.3)
       '@iconify-json/lucide':
         specifier: ^1.2.113
         version: 1.2.113
       astro:
         specifier: ^6.4.8
-        version: 6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
+        version: 6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
       astro-icon:
         specifier: ^1.1.5
         version: 1.1.5
@@ -1675,11 +1675,8 @@ packages:
     peerDependencies:
       '@logtape/logtape': ^2.1.1
 
-  '@logtape/logtape@2.1.1':
-    resolution: {integrity: sha512-aULbCqUQGerfOsZ3CMvcKtueKzmdchluXYUd3bIHKmOIS93fx1ko0+hyRQ4flloGZ8EiyRPydZXiy8n1J/eAQA==}
-
-  '@logtape/logtape@2.2.1':
-    resolution: {integrity: sha512-SkRptJUEAbGuf+/blXDxDa8sSq8no+lxJlfwPTMzrHIULOMsNZRaqT2qF3H9tmGOsaLYc+uF3orRCQfoH0qKzA==}
+  '@logtape/logtape@2.2.3':
+    resolution: {integrity: sha512-NIPzXBJneBv7Ar6sFBbEo5L8zZr2lopQnlVeT881y68qGNcJBy/Y8s8uAwUaVhobB8GIiMluOY7j3bOsaaIhQQ==}
 
   '@logtape/sentry@2.1.1':
     resolution: {integrity: sha512-9bOCDUcZ93gwHtYqGMkXJiABOWSDh5E1ubpCRvufjEPKft5fQMmqrxmCe4oMN9cnDr4uXMMmDlAJymjCgos6rw==}
@@ -3157,6 +3154,9 @@ packages:
   '@types/node@26.0.1':
     resolution: {integrity: sha512-fc3KiUoBt6kie0N9bIW3E47vZsuaMf0PM2AaUpLCLT0s/LvX1nxAim6Fc049cNxODPpGm6qRAuUOB86SkRuPQw==}
 
+  '@types/node@26.1.0':
+    resolution: {integrity: sha512-O0A1G3xPGy4w7AgQdAQYUlQ+BKk2Oovw8eRpofyp5KdBZULnbe+WqaOVNrm705SHphCiG4XHsACrSmPu1f+Kgw==}
+
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
 
@@ -4184,8 +4184,8 @@ packages:
   fast-wrap-ansi@0.2.2:
     resolution: {integrity: sha512-7F2Fl+TjRSenLqlU3UjSH0iyqopqoZIu7eZVpEirP2g1GtWa2G/ecEmBdgz31+Mxr+ELclgg6sokpSFIQiZ02Q==}
 
-  fast-xml-parser@4.5.6:
-    resolution: {integrity: sha512-Yd4vkROfJf8AuJrDIVMVmYfULKmIJszVsMv7Vo71aocsKgFxpdlpSHXSaInvyYfgw2PRuObQSW2GFpVMUjxu9A==}
+  fast-xml-parser@4.5.7:
+    resolution: {integrity: sha512-a6Qh1RMCNbSrU1+sAyAAZH3rTe+OaWJbNZIq0S+ifZciUUOQtlVxBJwoTUE2bYhysmG/RYyI5WJFIKdBahJdrQ==}
     hasBin: true
 
   fd-slicer@1.1.0:
@@ -6298,13 +6298,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/mdx@6.0.3(astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))':
+  '@astrojs/mdx@6.0.3(astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
       '@astrojs/internal-helpers': 0.10.0
       '@astrojs/markdown-remark': 7.2.0
       '@mdx-js/mdx': 3.1.1
       acorn: 8.17.0
-      astro: 6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
+      astro: 6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
       es-module-lexer: 2.1.0
       estree-util-visit: 2.0.0
       hast-util-to-html: 9.0.5
@@ -6328,17 +6328,17 @@ snapshots:
       stream-replace-string: 2.0.0
       zod: 4.4.3
 
-  '@astrojs/starlight@0.40.0(astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))(typescript@6.0.3)':
+  '@astrojs/starlight@0.40.0(astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))(typescript@6.0.3)':
     dependencies:
       '@astrojs/markdown-remark': 7.2.0
-      '@astrojs/mdx': 6.0.3(astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))
+      '@astrojs/mdx': 6.0.3(astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))
       '@astrojs/sitemap': 3.7.3
       '@pagefind/default-ui': 1.5.2
       '@types/hast': 3.0.4
       '@types/js-yaml': 4.0.9
       '@types/mdast': 4.0.4
-      astro: 6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
-      astro-expressive-code: 0.43.1(astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))
+      astro: 6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
+      astro-expressive-code: 0.43.1(astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0))
       bcp-47: 2.1.0
       hast-util-from-html: 2.0.3
       hast-util-select: 6.0.4
@@ -6648,7 +6648,7 @@ snapshots:
       '@smithy/smithy-client': 3.7.0
       '@smithy/types': 3.7.2
       '@smithy/util-middleware': 3.0.11
-      fast-xml-parser: 4.5.6
+      fast-xml-parser: 4.5.7
       tslib: 2.8.1
     optional: true
 
@@ -7573,7 +7573,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.3.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.1
+      '@logtape/logtape': 2.2.3
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/context-async-hooks': 2.8.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core': 2.8.0(@opentelemetry/api@1.9.1)
@@ -7587,7 +7587,7 @@ snapshots:
       '@fedify/vocab-runtime': 2.3.0
       '@fedify/webfinger': 2.3.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.1
+      '@logtape/logtape': 2.2.3
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.8.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-metrics': 2.7.1(@opentelemetry/api@1.9.1)
@@ -7629,7 +7629,7 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.3.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.1
+      '@logtape/logtape': 2.2.3
       postgres: 3.4.9
 
   '@fedify/uri-template@2.3.0': {}
@@ -7637,7 +7637,7 @@ snapshots:
   '@fedify/vocab-runtime@2.3.0':
     dependencies:
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.1
+      '@logtape/logtape': 2.2.3
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -7658,7 +7658,7 @@ snapshots:
       '@fedify/vocab-tools': 2.3.0
       '@fedify/webfinger': 2.3.0
       '@js-temporal/polyfill': 0.5.1
-      '@logtape/logtape': 2.2.1
+      '@logtape/logtape': 2.2.3
       '@multiformats/base-x': 4.0.1
       '@opentelemetry/api': 1.9.1
       asn1js: 3.0.10
@@ -7669,7 +7669,7 @@ snapshots:
   '@fedify/webfinger@2.3.0':
     dependencies:
       '@fedify/vocab-runtime': 2.3.0
-      '@logtape/logtape': 2.2.1
+      '@logtape/logtape': 2.2.3
       '@opentelemetry/api': 1.9.1
       es-toolkit: 1.46.1
 
@@ -7978,21 +7978,19 @@ snapshots:
 
   '@levischuck/tiny-cbor@0.2.11': {}
 
-  '@logtape/drizzle-orm@2.1.1(@logtape/logtape@2.1.1)':
+  '@logtape/drizzle-orm@2.1.1(@logtape/logtape@2.2.3)':
     dependencies:
-      '@logtape/logtape': 2.1.1
+      '@logtape/logtape': 2.2.3
 
-  '@logtape/file@2.1.1(@logtape/logtape@2.1.1)':
+  '@logtape/file@2.1.1(@logtape/logtape@2.2.3)':
     dependencies:
-      '@logtape/logtape': 2.1.1
+      '@logtape/logtape': 2.2.3
 
-  '@logtape/logtape@2.1.1': {}
+  '@logtape/logtape@2.2.3': {}
 
-  '@logtape/logtape@2.2.1': {}
-
-  '@logtape/sentry@2.1.1(@logtape/logtape@2.1.1)(@sentry/core@10.51.0)':
+  '@logtape/sentry@2.1.1(@logtape/logtape@2.2.3)(@sentry/core@10.51.0)':
     dependencies:
-      '@logtape/logtape': 2.1.1
+      '@logtape/logtape': 2.2.3
       '@sentry/core': 10.51.0
 
   '@mdx-js/mdx@3.1.1':
@@ -9522,6 +9520,11 @@ snapshots:
     dependencies:
       undici-types: 8.3.0
 
+  '@types/node@26.1.0':
+    dependencies:
+      undici-types: 8.3.0
+    optional: true
+
   '@types/pg-pool@2.0.7':
     dependencies:
       '@types/pg': 8.15.6
@@ -9554,7 +9557,7 @@ snapshots:
 
   '@types/ws@8.5.14':
     dependencies:
-      '@types/node': 26.0.1
+      '@types/node': 26.1.0
     optional: true
 
   '@types/yauzl@2.10.3':
@@ -9992,9 +9995,9 @@ snapshots:
 
   astring@1.9.0: {}
 
-  astro-expressive-code@0.43.1(astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)):
+  astro-expressive-code@0.43.1(astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)):
     dependencies:
-      astro: 6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
+      astro: 6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0)
       rehype-expressive-code: 0.43.1
 
   astro-icon@1.1.5:
@@ -10005,7 +10008,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  astro@6.4.8(@types/node@26.0.1)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0):
+  astro@6.4.8(@types/node@26.1.0)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.21.0)(yaml@2.9.0):
     dependencies:
       '@astrojs/compiler': 4.0.0
       '@astrojs/internal-helpers': 0.10.0
@@ -10057,8 +10060,8 @@ snapshots:
       unist-util-visit: 5.1.0
       unstorage: 1.17.5
       vfile: 6.0.3
-      vite: 7.3.5(@types/node@26.0.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@7.3.5(@types/node@26.0.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
+      vite: 7.3.5(@types/node@26.1.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
+      vitefu: 1.1.3(vite@7.3.5(@types/node@26.1.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0))
       xxhash-wasm: 1.1.0
       yargs-parser: 22.0.0
       zod: 4.4.3
@@ -10716,7 +10719,7 @@ snapshots:
     dependencies:
       fast-string-width: 3.0.2
 
-  fast-xml-parser@4.5.6:
+  fast-xml-parser@4.5.7:
     dependencies:
       strnum: 1.1.2
     optional: true
@@ -12983,9 +12986,24 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.9.0
 
-  vitefu@1.1.3(vite@7.3.5(@types/node@26.0.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)):
+  vite@7.3.5(@types/node@26.1.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0):
+    dependencies:
+      esbuild: 0.27.7
+      fdir: 6.5.0(picomatch@4.0.4)
+      picomatch: 4.0.4
+      postcss: 8.5.15
+      rollup: 4.62.0
+      tinyglobby: 0.2.17
     optionalDependencies:
-      vite: 7.3.5(@types/node@26.0.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
+      '@types/node': 26.1.0
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      tsx: 4.21.0
+      yaml: 2.9.0
+
+  vitefu@1.1.3(vite@7.3.5(@types/node@26.1.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)):
+    optionalDependencies:
+      vite: 7.3.5(@types/node@26.1.0)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)
 
   vitest@4.1.0(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(vite@7.3.5(@types/node@26.0.1)(jiti@2.7.0)(tsx@4.21.0)(yaml@2.9.0)):
     dependencies:
