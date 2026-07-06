@@ -81,7 +81,7 @@
     "sharp": "^0.35.2",
     "ssrfcheck": "^1.4.0",
     "tsx": "^4.21.0",
-    "uuidv7-js": "^1.1.4",
+    "uuidv7-js": "^2.0.0",
     "x-forwarded-fetch": "^0.2.0",
     "xss": "^1.0.15",
     "zod": "^4.4.3"
