@@ -176,20 +176,9 @@ async function determineQuoteState(
   // Legacy remote posts without an advertised FEP-044f policy keep the
   // historical behavior of being accepted immediately.
   if (quoteTarget.quoteApprovalPolicy == null) return "accepted";
-  const policy = normalizeQuoteApprovalPolicy(quoteTarget.quoteApprovalPolicy);
-  // FEP-044f automatic approval: anyone may quote, no authorization round-trip.
-  if (policy === "public") return "accepted";
-  // FEP-044f followers-only automatic approval — validateQuoteTarget has
-  // already verified the quoter is an approved follower; reaffirm here so
-  // this helper is self-contained.
-  if (policy === "followers") {
-    return (await isApprovedFollower(owner.id, quoteTarget.accountId))
-      ? "accepted"
-      : "pending";
-  }
-  // Reserved for a future schema that distinguishes automatic vs. manual
-  // approval. Until then validateQuoteTarget rejects "nobody" with 422,
-  // so this branch is effectively unreachable for the create path.
+  // FEP-044f still requires a QuoteAuthorization stamp even when the
+  // advertised policy says the remote server should approve automatically.
+  // Keep the quote pending until the Accept<QuoteRequest> result arrives.
   return "pending";
 }
 

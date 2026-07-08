@@ -793,8 +793,8 @@ describe.sequential("/api/v1/statuses quotes", () => {
     }
   });
 
-  it("accepts cached remote public quote policies without authorization", async () => {
-    expect.assertions(6);
+  it("requests authorization for cached remote public quote policies", async () => {
+    expect.assertions(7);
 
     const remoteAccountId = uuidv7();
     const quotedPostId = uuidv7();
@@ -837,31 +837,37 @@ describe.sequential("/api/v1/statuses quotes", () => {
       });
       expect(quoteResponse.status).toBe(200);
       const quote = await quoteResponse.json();
-      expect(quote.quote.state).toBe("accepted");
-      expect(quote.quote.quoted_status?.id).toBe(quotedPostId);
+      expect(quote.quote.state).toBe("pending");
+      expect(quote.quote.quoted_status).toBeNull();
 
-      const activities = await Promise.all(
-        fetch.mock.calls.map(async ([input]) => {
-          const request = input instanceof Request ? input : null;
-          return request == null ? null : await request.clone().json();
-        }),
-      );
-      expect(
-        activities.some((activity) => activity?.type === "QuoteRequest"),
-      ).toBe(false);
+      let hasQuoteRequest = false;
+      await vi.waitFor(async () => {
+        const activities = await Promise.all(
+          fetch.mock.calls.map(async ([input]) => {
+            const request = input instanceof Request ? input : null;
+            return request == null ? null : await request.clone().json();
+          }),
+        );
+        hasQuoteRequest = activities.some(
+          (activity) => activity?.type === "QuoteRequest",
+        );
+        if (!hasQuoteRequest) throw new Error("QuoteRequest was not sent yet");
+      });
+      expect(hasQuoteRequest).toBe(true);
 
       const objectResponse = await app.request(`/@quote-quoter/${quote.id}`, {
         headers: { Accept: "application/activity+json" },
       });
       const object = await objectResponse.json();
-      expect(object.quote).toBe(quotedPostIri);
-      expect(object.quoteUrl).toBe(quotedPostIri);
+      expect(object.quote).toBeUndefined();
+      expect(object.quoteUrl).toBeUndefined();
+      expect(object.quoteAuthorization).toBeUndefined();
     } finally {
       fetch.mockRestore();
     }
   });
 
-  it("accepts cached remote followers-only quotes from approved followers", async () => {
+  it("requests authorization for cached remote followers-only quotes from approved followers", async () => {
     expect.assertions(3);
 
     const remoteAccountId = uuidv7();
@@ -911,16 +917,21 @@ describe.sequential("/api/v1/statuses quotes", () => {
       });
       expect(quoteResponse.status).toBe(200);
       const quote = await quoteResponse.json();
-      expect(quote.quote.state).toBe("accepted");
-      const activities = await Promise.all(
-        fetch.mock.calls.map(async ([input]) => {
-          const request = input instanceof Request ? input : null;
-          return request == null ? null : await request.clone().json();
-        }),
-      );
-      expect(
-        activities.some((activity) => activity?.type === "QuoteRequest"),
-      ).toBe(false);
+      expect(quote.quote.state).toBe("pending");
+      let hasQuoteRequest = false;
+      await vi.waitFor(async () => {
+        const activities = await Promise.all(
+          fetch.mock.calls.map(async ([input]) => {
+            const request = input instanceof Request ? input : null;
+            return request == null ? null : await request.clone().json();
+          }),
+        );
+        hasQuoteRequest = activities.some(
+          (activity) => activity?.type === "QuoteRequest",
+        );
+        if (!hasQuoteRequest) throw new Error("QuoteRequest was not sent yet");
+      });
+      expect(hasQuoteRequest).toBe(true);
     } finally {
       fetch.mockRestore();
     }
