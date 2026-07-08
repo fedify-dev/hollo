@@ -1202,6 +1202,7 @@ describe("toObject", () => {
     const account = await createAccount({ username: "quote-author" });
     const quotedPostId = crypto.randomUUID() as Uuid;
     const quotePostId = crypto.randomUUID() as Uuid;
+    const quoteAuthorizationIri = `https://remote.test/objects/fep-quote-target/quote_authorizations/${quotePostId}`;
 
     await db.insert(posts).values([
       {
@@ -1222,6 +1223,7 @@ describe("toObject", () => {
         quoteTargetId: quotedPostId,
         quoteTargetIri: "https://remote.test/objects/fep-quote-target",
         quoteState: "accepted",
+        quoteAuthorizationIri,
         visibility: "public",
         contentHtml: "<p>My take</p>",
         content: "My take",
@@ -1234,6 +1236,7 @@ describe("toObject", () => {
     expect(json).toMatchObject({
       quote: "https://remote.test/objects/fep-quote-target",
       quoteUrl: "https://remote.test/objects/fep-quote-target",
+      quoteAuthorization: quoteAuthorizationIri,
       interactionPolicy: {
         canQuote: {
           automaticApproval: "as:Public",

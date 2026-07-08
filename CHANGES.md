@@ -38,6 +38,21 @@ To be released.
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 
 
+Version 0.9.7
+-------------
+
+Released on July 9, 2026.
+
+ -  Fixed a bug where locally-created quotes of remote posts that advertised
+    an FEP-044f quote policy were marked as accepted immediately without
+    first obtaining a `QuoteAuthorization`, causing third-party servers to see
+    the quote as unapproved.  Hollo now keeps those quotes pending, sends a
+    `QuoteRequest`, and publishes the `quoteAuthorization` property after the
+    remote server accepts the request.  Remote posts without an FEP-044f quote
+    policy are still treated as legacy quote targets and continue to publish
+    the `quote` property without a `quoteAuthorization`.
+
+
 Version 0.9.6
 -------------
 
