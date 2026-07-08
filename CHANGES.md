@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.7
 -------------
 
-To be released.
+Released on July 9, 2026.
 
  -  Fixed a bug where locally-created quotes of remote posts that advertised
     an FEP-044f quote policy were marked as accepted immediately without
