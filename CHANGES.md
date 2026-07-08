@@ -1,6 +1,12 @@
 Hollo changelog
 ===============
 
+Version 0.9.8
+-------------
+
+To be released.
+
+
 Version 0.9.7
 -------------
 
