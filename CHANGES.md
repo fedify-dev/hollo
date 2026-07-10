@@ -44,6 +44,19 @@ To be released.
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 
 
+Version 0.9.8
+-------------
+
+Released on July 11, 2026.
+
+ -  Fixed a Mastodon API compatibility bug where accounts with *Make following
+    list public* disabled could not view their own following list in clients.
+    Authenticated account owners can now access their own following list while
+    it remains hidden from everyone else.  [[#548]]
+
+[#548]: https://github.com/fedify-dev/hollo/issues/548
+
+
 Version 0.9.7
 -------------
 

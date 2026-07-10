@@ -1,4 +1,5 @@
 import { getLogger } from "@logtape/logtape";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { auth } from "hono/utils/basic-auth";
 import { z } from "zod";
@@ -28,6 +29,45 @@ export type AccountOwnerVariables = Variables & {
 export type ClientAuthenticationVariables = {
   client: Application;
 };
+
+async function authenticateToken(c: Context) {
+  const authorization = c.req.header("Authorization");
+  if (authorization == null) {
+    return { response: c.json({ error: "unauthorized" }, 401) } as const;
+  }
+  const match = /^(?:bearer)\s+(.+)$/i.exec(authorization);
+  if (match == null) {
+    return { response: c.json({ error: "unauthorized" }, 401) } as const;
+  }
+  const token = match[1];
+
+  const accessToken = await db.query.accessTokens.findFirst({
+    where: { code: { eq: token } },
+  });
+
+  if (accessToken === undefined) {
+    return { response: c.json({ error: "invalid_token" }, 401) } as const;
+  }
+
+  return { token: accessToken } as const;
+}
+
+function hasRequiredScope(token: AccessToken, scopes: Scope[]): boolean {
+  return scopes.some(
+    (s) =>
+      token.scopes.includes(s) ||
+      token.scopes.includes(s.replace(/:[^:]+$/, "") as Scope) ||
+      ([
+        "read:blocks",
+        "write:blocks",
+        "read:follows",
+        "write:follows",
+        "read:mutes",
+        "write:mutes",
+      ].includes(s) &&
+        token.scopes.includes("follow")),
+  );
+}
 
 type ClientCredentials =
   | {
@@ -185,24 +225,28 @@ export const clientAuthentication = createMiddleware<{
 
 export const tokenRequired = createMiddleware<{ Variables: Variables }>(
   async (c, next) => {
-    const authorization = c.req.header("Authorization");
-    if (authorization == null) return c.json({ error: "unauthorized" }, 401);
-    const match = /^(?:bearer)\s+(.+)$/i.exec(authorization);
-    if (match == null) return c.json({ error: "unauthorized" }, 401);
-    const token = match[1];
-
-    const accessToken = await db.query.accessTokens.findFirst({
-      where: { code: { eq: token } },
-    });
-
-    if (accessToken === undefined) {
-      return c.json({ error: "invalid_token" }, 401);
-    }
-
-    c.set("token", accessToken);
+    const result = await authenticateToken(c);
+    if ("response" in result) return result.response;
+    c.set("token", result.token);
     await next();
   },
 );
+
+export function authorizeIfToken(scopes: Scope[]) {
+  return createMiddleware<{ Variables: Variables }>(async (c, next) => {
+    if (c.req.header("Authorization") == null) {
+      await next();
+      return;
+    }
+    const result = await authenticateToken(c);
+    if ("response" in result) return result.response;
+    if (!hasRequiredScope(result.token, scopes)) {
+      return c.json({ error: "insufficient_scope" }, 403);
+    }
+    c.set("token", result.token);
+    await next();
+  });
+}
 
 export const withAccountOwner = createMiddleware<{
   Variables: AccountOwnerVariables;
@@ -229,22 +273,7 @@ export const withAccountOwner = createMiddleware<{
 export function scopeRequired(scopes: Scope[]) {
   return createMiddleware(async (c, next) => {
     const token = c.get("token");
-    if (
-      !scopes.some(
-        (s) =>
-          token.scopes.includes(s) ||
-          token.scopes.includes(s.replace(/:[^:]+$/, "")) ||
-          ([
-            "read:blocks",
-            "write:blocks",
-            "read:follows",
-            "write:follows",
-            "read:mutes",
-            "write:mutes",
-          ].includes(s) &&
-            token.scopes.includes("follow")),
-      )
-    ) {
+    if (!hasRequiredScope(token, scopes)) {
       return c.json({ error: "insufficient_scope" }, 403);
     }
     await next();
