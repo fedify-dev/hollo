@@ -512,7 +512,6 @@ export async function sendQuoteUpdate(
       media: true,
       poll: { with: { options: true } },
       mentions: { with: { account: true } },
-      replies: { limit: 20 },
     },
   });
   if (quote?.account.owner == null) return;
@@ -973,7 +972,6 @@ export async function onPostCreated(
         media: true,
         poll: { with: { options: true } },
         mentions: { with: { account: true } },
-        replies: { limit: 20 },
       },
     });
     if (replyTarget?.account.owner != null) {
@@ -1527,7 +1525,6 @@ export async function onVoted(
         },
       },
       mentions: { with: { account: true } },
-      replies: { limit: 20 },
     },
     where: { pollId: { eq: vote.pollId } },
   });

@@ -642,7 +642,12 @@ async function getDefaultDocumentLoader(
 ): Promise<DocumentLoader> {
   const { federation } = await import("./index");
   const context = federation.createContext(new Request(baseUrl), undefined);
-  return context.documentLoader;
+  const owner = await db.query.accountOwners.findFirst();
+  if (owner == null) return context.documentLoader;
+
+  // Remote replies collections can vary by the signer, so crawling them with
+  // the anonymous loader would omit replies visible to the local actor.
+  return await context.getDocumentLoader({ username: owner.handle });
 }
 
 function getErrorStatus(error: unknown): number | null {

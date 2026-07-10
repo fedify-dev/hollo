@@ -29,6 +29,12 @@ To be released.
     from remote `Note`, `Question`, and `Article` objects when they are
     persisted.
 
+ -  Changed local ActivityPub `Note`, `Question`, and `Article` objects to
+    advertise paginated `replies` collections at
+    `/@{username}/{id}/replies` instead of embedding replies inline.  The
+    collections apply signed-fetch visibility rules so each requester sees
+    only replies they are allowed to access.
+
  -  Public profile pages now make moved accounts more obvious by showing the
     successor account at the top of the profile card and muting the old
     profile's visual treatment.

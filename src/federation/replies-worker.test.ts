@@ -1,8 +1,9 @@
 import type { RemoteDocument } from "@fedify/vocab";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../tests/helpers";
+import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
 import {
   accounts,
@@ -172,6 +173,46 @@ function collection(id: string, orderedItems: unknown[]) {
 describe("remote replies scrape worker", () => {
   beforeEach(async () => {
     await cleanDatabase();
+  });
+
+  it("uses the local actor's authenticated loader by default", async () => {
+    await createAccount({ generateKeyPair: true });
+    const { postIri, repliesIri } = await seedPostWithScrapeJob();
+    await seedRemoteAccount("replyer");
+    const replyIri = "https://remote.test/@replyer/posts/1";
+    const authenticatedLoader = makeLoader({
+      [repliesIri]: collection(repliesIri, [
+        reply({ id: replyIri, replyTarget: postIri }),
+      ]),
+      "https://remote.test/@replyer": actor("replyer"),
+    });
+    const anonymousLoader = vi.fn();
+    const getDocumentLoader = vi.fn(async () => authenticatedLoader);
+    const { federation } = await import("./index");
+    const createContext = vi
+      .spyOn(federation, "createContext")
+      .mockReturnValue({
+        documentLoader: anonymousLoader,
+        getDocumentLoader,
+      } as never);
+
+    try {
+      const processed = await processDueRemoteReplyScrapeJobs({
+        maxItems: 1,
+        sleep: async () => undefined,
+      });
+
+      const persistedReply = await db.query.posts.findFirst({
+        where: { iri: { eq: replyIri } },
+      });
+      expect(processed).toBe(1);
+      expect(persistedReply?.iri).toBe(replyIri);
+      expect(createContext.mock.calls[0]?.[0].url).toBe("https://hollo.test/");
+      expect(getDocumentLoader).toHaveBeenCalledWith({ username: "hollo" });
+      expect(anonymousLoader).not.toHaveBeenCalled();
+    } finally {
+      createContext.mockRestore();
+    }
   });
 
   it("limits how many reply items a single job persists", async () => {

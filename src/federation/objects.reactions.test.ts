@@ -92,7 +92,7 @@ describe("emojiReactions collection", () => {
   );
 
   it("serves emoji reactions as ordered EmojiReact activities", async () => {
-    expect.assertions(11);
+    expect.assertions(13);
     const postId = await createPost(accountId);
     const alice = await createRemoteAccount("alice");
     const bob = await createRemoteAccount("bob");
@@ -115,6 +115,7 @@ describe("emojiReactions collection", () => {
 
     const collection = await activityRequest(`/@hollo/${postId}/reactions`);
     expect(collection.status).toBe(200);
+    expect(collection.headers.get("Cache-Control")).toBe("private, no-store");
     const collectionBody = await collection.json();
     expect(collectionBody.type).toBe("OrderedCollection");
     expect(collectionBody.totalItems).toBe(2);
@@ -124,6 +125,7 @@ describe("emojiReactions collection", () => {
 
     const page = await activityRequest(`/@hollo/${postId}/reactions?cursor=0`);
     expect(page.status).toBe(200);
+    expect(page.headers.get("Cache-Control")).toBe("private, no-store");
     const pageBody = await page.json();
     expect(pageBody.type).toBe("OrderedCollectionPage");
     expect(pageBody.orderedItems).toHaveLength(2);

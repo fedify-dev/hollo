@@ -18,7 +18,6 @@ import {
   Link,
   lookupObject,
   Note,
-  OrderedCollection,
   Question,
   QuoteAuthorization,
   type Recipient,
@@ -76,6 +75,7 @@ const logger = getLogger(["hollo", "federation", "post"]);
 export type ASPost = Article | Note | Question | ChatMessage;
 
 const EMOJI_REACTIONS_COLLECTION = "emojiReactions";
+const REPLIES_COLLECTION = "replies";
 
 const HREF_ATTRIBUTE_REGEXP =
   /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/giu;
@@ -121,6 +121,27 @@ function getEmojiReactionsUri(
     `/@${post.account.owner.handle}/${post.id}/reactions`,
     post.iri,
   );
+}
+
+function getRepliesUri(
+  post: Post & { account: Account & { owner: AccountOwner | null } },
+  ctx: Context<unknown>,
+): URL | null {
+  if (
+    post.type !== "Note" &&
+    post.type !== "Question" &&
+    post.type !== "Article"
+  ) {
+    return null;
+  }
+  if (post.account.owner == null) return null;
+  if (typeof ctx.getCollectionUri === "function") {
+    return ctx.getCollectionUri(REPLIES_COLLECTION, {
+      username: post.account.owner.handle,
+      id: post.id,
+    });
+  }
+  return new URL(`/@${post.account.owner.handle}/${post.id}/replies`, post.iri);
 }
 
 function getQuoteApprovalPolicy(
@@ -982,7 +1003,6 @@ export function toObject(
     media: Medium[];
     poll: (Poll & { options: PollOption[] }) | null;
     mentions: (Mention & { account: Account })[];
-    replies?: Post[];
   },
   ctx: Context<unknown>,
   opts: { includeInactiveQuoteTarget?: boolean } = {},
@@ -1087,13 +1107,7 @@ export function toObject(
     ],
     replyTarget:
       post.replyTarget == null ? null : new URL(post.replyTarget.iri),
-    replies: new OrderedCollection({
-      id: new URL("#replies", post.iri),
-      totalItems: post.repliesCount ?? 0,
-      ...(post.replies != null && post.replies.length > 0
-        ? { items: post.replies.map((r) => new URL(r.iri)) }
-        : {}),
-    }),
+    replies: getRepliesUri(post, ctx),
     shares:
       post.sharesCount == null
         ? null
@@ -1269,7 +1283,6 @@ export function toCreate(
     media: Medium[];
     poll: (Poll & { options: PollOption[] }) | null;
     mentions: (Mention & { account: Account })[];
-    replies?: Post[];
   },
   ctx: Context<unknown>,
 ): Create {
@@ -1292,7 +1305,6 @@ export function toUpdate(
     media: Medium[];
     poll: (Poll & { options: PollOption[] }) | null;
     mentions: (Mention & { account: Account })[];
-    replies?: Post[];
   },
   ctx: Context<unknown>,
   updated?: Date,
@@ -1319,7 +1331,6 @@ export function toDelete(
     media: Medium[];
     poll: (Poll & { options: PollOption[] }) | null;
     mentions: (Mention & { account: Account })[];
-    replies?: Post[];
   },
   ctx: Context<unknown>,
   deleted: Date = new Date(),

@@ -84,6 +84,9 @@ Hollo sends and processes follows, favorites, boosts, blocks, account moves,
 post creation and updates, deletion, pinning, poll votes, and undo activities.
 It sends `Flag` activities for reports.  Hollo also supports `EmojiReact`
 activities and paginated `emojiReactions` collections as defined by FEP-c0e0.
+Local posts expose direct replies through paginated `replies` collections,
+with each collection response filtered according to the requesting actor's
+signed-fetch permissions.
 
 Quote posts use FEP-e232 object links and the FEP-044f quote,
 interaction-policy, request, acceptance, rejection, authorization, and
@@ -97,10 +100,11 @@ available.  Hollo accepts both RFC 9421 HTTP Message Signatures and the older
 draft-cavage HTTP Signatures format.  For interoperability with existing
 servers, outgoing delivery currently tries the draft-cavage format first.
 
-Followers-only and direct objects require a signed fetch from an actor in the
-object's audience.  Public and unlisted posts are available through the local
-actor's outbox.  Hollo can crawl remote `replies` collections to discover
-conversation replies that were not delivered directly to it.
+Followers-only and direct objects and their `replies` collections require a
+signed fetch from an actor in the object's audience.  Public and unlisted posts
+are available through the local actor's outbox.  Hollo can crawl remote
+`replies` collections to discover conversation replies that were not delivered
+directly to it.
 
 
 Additional documentation

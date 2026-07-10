@@ -5,15 +5,21 @@ import {
   Flag,
   Image,
   Note,
+  Object as ActivityObject,
   QuoteAuthorization,
 } from "@fedify/vocab";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 
+import {
+  buildPostVisibilityConditions,
+  getPostVisibilityScope,
+} from "../api/visibility";
 import { db } from "../db";
 import {
   type Account,
   type AccountOwner,
   accounts,
+  posts,
   reactions,
   type Post,
 } from "../schema";
@@ -25,6 +31,8 @@ import { toObject } from "./post";
 
 const EMOJI_REACTIONS_COLLECTION = "emojiReactions";
 const EMOJI_REACTIONS_PAGE_SIZE = 40;
+const REPLIES_COLLECTION = "replies";
+const REPLIES_PAGE_SIZE = 40;
 
 export async function hasApprovedFollowFromKeyOwner(
   keyOwnerId: URL,
@@ -58,25 +66,25 @@ async function canFetchLocalPost(
   ctx: RequestContext<unknown>,
   post: LocalPostForAuthorization,
 ): Promise<boolean> {
-  if (post.visibility === "private") {
-    if (post.account.owner == null) return false;
-    const keyOwner = await ctx.getSignedKeyOwner();
-    if (keyOwner?.id == null) return false;
+  if (post.visibility !== "private" && post.visibility !== "direct") {
+    return true;
+  }
+  const keyOwner = await ctx.getSignedKeyOwner();
+  const keyOwnerId = keyOwner?.id;
+  if (keyOwnerId == null) return false;
+  if (post.mentions.some((m) => m.account.iri === keyOwnerId.href)) {
+    return true;
+  }
+  if (post.visibility === "private" && post.account.owner != null) {
     return await hasApprovedFollowFromKeyOwner(
-      keyOwner.id,
+      keyOwnerId,
       post.account.owner.id,
     );
-  } else if (post.visibility === "direct") {
-    const keyOwner = await ctx.getSignedKeyOwner();
-    const keyOwnerId = keyOwner?.id;
-    if (keyOwnerId == null) return false;
-    return post.mentions.some((m) => m.account.iri === keyOwnerId.href);
   }
-  return true;
+  return false;
 }
 
-async function findAuthorizedLocalPost(
-  ctx: RequestContext<unknown>,
+async function findLocalPostForAuthorization(
   values: Record<"username" | "id", string>,
 ): Promise<LocalPostForAuthorization | null> {
   if (!values.id.match(/^[-a-f0-9]+$/) || !isUuid(values.id)) return null;
@@ -95,8 +103,91 @@ async function findAuthorizedLocalPost(
       mentions: { with: { account: true } },
     },
   });
+  return post ?? null;
+}
+
+async function findAuthorizedLocalPost(
+  ctx: RequestContext<unknown>,
+  values: Record<"username" | "id", string>,
+): Promise<LocalPostForAuthorization | null> {
+  const post = await findLocalPostForAuthorization(values);
   if (post == null) return null;
   return (await canFetchLocalPost(ctx, post)) ? post : null;
+}
+
+async function authorizeLocalPostResource(
+  ctx: RequestContext<unknown>,
+  values: Record<"username" | "id", string>,
+): Promise<boolean> {
+  const post = await findLocalPostForAuthorization(values);
+  return post == null || (await canFetchLocalPost(ctx, post));
+}
+
+async function getRequestPostVisibilityScope(ctx: RequestContext<unknown>) {
+  const keyOwner = await ctx.getSignedKeyOwner();
+  const keyOwnerId = keyOwner?.id;
+  if (keyOwnerId == null) return getPostVisibilityScope(null);
+  const account = await db.query.accounts.findFirst({
+    where: { iri: { eq: keyOwnerId.href } },
+  });
+  return getPostVisibilityScope(account?.id);
+}
+
+type RepliesCollectionValues = Record<"username" | "id", string>;
+
+export async function dispatchRepliesCollection(
+  ctx: RequestContext<unknown>,
+  values: RepliesCollectionValues,
+  cursor: string | null,
+) {
+  if (cursor == null || !cursor.match(/^\d+$/)) return null;
+  const offset = Number.parseInt(cursor, 10);
+  if (!Number.isSafeInteger(offset) || offset < 0) return null;
+  const post = await findAuthorizedLocalPost(ctx, values);
+  if (post == null) return null;
+  const visibilityScope = await getRequestPostVisibilityScope(ctx);
+  const rows = await db.query.posts.findMany({
+    columns: { iri: true },
+    where: {
+      RAW: (replies, { and, eq }) =>
+        and(
+          eq(replies.replyTargetId, post.id),
+          buildPostVisibilityConditions(visibilityScope, replies),
+        )!,
+    },
+    orderBy: (replies, { desc }) => [desc(replies.id)],
+    offset,
+    limit: REPLIES_PAGE_SIZE + 1,
+  });
+  return {
+    // Fedify supports URL items at runtime, but the custom collection
+    // dispatcher type currently constrains them to the registered object type.
+    items: rows
+      .slice(0, REPLIES_PAGE_SIZE)
+      .map((reply) => new URL(reply.iri) as unknown as ActivityObject),
+    nextCursor:
+      rows.length > REPLIES_PAGE_SIZE ? `${offset + REPLIES_PAGE_SIZE}` : null,
+  };
+}
+
+export async function countRepliesCollection(
+  ctx: RequestContext<unknown>,
+  values: RepliesCollectionValues,
+) {
+  const post = await findAuthorizedLocalPost(ctx, values);
+  if (post == null) return null;
+  const visibilityScope = await getRequestPostVisibilityScope(ctx);
+  const result = await db
+    .select({ cnt: count() })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.replyTargetId, post.id),
+        buildPostVisibilityConditions(visibilityScope),
+      ),
+    );
+  if (result.length < 1) return 0;
+  return result[0].cnt;
 }
 
 federation.setObjectDispatcher(
@@ -122,7 +213,6 @@ federation.setObjectDispatcher(
         media: true,
         poll: { with: { options: { orderBy: { index: "asc" } } } },
         mentions: { with: { account: true } },
-        replies: { limit: 20 },
       },
     });
     if (post == null) return null;
@@ -130,6 +220,19 @@ federation.setObjectDispatcher(
     return toObject(post, ctx);
   },
 );
+
+federation
+  .setOrderedCollectionDispatcher(
+    REPLIES_COLLECTION,
+    ActivityObject,
+    "/@{username}/{id}/replies",
+    dispatchRepliesCollection,
+  )
+  .setFirstCursor(async (_ctx, values) =>
+    (await findLocalPostForAuthorization(values)) == null ? null : "0",
+  )
+  .setCounter(countRepliesCollection)
+  .authorize(authorizeLocalPostResource);
 
 federation
   .setOrderedCollectionDispatcher(

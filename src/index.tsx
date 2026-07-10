@@ -5,7 +5,7 @@ import "./logging";
 import { federation } from "@fedify/hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { captureException } from "@sentry/core";
-import { Hono } from "hono";
+import { type Context, Hono, type Next } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 
@@ -65,6 +65,20 @@ app.use("/oauth/revoke", CorsPolicy(["POST"]));
 app.use("/oauth/userinfo", CorsPolicy(["GET", "POST"]));
 
 app.route("/.well-known/oauth-authorization-server", oauthMetadataEndpoint);
+
+async function preventSharedCollectionCaching(c: Context, next: Next) {
+  await next();
+  c.header("Cache-Control", "private, no-store");
+}
+
+app.use(
+  "/:handle{@[^/]+}/:id{[-a-f0-9]+}/replies",
+  preventSharedCollectionCaching,
+);
+app.use(
+  "/:handle{@[^/]+}/:id{[-a-f0-9]+}/reactions",
+  preventSharedCollectionCaching,
+);
 
 app.use(federation(fedi, (_) => undefined));
 
