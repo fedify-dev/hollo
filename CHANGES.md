@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.8
 -------------
 
-To be released.
+Released on July 11, 2026.
 
  -  Fixed a Mastodon API compatibility bug where accounts with *Make following
     list public* disabled could not view their own following list in clients.
