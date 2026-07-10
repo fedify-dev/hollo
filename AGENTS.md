@@ -32,8 +32,9 @@ Project overview
 
  -  *Technology stack*: TypeScript (ESNext), Hono.js (web framework with JSX),
     Drizzle ORM, PostgreSQL
- -  *Package manager*: pnpm only (enforced via `packageManager` field)
- -  *Runtime*: Node.js with tsx
+ -  *Package manager*: pnpm; use the version declared by the `packageManager`
+    field in *package.json*
+ -  *Runtime*: Node.js
  -  *License*: GNU Affero General Public License v3 (AGPL-3.0)
  -  *Structure*: Single-user microblogging platform with federation
     capabilities
@@ -43,124 +44,33 @@ Project overview
 Directory structure
 -------------------
 
-~~~~
-hollo/
-├── bin/                          # Entry point scripts
-│   ├── server.ts                 # Main server entry point
-│   └── routes.ts                 # Debug utility to list all routes
-│
-├── src/                          # Main application source
-│   ├── api/                      # Mastodon-compatible REST APIs
-│   │   ├── v1/                   # API v1 endpoints
-│   │   └── v2/                   # API v2 endpoints (search, notifications)
-│   │
-│   ├── cleanup/                  # Cleanup (of old data)
-│   │   ├── processors.ts         # Cleanup item processors
-│   │   └── worker.ts             # Background job worker
-│   │
-│   ├── components/               # Hono JSX components (server-rendered)
-│   │
-│   ├── entities/                 # Entity serialization (DB → API response)
-│   │
-│   ├── federation/               # ActivityPub implementation via Fedify
-│   │   ├── index.ts              # Federation setup and inbox listeners
-│   │   ├── actor.ts              # Actor dispatchers (Person, Organization)
-│   │   ├── inbox.ts              # Inbox activity handlers
-│   │   ├── objects.ts            # Object dispatchers (Note, Article, Question)
-│   │   └── ...
-│   │
-│   ├── import/                   # Background data import (from Mastodon exports)
-│   │   ├── processors.ts         # Import item processors
-│   │   └── worker.ts             # Background job worker
-│   │
-│   ├── oauth/                    # OAuth 2.0 / OpenID Connect implementation
-│   │   ├── constants.ts          # Token sizes, expiry times
-│   │   ├── middleware.ts         # Auth middleware (tokenRequired, scopeRequired)
-│   │   └── endpoints/            # OAuth endpoints (metadata, revoke, userinfo)
-│   │
-│   ├── pages/                    # Web UI pages (Hono JSX)
-│   │
-│   ├── public/                   # Static assets (CSS, favicons)
-│   │
-│   ├── index.tsx                 # Main Hono app composition
-│   ├── schema.ts                 # Drizzle ORM database schema
-│   ├── db.ts                     # Database connection
-│   └── ...
-│
-├── scripts/                      # Utility scripts
-│   └── rebuild-timelines.ts      # Rebuild all home timelines
-│
-├── tests/                        # Test utilities and fixtures
-│   ├── helpers.ts                # Database cleanup, test fixtures
-│   └── helpers/                  # OAuth and web test utilities
-│
-├── drizzle/                      # Database migrations (SQL files)
-│
-└── docs/                         # Documentation site (Astro/Starlight)
-~~~~
+The repository changes frequently.  Use `rg --files` to inspect the current
+tree rather than relying on a complete file listing here.  The stable top-level
+areas are:
 
-
-Key architectural components
-----------------------------
-
-### Core layers
-
- -  *API layer* (*src/api/*): Implements Mastodon-compatible REST APIs
-    (v1 and v2)
- -  *Federation* (*src/federation/*): ActivityPub implementation using Fedify
- -  *Database* (*src/db.ts* and *src/schema.ts*): PostgreSQL with Drizzle ORM
- -  *OAuth* (*src/oauth/*): OAuth 2.0 with OpenID Connect support
- -  *Components* (*src/components/*): Hono JSX components for server-rendered UI
- -  *Entities* (*src/entities/*): Transform database records to Mastodon API
-    responses
- -  *Pages* (*src/pages/*): Web UI pages (profile, setup, dashboard, etc.)
- -  *Import system* (*src/import/*): Background job processing for data imports
- -  *Cleanup system* (*src/cleanup/*): Background job processing for cleanup
-    actions
-
-### Key files
-
-| File                      | Purpose                                   |
-| ------------------------- | ----------------------------------------- |
-| *src/index.tsx*           | Main Hono app that composes all routes    |
-| *src/schema.ts*           | Complete Drizzle ORM schema (~1300 lines) |
-| *src/federation/index.ts* | Federation setup with inbox listeners     |
-| *src/oauth/middleware.ts* | Authentication middleware                 |
-| *src/entities/status.ts*  | Status entity serialization               |
-| *DESIGN.md*               | Design system and front-end conventions   |
+ -  *bin/*: Application entry points and command-line utilities
+ -  *src/api/*: Mastodon-compatible REST APIs
+ -  *src/federation/*: ActivityPub and Fedify integration
+ -  *src/oauth/*: OAuth 2.0 and OpenID Connect support
+ -  *src/components/* and *src/pages/*: Server-rendered Hono JSX
+ -  *src/entities/*: Database-to-API response serialization
+ -  *src/import/* and *src/cleanup/*: Background job processors
+ -  *src/schema.ts*, *src/relations.ts*, and *src/db.ts*: Database model and
+    connection
+ -  *scripts/*: Maintenance and diagnostic scripts
+ -  *tests/*: Shared test helpers and fixtures
+ -  *drizzle/*: Generated migration directories
+ -  *docs/*: Astro/Starlight documentation site
 
 
 Technology stack
 ----------------
 
-### Core dependencies
-
-| Category      | Package          | Version | Purpose                        |
-| ------------- | ---------------- | ------- | ------------------------------ |
-| Runtime       | tsx              | ^4.21   | TypeScript executor            |
-| Web framework | hono             | ^4.11   | HTTP server with JSX support   |
-| Federation    | @fedify/fedify   | ~1.10   | ActivityPub implementation     |
-| Database      | drizzle-orm      | ^0.45   | ORM for PostgreSQL             |
-| Database      | postgres         | ^3.4    | PostgreSQL client              |
-| Storage       | flydrive         | ^1.3    | S3/filesystem abstraction      |
-| Validation    | zod              | ^4.2    | Schema validation (v4, not v3) |
-| Auth          | argon2           | ^0.44   | Password hashing               |
-| Auth          | otpauth          | ^9.4    | TOTP two-factor authentication |
-| Media         | sharp            | ^0.34   | Image processing               |
-| Media         | fluent-ffmpeg    | ^2.1    | Video processing               |
-| Logging       | @logtape/logtape | ~1.3    | Structured logging             |
-| Monitoring    | @sentry/node     | ^10.26  | Error tracking                 |
-
-### Development dependencies
-
-| Package             | Purpose       |
-| ------------------- | ------------- |
-| oxlint              | Linting       |
-| oxfmt               | Formatting    |
-| vitest              | Test runner   |
-| @vitest/coverage-v8 | Code coverage |
-| linkedom            | DOM testing   |
-| timekeeper          | Time mocking  |
+Dependency and tool versions change frequently.  Treat *package.json* and the
+pnpm lockfile as the source of truth for JavaScript dependencies, and
+*mise.toml* as the source of truth for development tools and runtime versions.
+Do not copy version numbers from this document into code or configuration.
+This document names a dependency only where its usage affects a coding rule.
 
 
 Development guidelines
@@ -168,12 +78,13 @@ Development guidelines
 
 ### Code style
 
- -  *TypeScript*: Strict mode enabled, ESNext target
+ -  *TypeScript*: Follow the compiler settings in *tsconfig.json*
  -  *JSX*: Use Hono's JSX (`jsxImportSource: "hono/jsx"`), not React
  -  *Oxlint*: Follow Oxlint rules (configured in *oxlint.config.ts*)
  -  *Oxfmt*: Follow Oxfmt formatting (configured in *.oxfmtrc.json*)
  -  *Formatting*: Spaces for indentation
- -  *Zod*: Use Zod v4 syntax (different from v3 in some APIs)
+ -  *Zod*: Follow the installed version and neighboring project code rather
+    than assuming APIs from another major version
 
 ### JSX components
 
@@ -210,8 +121,10 @@ guidance on a real case, update *DESIGN.md* in the same change.
 ### Database guidelines
 
  -  *Migrations*: Always generate migrations for schema changes
- -  *Schema design*: Follow existing patterns in *src/schema.ts*
- -  *Relations*: Use Drizzle's `relations()` for defining relationships
+ -  *Schema design*: Follow existing patterns in *src/schema.ts* and
+    *src/relations.ts*
+ -  *Relations*: Keep relational query definitions in *src/relations.ts* and
+    follow the API patterns already used there
  -  *Transactions*: Use `db.transaction()` for atomic operations
  -  *Indexes*: Add appropriate indexes for query performance
 
@@ -229,7 +142,9 @@ guidance on a real case, update *DESIGN.md* in the same change.
  -  *Mastodon compatibility*: Follow [Mastodon API documentation]
  -  *Versioning*: v1 for standard endpoints, v2 for extended features
  -  *Error handling*: Return proper HTTP status codes and error objects
- -  *Validation*: Use *@hono/zod-validator* for request validation
+ -  *Validation*: Follow the neighboring endpoint's Zod validation pattern;
+    Hollo uses both *@hono/zod-validator* middleware and shared request-body
+    helpers
  -  *Authentication*: Use `tokenRequired()` and `scopeRequired()` middleware
 
 [Mastodon API documentation]: https://docs.joinmastodon.org/api/
@@ -242,33 +157,37 @@ The OAuth system supports:
  -  Token revocation (RFC 7009)
  -  OAuth server metadata (RFC 8414)
  -  OpenID Connect userinfo endpoint
- -  Scopes: `read`, `write`, `follow`, `push`, `profile`
+ -  Mastodon-compatible top-level and granular scopes; use `scopeEnum` in
+    *src/schema.ts* as the authoritative list
 
 ### Testing
 
- -  *Test files*: Co-located with source (_src/\*\*/_.test.ts\*)
- -  *Runner*: Vitest with `requireAssertions: true`
+ -  *Test files*: Co-located with source and named with a `.test.ts` or
+    `.test.tsx` suffix
+ -  *Runner*: Treat *vitest.config.ts* as the source of truth
  -  *Database*: Uses separate test database (*.env.test*)
  -  *Helpers*: Use *tests/helpers/* for common test utilities
- -  *Parallelism*: Tests run sequentially (file parallelism disabled)
 
 Example test structure:
 
 ~~~~ typescript
-import { describe, it, expect, beforeEach } from "vitest";
-import { cleanupDatabase, createFixture } from "@/../tests/helpers";
+import { beforeEach, describe, expect, it } from "vitest";
+import { cleanDatabase } from "../tests/helpers";
 
 describe("MyFeature", () => {
   beforeEach(async () => {
-    await cleanupDatabase();
+    await cleanDatabase();
   });
 
   it("should do something", async () => {
-    // Test implementation
-    expect(result).toBe(expected);
+    const result = 1 + 1;
+    expect(result).toBe(2);
   });
 });
 ~~~~
+
+The helper import above assumes a test directly under *src/*.  Adjust the
+relative path for tests in nested directories.
 
 ### Security considerations
 
@@ -279,38 +198,22 @@ describe("MyFeature", () => {
  -  *2FA*: TOTP support with *otpauth* package
  -  *Federation security*: HTTP Signatures handled by Fedify
 
-### Performance
-
- -  *Database queries*: Use proper indexes, avoid N+1 queries
- -  *Pagination*: Use cursor-based pagination for timelines
- -  *Background jobs*: Use import worker for long-running tasks
- -  *Caching*: Fedify handles federation caching
-
 
 Development commands
 --------------------
 
-### Common commands
+Command names also change over time.  Check the `scripts` field in
+*package.json* with `pnpm run`, and list repository-level tasks with
+`mise tasks`.
 
-| Command               | Description                              |
-| --------------------- | ---------------------------------------- |
-| `pnpm dev`            | Start development server with hot reload |
-| `pnpm prod`           | Start production server                  |
-| `pnpm typecheck`      | Run type check with tsgo                 |
-| `mise run check`      | Run type check, Oxlint, and Oxfmt check  |
-| `pnpm test`           | Run tests with Vitest                    |
-| `pnpm test:ci`        | Run tests without migrations (for CI)    |
-| `pnpm check:coverage` | Run tests with coverage report           |
+The standard verification commands are:
 
-### Utility commands
-
-| Command                  | Description                            |
-| ------------------------ | -------------------------------------- |
-| `pnpm list:routes`       | Display all registered HTTP routes     |
-| `pnpm rebuild-timelines` | Rebuild all home timelines             |
-| `pnpm migrate`           | Apply pending database migrations      |
-| `pnpm migrate:test`      | Apply migrations to test database      |
-| `pnpm migrate:generate`  | Generate migration from schema changes |
+ -  `mise run check`: Type checking, linting, source formatting checks, and
+    Hongdown Markdown checks
+ -  `pnpm test`: Test-database migration followed by Vitest
+ -  `pnpm test:ci`: Vitest without running migrations; use this only when the
+    test database is already prepared
+ -  `pnpm check:coverage`: Test-database migration followed by coverage tests
 
 ### Formatting
 
@@ -318,7 +221,7 @@ Development commands
 # Format code with Oxfmt and Markdown docs with Hongdown
 mise run fmt
 
-# Check formatting without writing
+# Check source formatting without writing; this does not run Hongdown
 pnpm run fmt:check
 
 # Lint and auto-fix
@@ -342,8 +245,9 @@ in *drizzle/* directory.
     pnpm migrate:generate
     ~~~~
 
-This compares *src/schema.ts* with the current database state and generates
-a SQL migration file.
+Drizzle Kit builds a snapshot from *src/schema.ts*, compares it with the latest
+snapshot under *drizzle/*, and writes a timestamped migration directory
+containing *migration.sql* and, for schema migrations, *snapshot.json*.
 
 Schema migrations MUST be generated with `pnpm migrate:generate`.  Do not
 hand-write schema migration SQL files; use a generated migration and then
@@ -368,72 +272,18 @@ pnpm migrate:test
 > [!IMPORTANT]
 > Migrations run automatically with `pnpm dev` and `pnpm prod`.
 > Never edit migrations after they've been applied to production.
-> Migration files are numbered sequentially
-> (e.g., *0075\_cleanup\_duplicate\_notifications.sql*).
+> Do not rename or reorder generated migration directories after they have been
+> applied.
 
 
 Environment variables
 ---------------------
 
-### Required variables
-
-| Variable           | Description                        |
-| ------------------ | ---------------------------------- |
-| `DATABASE_URL`     | PostgreSQL connection string       |
-| `SECRET_KEY`       | Session signing key (min 44 chars) |
-| `DRIVE_DISK`       | Storage driver: `fs` or `s3`       |
-| `STORAGE_URL_BASE` | Public URL base for assets         |
-
-### Storage configuration
-
-Filesystem storage:
-
-~~~~ env
-DRIVE_DISK=fs
-FS_STORAGE_PATH=/path/to/storage
-STORAGE_URL_BASE=https://example.com/assets
-~~~~
-
-S3 storage:
-
-~~~~ env
-DRIVE_DISK=s3
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
-S3_REGION=us-east-1
-S3_BUCKET=your-bucket
-STORAGE_URL_BASE=https://your-bucket.s3.amazonaws.com
-# Optional: S3_ENDPOINT_URL for MinIO, etc.
-~~~~
-
-### Optional variables
-
-| Variable                                 | Default | Description                                                                                                     |
-| ---------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
-| `PORT`                                   | 3000    | Server port                                                                                                     |
-| `BIND`                                   | -       | Bind address                                                                                                    |
-| `NODE_TYPE`                              | all     | Node type: `all`, `web`, or `worker`                                                                            |
-| `BEHIND_PROXY`                           | false   | Trust proxy headers                                                                                             |
-| `LOG_LEVEL`                              | info    | Logging level                                                                                                   |
-| `LOG_QUERY`                              | false   | Log database queries                                                                                            |
-| `LOG_FILE`                               | -       | Log file path                                                                                                   |
-| `LOG_FILE_FORMAT`                        | jsonl   | Log file format: `jsonl` or `logfmt`                                                                            |
-| `SENTRY_DSN`                             | -       | Sentry error tracking                                                                                           |
-| `HOME_URL`                               | -       | Home page redirect URL                                                                                          |
-| `ALLOW_PRIVATE_ADDRESS`                  | false   | Disable SSRF protection                                                                                         |
-| `REMOTE_ACTOR_FETCH_POSTS`               | 10      | Posts to fetch from remote actors                                                                               |
-| `REMOTE_ACTOR_STALENESS_DAYS`            | 7       | Days before remote actor data is stale                                                                          |
-| `REFRESH_ACTORS_ON_INTERACTION`          | false   | Refresh actors on all activity types                                                                            |
-| `REMOTE_REPLIES_SCRAPE_DEPTH`            | 2       | Reply scraping depth for remote posts                                                                           |
-| `REMOTE_REPLIES_SCRAPE_MAX_ITEMS`        | 100     | Replies to process per scraping job                                                                             |
-| `REMOTE_EMOJI_REACTIONS_FETCH_MAX_ITEMS` | 100     | Emoji reactions to import from remote posts                                                                     |
-| `REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS` | 5       | Delay between scrape requests per origin                                                                        |
-| `REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS`  | 300     | Backoff for 429 without `Retry-After`                                                                           |
-| `REMOTE_REPLIES_SCRAPE_COOLDOWN_SECONDS` | 300     | Completed scrape deduplication window                                                                           |
-| `MEDIA_PROXY`                            | off     | Remote media proxy: `off`, `proxy`, `cache` (booleans accepted: `true`→`proxy`, `false`→`off`)                  |
-| `REMOTE_MEDIA_THUMBNAILS`                | on      | Generate local sharp thumbnails for remote attachments (boolean)                                                |
-| `HANDLE_HOST`                            | -       | Split-domain WebFinger handle host (e.g. `example.com`); must be set together with `WEB_ORIGIN`                 |
-| `WEB_ORIGIN`                             | -       | Split-domain ActivityPub server origin (e.g. `https://ap.example.com`); must be set together with `HANDLE_HOST` |
+Do not maintain a second environment-variable inventory in this file.  The
+English and localized *install/env.mdx* files under *docs/src/content/docs/* are
+the operator-facing source of truth for supported variables, defaults, and
+storage examples.  Read the relevant source module as well when changing
+behavior.
 
 
 Adding new environment variables
@@ -442,19 +292,13 @@ Adding new environment variables
 When adding a new environment variable to Hollo, update these locations:
 
 1.  *Source code*: Add the environment variable reading logic in
-    the appropriate source file (e.g., *src/logging.ts*, *src/storage.ts*).
+    the appropriate source file.
 
-2.  *AGENTS.md* (this file): Add the variable to the environment variables
-    tables above (required or optional section as appropriate).
+2.  *Documentation site*: Update the English *install/env.mdx* guide and every
+    localized counterpart present under *docs/src/content/docs/*.
 
-3.  *Documentation site*: Update the installation guides in
-    *docs/src/content/docs/install/* for all languages:
-
-     -  *docs/src/content/docs/install/* (English)
-     -  *docs/src/content/docs/ja/install/* (Japanese)
-     -  *docs/src/content/docs/ko/install/* (Korean)
-     -  *docs/src/content/docs/zh-cn/install/* (Simplified Chinese)
-     -  *docs/src/content/docs/zh-tw/install/* (Traditional Chinese)
+3.  *.env.sample*: Add the variable when operators are expected to configure it
+    in a typical installation.
 
 4.  *Docker Compose files*: If the variable is relevant for Docker deployments:
 
