@@ -27,6 +27,7 @@ import {
 import { normalizeHandleForLookup } from "../../instance-host";
 import {
   type AccountOwnerVariables,
+  authorizeIfToken,
   scopeRequired,
   tokenRequired,
   withAccountOwner,
@@ -816,13 +817,18 @@ app.get("/:id/followers", async (c) => {
   );
 });
 
-app.get("/:id/following", async (c) => {
+app.get("/:id/following", authorizeIfToken(["read:accounts"]), async (c) => {
   const accountId = c.req.param("id");
   if (!isUuid(accountId)) return c.json({ error: "Record not found" }, 404);
   const localOwner = await db.query.accountOwners.findFirst({
     where: { id: { eq: accountId } },
   });
-  if (localOwner != null && !localOwner.followingListPublic) {
+  const token = c.get("token");
+  if (
+    localOwner != null &&
+    !localOwner.followingListPublic &&
+    token?.accountOwnerId !== accountId
+  ) {
     return c.json([]);
   }
   const following = await db.query.follows.findMany({

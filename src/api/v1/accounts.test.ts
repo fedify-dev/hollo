@@ -12,8 +12,91 @@ import {
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
 import app from "../../index";
-import { accountOwners, accounts, posts } from "../../schema";
+import { accountOwners, accounts, follows, posts } from "../../schema";
 import { uuidv7 } from "../../uuid";
+
+describe.sequential("/api/v1/accounts/:id/following", () => {
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let owner: Awaited<ReturnType<typeof createAccount>>;
+  let followedAccount: Awaited<ReturnType<typeof createAccount>>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+
+    owner = await createAccount({ username: "owner" });
+    followedAccount = await createAccount({ username: "followed" });
+    client = await createOAuthApplication({ scopes: ["read:accounts"] });
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: followedAccount.id,
+      followerId: owner.id,
+      approved: new Date(),
+    });
+  });
+
+  it("returns a private following list to its authenticated owner", async () => {
+    expect.assertions(2);
+
+    const accessToken = await getAccessToken(client, owner, ["read:accounts"]);
+    const response = await app.request(
+      `/api/v1/accounts/${owner.id}/following`,
+      {
+        headers: { authorization: bearerAuthorization(accessToken) },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject([
+      { id: followedAccount.id },
+    ]);
+  });
+
+  it("hides a private following list from anonymous requests", async () => {
+    expect.assertions(2);
+
+    const response = await app.request(
+      `/api/v1/accounts/${owner.id}/following`,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual([]);
+  });
+
+  it("hides a private following list from other accounts", async () => {
+    expect.assertions(2);
+
+    const accessToken = await getAccessToken(client, followedAccount, [
+      "read:accounts",
+    ]);
+    const response = await app.request(
+      `/api/v1/accounts/${owner.id}/following`,
+      {
+        headers: { authorization: bearerAuthorization(accessToken) },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual([]);
+  });
+
+  it("returns a public following list to anonymous requests", async () => {
+    expect.assertions(2);
+
+    await db
+      .update(accountOwners)
+      .set({ followingListPublic: true })
+      .where(eq(accountOwners.id, owner.id));
+
+    const response = await app.request(
+      `/api/v1/accounts/${owner.id}/following`,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject([
+      { id: followedAccount.id },
+    ]);
+  });
+});
 
 describe.sequential("/api/v1/accounts/verify_credentials", () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;

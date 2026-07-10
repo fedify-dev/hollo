@@ -6,6 +6,13 @@ Version 0.9.8
 
 To be released.
 
+ -  Fixed a Mastodon API compatibility bug where accounts with *Make following
+    list public* disabled could not view their own following list in clients.
+    Authenticated account owners can now access their own following list while
+    it remains hidden from everyone else.  [[#548]]
+
+[#548]: https://github.com/fedify-dev/hollo/issues/548
+
 
 Version 0.9.7
 -------------
