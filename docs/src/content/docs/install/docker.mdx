@@ -13,7 +13,7 @@ docker pull ghcr.io/fedify-dev/hollo:latest
 To run Hollo, you need to set up a PostgreSQL database and
 an S3-compatible object storage for media storage.  You can use the
 official Docker image for [PostgreSQL], and you can use
-[MinIO] for the S3-compatible object storage.  Or you can use other
+[RustFS] for the S3-compatible object storage.  Or you can use other
 managed services like AWS [RDS], [ElastiCache], and [S3].
 
 To connect Hollo to these services, you need to set the environment
@@ -23,7 +23,7 @@ supports, see the [*Environment variables*](/install/env) chapter.
 
 [GitHub Packages]: https://github.com/fedify-dev/hollo/pkgs/container/hollo
 [PostgreSQL]: https://hub.docker.com/_/postgres
-[MinIO]: https://hub.docker.com/r/minio/minio
+[RustFS]: https://rustfs.com/
 [RDS]: https://aws.amazon.com/rds/
 [ElastiCache]: https://aws.amazon.com/elasticache/
 [S3]: https://aws.amazon.com/s3/
@@ -49,3 +49,55 @@ docker compose up -d
 ~~~~
 
 [Docker Compose]: https://docs.docker.com/compose/
+
+
+Migrating from MinIO
+--------------------
+
+Compose files published before Hollo 0.10.0 stored media in a MinIO volume.
+RustFS cannot use that volume directly.  Copy its objects through the S3 API
+before starting the new Compose setup.
+
+> [!CAUTION]
+> Run these commands from the same directory and with the same Compose project
+> name as your existing installation.  Do not use `docker compose down -v`,
+> because it deletes the volume that contains your media.
+
+Back up the current Compose file and stop the old services without deleting
+their volumes.  Then download the new Compose file and the [migration overlay]:
+
+~~~~ bash
+cp compose.yaml compose.minio.yaml
+docker compose down
+curl -LO https://raw.githubusercontent.com/fedify-dev/hollo/main/compose.yaml
+curl -LO https://raw.githubusercontent.com/fedify-dev/hollo/main/compose.migrate-minio.yaml
+~~~~
+
+If you customized *compose.yaml*, reapply those changes from
+*compose.minio.yaml* before continuing.  Keep the new RustFS service and storage
+settings.
+
+If you previously set `COMPOSE_PROJECT_NAME` or used `docker compose -p`, use
+the same value for every command below.  Copy the `hollo` bucket to RustFS,
+then compare the source and destination:
+
+~~~~ bash
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio run --rm migrate-minio
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio run --rm verify-minio-migration
+~~~~
+
+The verification command must report no differences.  Stop the temporary
+migration services without deleting their volumes, then start Hollo normally:
+
+~~~~ bash
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio down
+docker compose up -d
+~~~~
+
+Check several existing media URLs before removing the old `minio_data` volume.
+Keep that volume until you have also backed up the migrated data.
+
+[migration overlay]: https://github.com/fedify-dev/hollo/blob/main/compose.migrate-minio.yaml

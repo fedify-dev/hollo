@@ -11,7 +11,7 @@ docker pull ghcr.io/fedify-dev/hollo:latest
 ~~~~
 
 Holloを実行するには、PostgreSQLのデータベースとメディアを保存するためのS3互換のオブジェクトストレージが必要です。
-[PostgreSQL]の公式のDockerイメージとS3互換のオブジェクトストレージである[MinIO]を使うことができます。
+[PostgreSQL]の公式のDockerイメージとS3互換のオブジェクトストレージである[RustFS]を使うことができます。
 またはAWSの[RDS]、[ElastiCache]、[S3]などのマネージドサービスを使用することもできます。
 
 Holloにこれらのサービスを組み合わせるには、
@@ -21,7 +21,7 @@ Holloがサポートする環境変数のリストは[**環境変数**](/ja/inst
 
 [GitHub Packages]: https://github.com/fedify-dev/hollo/pkgs/container/hollo
 [PostgreSQL]: https://hub.docker.com/_/postgres
-[MinIO]: https://hub.docker.com/r/minio/minio
+[RustFS]: https://rustfs.com/
 [RDS]: https://aws.amazon.com/rds/
 [ElastiCache]: https://aws.amazon.com/elasticache/
 [S3]: https://aws.amazon.com/s3/
@@ -46,3 +46,55 @@ docker compose up -d
 ~~~~
 
 [Docker Compose]: https://docs.docker.com/compose/
+
+
+MinIOからの移行
+---------------
+
+Hollo 0.10.0より前のComposeファイルは、メディアをMinIOボリュームに保存していました。
+RustFSはこのボリュームを直接使用できないため、新しいCompose構成を起動する前に
+S3 APIを通してオブジェクトをコピーする必要があります。
+
+> [!CAUTION]
+> 既存のインストールと同じディレクトリで、同じComposeプロジェクト名を使用して
+> 次のコマンドを実行してください。メディアを保存したボリュームが削除されるため、
+> `docker compose down -v`は実行しないでください。
+
+現在のComposeファイルをバックアップし、ボリュームを残したまま既存のサービスを
+停止します。次に新しいComposeファイルと[移行用オーバーレイ]をダウンロードします：
+
+~~~~ bash
+cp compose.yaml compose.minio.yaml
+docker compose down
+curl -LO https://raw.githubusercontent.com/fedify-dev/hollo/main/compose.yaml
+curl -LO https://raw.githubusercontent.com/fedify-dev/hollo/main/compose.migrate-minio.yaml
+~~~~
+
+*compose.yaml*を変更して使用していた場合は、続行する前に
+*compose.minio.yaml*からその変更を再適用してください。新しいRustFSサービスと
+ストレージ設定は維持してください。
+
+以前に`COMPOSE_PROJECT_NAME`または`docker compose -p`を使用した場合は、
+以下のすべてのコマンドで同じ値を使用してください。`hollo`バケットをRustFSに
+コピーし、コピー元とコピー先を比較します：
+
+~~~~ bash
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio run --rm migrate-minio
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio run --rm verify-minio-migration
+~~~~
+
+検証コマンドで差異がないことを確認してください。ボリュームを削除せずに
+一時的な移行サービスを停止し、通常どおりHolloを起動します：
+
+~~~~ bash
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio down
+docker compose up -d
+~~~~
+
+既存のメディアURLを複数確認してください。移行したデータをバックアップするまで、
+古い`minio_data`ボリュームは残しておいてください。
+
+[移行用オーバーレイ]: https://github.com/fedify-dev/hollo/blob/main/compose.migrate-minio.yaml

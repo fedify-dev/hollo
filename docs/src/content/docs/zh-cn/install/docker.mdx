@@ -9,13 +9,13 @@ Hollo 在 [GitHub Packages] 上提供了官方的 Docker 镜像。您可以使�
 docker pull ghcr.io/fedify-dev/hollo:latest
 ~~~~
 
-要运行 Hollo，您需要设置一个 PostgreSQL 数据库和一个用于媒体存储的 S3 兼容对象存储。您可以使用 [PostgreSQL] 的官方 Docker 镜像，也可以使用 [MinIO] 作为 S3 兼容对象存储。或者，您也可以使用其他托管服务，如 AWS 的 [RDS]、[ElastiCache] 和 [S3]。
+要运行 Hollo，您需要设置一个 PostgreSQL 数据库和一个用于媒体存储的 S3 兼容对象存储。您可以使用 [PostgreSQL] 的官方 Docker 镜像，也可以使用 [RustFS] 作为 S3 兼容对象存储。或者，您也可以使用其他托管服务，如 AWS 的 [RDS]、[ElastiCache] 和 [S3]。
 
 要将 Hollo 连接到这些服务，您需要通过 `docker run` 命令的 [`-e`/`--env` 选项或 `--env-file` 选项][1] 设置环境变量。要查看 Hollo 支持的环境变量，请参阅 [**环境变量**](/zh-cn/install/env) 章节。
 
 [GitHub Packages]: https://github.com/fedify-dev/hollo/pkgs/container/hollo
 [PostgreSQL]: https://hub.docker.com/_/postgres
-[MinIO]: https://hub.docker.com/r/minio/minio
+[RustFS]: https://rustfs.com/
 [RDS]: https://aws.amazon.com/rds/
 [ElastiCache]: https://aws.amazon.com/elasticache/
 [S3]: https://aws.amazon.com/s3/
@@ -39,3 +39,44 @@ docker compose up -d
 ~~~~
 
 [Docker Compose]: https://docs.docker.com/compose/
+
+
+从 MinIO 迁移
+------------
+
+Hollo 0.10.0 之前的 Compose 文件将媒体存储在 MinIO 卷中。RustFS 无法直接使用该卷，因此必须先通过 S3 API 复制对象，再启动新的 Compose 配置。
+
+> [!CAUTION]
+> 请在现有安装所在的同一目录中，使用相同的 Compose 项目名称运行以下命令。不要运行 `docker compose down -v`，因为它会删除存有媒体文件的卷。
+
+备份当前的 Compose 文件，停止旧服务并保留其卷。然后下载新的 Compose 文件和[迁移覆盖文件]：
+
+~~~~ bash
+cp compose.yaml compose.minio.yaml
+docker compose down
+curl -LO https://raw.githubusercontent.com/fedify-dev/hollo/main/compose.yaml
+curl -LO https://raw.githubusercontent.com/fedify-dev/hollo/main/compose.migrate-minio.yaml
+~~~~
+
+如果您修改过 *compose.yaml*，请先从 *compose.minio.yaml* 重新应用这些更改，再继续操作。请保留新的 RustFS 服务和存储设置。
+
+如果之前设置了 `COMPOSE_PROJECT_NAME` 或使用了 `docker compose -p`，请在下面的每条命令中使用相同的值。将 `hollo` 存储桶复制到 RustFS，然后比较源和目标：
+
+~~~~ bash
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio run --rm migrate-minio
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio run --rm verify-minio-migration
+~~~~
+
+验证命令必须报告没有差异。停止临时迁移服务但不要删除其卷，然后正常启动 Hollo：
+
+~~~~ bash
+docker compose -f compose.yaml -f compose.migrate-minio.yaml \
+  --profile migrate-minio down
+docker compose up -d
+~~~~
+
+请检查多个现有媒体 URL。在备份迁移后的数据之前，请保留旧的 `minio_data` 卷。
+
+[迁移覆盖文件]: https://github.com/fedify-dev/hollo/blob/main/compose.migrate-minio.yaml
