@@ -90,7 +90,7 @@
     "@dotenvx/dotenvx": "^1.71.3",
     "@fedify/lint": "^2.3.1",
     "@iconify-json/lucide": "^1.2.111",
-    "@reporters/github": "^1.13.1",
+    "@reporters/github": "^2.0.2",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^26.0.1",
