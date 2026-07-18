@@ -6,6 +6,12 @@ Version 0.9.9
 
 To be released.
 
+ -  Upgraded Fedify to 2.2.7 to fix a security vulnerability in NodeInfo
+    lookups that could allow remote instances to make Hollo fetch non-public
+    network destinations.  [[CVE-2026-62857]]
+
+[CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
+
 
 Version 0.9.8
 -------------
@@ -535,6 +541,16 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.9
+-------------
+
+Released on July 19, 2026.
+
+ -  Upgraded Fedify to 2.1.18 to fix a security vulnerability in NodeInfo
+    lookups that could allow remote instances to make Hollo fetch non-public
+    network destinations.  [[CVE-2026-62857]]
 
 
 Version 0.8.8
