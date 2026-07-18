@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.8.9
 -------------
 
-To be released.
+Released on July 19, 2026.
 
  -  Upgraded Fedify to 2.1.18 to fix a security vulnerability in NodeInfo
     lookups that could allow remote instances to make Hollo fetch non-public
