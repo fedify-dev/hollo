@@ -6,12 +6,14 @@ Version 0.10.0
 
 To be released.
 
- -  Upgraded Fedify to 2.3.0, which adds an outbound delivery circuit
+ -  Upgraded Fedify to 2.3.2.  Fedify 2.3 adds an outbound delivery circuit
     breaker (enabled by default for queued outbox delivery),
     `MessageQueue.getDepth()` support, OpenTelemetry metrics for
     federation operations, `mapActorAlias()` for fixed-path actor
     dispatchers, and significantly faster TypeScript type-checking of
-    dispatcher paths.
+    dispatcher paths.  Fedify 2.3.2 also fixes a security vulnerability in
+    NodeInfo lookups that could allow remote instances to make Hollo fetch
+    non-public network destinations.  [[CVE-2026-62857]]
 
  -  Added WebP (`image/webp`) as an accepted format for profile avatar and
     banner image uploads.  Previously only JPEG, PNG, and GIF were accepted
@@ -45,10 +47,21 @@ To be released.
     Compose installations can migrate their MinIO media with the provided
     migration overlay and verification command.  [[#549]]
 
+[CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [#524]: https://github.com/fedify-dev/hollo/issues/524
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 [#549]: https://github.com/fedify-dev/hollo/issues/549
+
+
+Version 0.9.9
+-------------
+
+Released on July 19, 2026.
+
+ -  Upgraded Fedify to 2.2.7 to fix a security vulnerability in NodeInfo
+    lookups that could allow remote instances to make Hollo fetch non-public
+    network destinations.  [[CVE-2026-62857]]
 
 
 Version 0.9.8
@@ -579,6 +592,16 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.9
+-------------
+
+Released on July 19, 2026.
+
+ -  Upgraded Fedify to 2.1.18 to fix a security vulnerability in NodeInfo
+    lookups that could allow remote instances to make Hollo fetch non-public
+    network destinations.  [[CVE-2026-62857]]
 
 
 Version 0.8.8
