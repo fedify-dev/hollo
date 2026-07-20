@@ -1,5 +1,6 @@
 import { renderCustomEmojis } from "../custom-emoji";
 import { stripQuoteInlineFallbacks } from "../html";
+import { orderMedia } from "../media-order";
 import { proxyUrl } from "../media-proxy";
 import type { PreviewCard } from "../previewcard";
 import type {
@@ -385,7 +386,7 @@ function PostContent({ post, featured, baseUrl }: PostContentProps) {
       {post.poll != null && <Poll poll={post.poll} />}
       {post.media.length > 0 && (
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
-          {post.media.map((medium) => (
+          {orderMedia(post.media).map((medium) => (
             <figure class="m-0">
               <Medium medium={medium} baseUrl={baseUrl} />
               {medium.description && medium.description.trim() !== "" && (

@@ -36,6 +36,7 @@ import { isSSRFSafeURL } from "ssrfcheck";
 import type { DatabaseLike } from "../db";
 import { extractPreviewLink } from "../html";
 import { makeVideoScreenshot, type Thumbnail, uploadThumbnail } from "../media";
+import { orderMedia } from "../media-order";
 import { REMOTE_MEDIA_THUMBNAILS } from "../media-proxy";
 import { fetchPreviewCard } from "../previewcard";
 import {
@@ -503,6 +504,7 @@ export async function persistPost(
     mentionRows.push(...result);
   }
   await db.delete(media).where(eq(media.postId, post.id));
+  let mediaPosition = 0;
   for await (const attachment of object.getAttachments(options)) {
     if (
       !(
@@ -604,6 +606,7 @@ export async function persistPost(
     await db.insert(media).values({
       id,
       postId: post.id,
+      position: mediaPosition,
       type: mediaType,
       url,
       description:
@@ -612,6 +615,7 @@ export async function persistPost(
       height: attachment.height ?? metadata.height!,
       ...thumbnail,
     } satisfies NewMedium);
+    mediaPosition++;
   }
   post = await db.query.posts.findFirst({
     where: { iri: { eq: object.id.href } },
@@ -1055,7 +1059,7 @@ export function toObject(
             id: new URL("#likes", post.iri),
             totalItems: post.likesCount,
           }),
-    attachments: post.media.map((medium) =>
+    attachments: orderMedia(post.media).map((medium) =>
       medium.type.startsWith("video/")
         ? new Video({
             mediaType: medium.type,

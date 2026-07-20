@@ -6,6 +6,13 @@ Version 0.9.10
 
 To be released.
 
+ -  Fixed media attachments appearing in arbitrary order in the web UI,
+    Mastodon API responses, and federated activities.  Hollo now preserves the
+    order supplied by local clients and remote ActivityPub objects, and honors
+    `media_ids` when editing a status.  [[#556]]
+
+[#556]: https://github.com/fedify-dev/hollo/issues/556
+
 
 Version 0.9.9
 -------------

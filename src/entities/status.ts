@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import { stripQuoteInlineFallbacks } from "../html";
+import { orderMedia } from "../media-order";
 import { proxyUrl } from "../media-proxy";
 import type { PreviewCard } from "../previewcard";
 import {
@@ -449,7 +450,7 @@ export function serializePost(
             website: post.application.website,
           },
     account: serializeAccount(post.account, baseUrl),
-    media_attachments: post.media.map((medium) =>
+    media_attachments: orderMedia(post.media).map((medium) =>
       serializeMedium(medium, baseUrl),
     ),
     mentions: post.mentions.map((mention) => ({
