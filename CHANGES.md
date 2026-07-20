@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.10
 --------------
 
-To be released.
+Released on July 20, 2026.
 
  -  Fixed media attachments appearing in arbitrary order in the web UI,
     Mastodon API responses, and federated activities.  Hollo now preserves the
