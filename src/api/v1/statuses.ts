@@ -81,6 +81,9 @@ import {
 const app = new Hono<{ Variables: AccountOwnerVariables }>();
 const logger = getLogger(["hollo", "api", "v1", "statuses"]);
 
+class MediaClaimError extends Error {}
+class StatusNotFoundError extends Error {}
+
 const quoteApprovalPolicySchema = z.enum(["public", "followers", "nobody"]);
 
 function getPostOrderingKey(postIri: string): string {
@@ -403,6 +406,12 @@ app.post(
     }
 
     const data = result.data;
+    if (
+      data.media_ids != null &&
+      new Set(data.media_ids).size !== data.media_ids.length
+    ) {
+      return c.json({ error: "Media not found" }, 422);
+    }
 
     const handle = owner.handle;
     const id = uuidv7();
@@ -480,109 +489,113 @@ app.post(
       localQuoteTargetOwner != null
         ? getQuoteAuthorizationIri(quoteTarget, { id })
         : null;
-    await db.transaction(async (tx) => {
-      let poll: Poll | null = null;
-      if (data.poll != null) {
-        const expires = new Date(Date.now() + data.poll.expires_in * 1000);
-        [poll] = await tx
-          .insert(polls)
+    try {
+      await db.transaction(async (tx) => {
+        let poll: Poll | null = null;
+        if (data.poll != null) {
+          const expires = new Date(Date.now() + data.poll.expires_in * 1000);
+          [poll] = await tx
+            .insert(polls)
+            .values({
+              id: uuidv7(),
+              multiple: data.poll.multiple,
+              expires,
+            })
+            .returning();
+          await tx.insert(pollOptions).values(
+            data.poll.options.map(
+              (title, index) =>
+                ({
+                  pollId: poll!.id,
+                  index,
+                  title,
+                }) satisfies NewPollOption,
+            ),
+          );
+        }
+        const insertedRows = await tx
+          .insert(posts)
           .values({
-            id: uuidv7(),
-            multiple: data.poll.multiple,
-            expires,
+            id,
+            iri: url.href,
+            type: poll == null ? "Note" : "Question",
+            accountId: owner.id,
+            applicationId: token.applicationId,
+            replyTargetId: data.in_reply_to_id,
+            quoteTargetId,
+            quoteTargetIri: quoteTarget?.iri ?? null,
+            quoteState,
+            quoteAuthorizationIri,
+            quoteApprovalPolicy,
+            sharingId: null,
+            visibility: effectiveVisibility,
+            summary,
+            content: data.status,
+            contentHtml: content?.html,
+            language: data.language ?? owner.language,
+            pollId: poll == null ? null : poll.id,
+            tags,
+            emojis,
+            sensitive: data.sensitive,
+            url: url.href,
+            previewCard,
+            idempotenceKey: idempotencyKey,
+            published: sql`CURRENT_TIMESTAMP`,
           })
           .returning();
-        await tx.insert(pollOptions).values(
-          data.poll.options.map(
-            (title, index) =>
-              ({
-                pollId: poll!.id,
-                index,
-                title,
-              }) satisfies NewPollOption,
-          ),
-        );
-      }
-      const insertedRows = await tx
-        .insert(posts)
-        .values({
-          id,
-          iri: url.href,
-          type: poll == null ? "Note" : "Question",
-          accountId: owner.id,
-          applicationId: token.applicationId,
-          replyTargetId: data.in_reply_to_id,
-          quoteTargetId,
-          quoteTargetIri: quoteTarget?.iri ?? null,
-          quoteState,
-          quoteAuthorizationIri,
-          quoteApprovalPolicy,
-          sharingId: null,
-          visibility: effectiveVisibility,
-          summary,
-          content: data.status,
-          contentHtml: content?.html,
-          language: data.language ?? owner.language,
-          pollId: poll == null ? null : poll.id,
-          tags,
-          emojis,
-          sensitive: data.sensitive,
-          url: url.href,
-          previewCard,
-          idempotenceKey: idempotencyKey,
-          published: sql`CURRENT_TIMESTAMP`,
-        })
-        .returning();
-      if (data.media_ids != null && data.media_ids.length > 0) {
-        for (const mediaId of data.media_ids) {
-          const result = await tx
-            .update(media)
-            .set({ postId: id })
-            .where(and(eq(media.id, mediaId), isNull(media.postId)))
-            .returning();
-          if (result.length < 1) {
-            tx.rollback();
-            return c.json({ error: "Media not found" }, 422);
+        if (data.media_ids != null && data.media_ids.length > 0) {
+          for (const [position, mediaId] of data.media_ids.entries()) {
+            const result = await tx
+              .update(media)
+              .set({ postId: id, position })
+              .where(and(eq(media.id, mediaId), isNull(media.postId)))
+              .returning();
+            if (result.length < 1) throw new MediaClaimError();
           }
         }
-      }
-      let mentionObjects: Mention[] = [];
-      if (mentionedIds.length > 0) {
-        mentionObjects = await tx
-          .insert(mentions)
-          .values(
-            mentionedIds.map((accountId) => ({
-              postId: id,
-              accountId,
-            })),
-          )
-          .returning();
-      }
-      if (
-        quoteTargetId != null &&
-        (quoteState == null || quoteState === "accepted")
-      ) {
-        await tx
-          .update(posts)
-          .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
-          .where(eq(posts.id, quoteTargetId));
-      }
-      await updateAccountStats(tx, owner);
-      if (insertedRows[0].replyTargetId != null) {
-        await updatePostStats(tx, { id: insertedRows[0].replyTargetId });
-      }
-      await appendPostToTimelines(tx, {
-        ...insertedRows[0],
-        sharing: null,
-        mentions: mentionObjects,
-        replyTarget:
-          insertedRows[0].replyTargetId == null
-            ? null
-            : ((await db.query.posts.findFirst({
-                where: { id: { eq: insertedRows[0].replyTargetId } },
-              })) ?? null),
+        let mentionObjects: Mention[] = [];
+        if (mentionedIds.length > 0) {
+          mentionObjects = await tx
+            .insert(mentions)
+            .values(
+              mentionedIds.map((accountId) => ({
+                postId: id,
+                accountId,
+              })),
+            )
+            .returning();
+        }
+        if (
+          quoteTargetId != null &&
+          (quoteState == null || quoteState === "accepted")
+        ) {
+          await tx
+            .update(posts)
+            .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
+            .where(eq(posts.id, quoteTargetId));
+        }
+        await updateAccountStats(tx, owner);
+        if (insertedRows[0].replyTargetId != null) {
+          await updatePostStats(tx, { id: insertedRows[0].replyTargetId });
+        }
+        await appendPostToTimelines(tx, {
+          ...insertedRows[0],
+          sharing: null,
+          mentions: mentionObjects,
+          replyTarget:
+            insertedRows[0].replyTargetId == null
+              ? null
+              : ((await db.query.posts.findFirst({
+                  where: { id: { eq: insertedRows[0].replyTargetId } },
+                })) ?? null),
+        });
       });
-    });
+    } catch (error) {
+      if (error instanceof MediaClaimError) {
+        return c.json({ error: "Media not found" }, 422);
+      }
+      throw error;
+    }
     const post = (await db.query.posts.findFirst({
       where: { id: { eq: id } },
       with: getPostRelations(owner.id),
@@ -695,12 +708,39 @@ app.put(
     if (existingPost == null) {
       return c.json({ error: "Record not found" }, 404);
     }
+    const mediaIds = data.media_ids;
+    const mediaIdSet = mediaIds == null ? null : new Set(mediaIds);
+    if (mediaIds != null) {
+      if (mediaIdSet!.size !== mediaIds.length) {
+        return c.json({ error: "Media not found" }, 422);
+      }
+      for (const mediumId of mediaIds) {
+        const existingMedium = await db.query.media.findFirst({
+          where: {
+            id: { eq: mediumId },
+            OR: [{ postId: { isNull: true } }, { postId: { eq: id } }],
+          },
+        });
+        if (existingMedium == null) {
+          return c.json({ error: "Media not found" }, 422);
+        }
+      }
+    }
     const mediaAttributes =
       data.media_attributes?.filter((attr) => attr.description !== undefined) ??
       [];
     for (const attr of mediaAttributes) {
+      if (mediaIdSet != null && !mediaIdSet.has(attr.id)) {
+        return c.json({ error: "Media not found" }, 422);
+      }
       const existingMedium = await db.query.media.findFirst({
-        where: { id: { eq: attr.id }, postId: { eq: id } },
+        where:
+          mediaIdSet == null
+            ? { id: { eq: attr.id }, postId: { eq: id } }
+            : {
+                id: { eq: attr.id },
+                OR: [{ postId: { isNull: true } }, { postId: { eq: id } }],
+              },
       });
       if (existingMedium == null) {
         return c.json({ error: "Media not found" }, 422);
@@ -709,41 +749,78 @@ app.put(
     const quoteApprovalPolicy = normalizeQuoteApprovalPolicy(
       data.quote_approval_policy ?? existingPost.quoteApprovalPolicy,
     );
-    await db.transaction(async (tx) => {
-      const result = await tx
-        .update(posts)
-        .set({
-          content: data.status,
-          contentHtml: content?.html,
-          sensitive: data.sensitive,
-          summary,
-          language: data.language ?? owner.language,
-          tags,
-          emojis,
-          previewCard,
-          quoteApprovalPolicy,
-          updated: new Date(),
-        })
-        .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)))
-        .returning();
-      if (result.length < 1) return c.json({ error: "Record not found" }, 404);
-      await tx.delete(mentions).where(eq(mentions.postId, id));
-      const mentionedIds = content?.mentions ?? [];
-      if (mentionedIds.length > 0) {
-        await tx.insert(mentions).values(
-          mentionedIds.map((accountId) => ({
-            postId: id,
-            accountId,
-          })),
-        );
+    try {
+      await db.transaction(async (tx) => {
+        const result = await tx
+          .update(posts)
+          .set({
+            content: data.status,
+            contentHtml: content?.html,
+            sensitive: data.sensitive,
+            summary,
+            language: data.language ?? owner.language,
+            tags,
+            emojis,
+            previewCard,
+            quoteApprovalPolicy,
+            updated: new Date(),
+          })
+          .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)))
+          .returning();
+        if (result.length < 1) {
+          throw new StatusNotFoundError();
+        }
+        await tx.delete(mentions).where(eq(mentions.postId, id));
+        const mentionedIds = content?.mentions ?? [];
+        if (mentionedIds.length > 0) {
+          await tx.insert(mentions).values(
+            mentionedIds.map((accountId) => ({
+              postId: id,
+              accountId,
+            })),
+          );
+        }
+        if (mediaIds != null) {
+          await tx
+            .update(media)
+            .set({ postId: null, position: 0 })
+            .where(
+              mediaIds.length < 1
+                ? eq(media.postId, id)
+                : and(eq(media.postId, id), notInArray(media.id, mediaIds)),
+            );
+          for (const [position, mediumId] of mediaIds.entries()) {
+            const claimedMedia = await tx
+              .update(media)
+              .set({ postId: id, position })
+              .where(
+                and(
+                  eq(media.id, mediumId),
+                  or(isNull(media.postId), eq(media.postId, id)),
+                ),
+              )
+              .returning();
+            if (claimedMedia.length < 1) throw new MediaClaimError();
+          }
+        }
+        for (const attr of mediaAttributes) {
+          const updatedMedia = await tx
+            .update(media)
+            .set({ description: attr.description })
+            .where(and(eq(media.id, attr.id), eq(media.postId, id)))
+            .returning();
+          if (updatedMedia.length < 1) throw new MediaClaimError();
+        }
+      });
+    } catch (error) {
+      if (error instanceof MediaClaimError) {
+        return c.json({ error: "Media not found" }, 422);
       }
-      for (const attr of mediaAttributes) {
-        await tx
-          .update(media)
-          .set({ description: attr.description })
-          .where(and(eq(media.id, attr.id), eq(media.postId, id)));
+      if (error instanceof StatusNotFoundError) {
+        return c.json({ error: "Record not found" }, 404);
       }
-    });
+      throw error;
+    }
     const post = await db.query.posts.findFirst({
       where: { id: { eq: id } },
       with: getPostRelations(owner.id),

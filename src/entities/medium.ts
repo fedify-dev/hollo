@@ -79,6 +79,7 @@ export async function getMediaWithDeletableThumbnails(
   return await db
     .select({
       id: media.id,
+      position: media.position,
       type: media.type,
       url: media.url,
       description: media.description,

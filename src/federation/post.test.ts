@@ -8,6 +8,7 @@ import {
   Image,
   InteractionPolicy,
   InteractionRule,
+  Link,
   Mention,
   Note,
   OrderedCollection,
@@ -412,6 +413,86 @@ describe("persistSharingPost", () => {
 describe("persistPost", () => {
   beforeEach(async () => {
     await cleanDatabase();
+  });
+
+  it("preserves remote media attachment order when storing and federating", async () => {
+    const author = await seedRemoteAccount("media-author");
+    const firstUrl = "https://remote.test/media/first.png";
+    const secondUrl = "https://remote.test/media/second.png";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(new Uint8Array(), {
+        headers: { "Content-Type": "image/png" },
+      }),
+    );
+    const result = await (async () => {
+      try {
+        return await persistPost(
+          db,
+          new Note({
+            id: new URL("https://remote.test/@media-author/posts/1"),
+            attribution: createPerson(author),
+            content: "<p>Two images</p>",
+            attachments: [
+              new Image({
+                mediaType: "image/png",
+                url: new URL(firstUrl),
+                width: 100,
+                height: 100,
+              }),
+              new Image({
+                mediaType: "image/png",
+                url: new URL(secondUrl),
+                width: 100,
+                height: 100,
+              }),
+            ],
+            to: PUBLIC_COLLECTION,
+          }),
+          "https://hollo.test",
+          { account: author },
+        );
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    })();
+    if (result == null) throw new Error("Failed to persist post");
+
+    const storedMedia = await db.query.media.findMany({
+      where: { postId: { eq: result.id } },
+      orderBy: { position: "asc" },
+    });
+    expect(storedMedia.map((medium) => medium.url)).toEqual([
+      firstUrl,
+      secondUrl,
+    ]);
+    expect(storedMedia.map((medium) => medium.position)).toEqual([0, 1]);
+
+    const post = await db.query.posts.findFirst({
+      where: { id: { eq: result.id } },
+      with: {
+        account: { with: { owner: true } },
+        replyTarget: true,
+        quoteTarget: true,
+        media: true,
+        poll: { with: { options: true } },
+        mentions: { with: { account: true } },
+      },
+    });
+    if (post == null) throw new Error("Failed to load post");
+    const object = toObject(
+      { ...post, media: post.media.toReversed() },
+      {} as Context<unknown>,
+    );
+    const attachments = await Array.fromAsync(object.getAttachments());
+    expect(
+      attachments.map((attachment) =>
+        attachment instanceof Image
+          ? attachment.url instanceof Link
+            ? attachment.url.href?.href
+            : attachment.url?.href
+          : null,
+      ),
+    ).toEqual([firstUrl, secondUrl]);
   });
 
   it("does not fetch remote replies collections synchronously", async () => {

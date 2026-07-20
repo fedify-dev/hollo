@@ -552,6 +552,7 @@ export const media = pgTable(
     postId: uuid("post_id")
       .$type<Uuid>()
       .references(() => posts.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
     type: text("type").notNull(),
     url: text("url").notNull(),
     width: integer("width").notNull(),
