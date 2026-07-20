@@ -98,7 +98,7 @@
     "@types/semver": "^7.7.1",
     "@typescript/native-preview": "7.0.0-dev.20260614.1",
     "@unocss/cli": "^66.7.3",
-    "@vitest/coverage-v8": "4.1.8",
+    "@vitest/coverage-v8": "4.1.10",
     "concurrently": "^9.2.1",
     "linkedom": "^0.18.13",
     "oxfmt": "^0.56.0",
