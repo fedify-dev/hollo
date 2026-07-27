@@ -23,7 +23,7 @@ importers:
         version: 2.3.3
       '@fedify/hono':
         specifier: ~2.3.2
-        version: 2.3.3(@fedify/fedify@2.3.3)(hono@4.12.31)
+        version: 2.3.3(@fedify/fedify@2.3.3)(hono@4.12.32)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -44,10 +44,10 @@ importers:
         version: 2.0.4
       '@hono/node-server':
         specifier: ^1.19.13
-        version: 1.19.14(hono@4.12.31)
+        version: 1.19.14(hono@4.12.32)
       '@hono/zod-validator':
         specifier: ^0.8.0
-        version: 0.8.0(hono@4.12.31)(zod@4.4.3)
+        version: 0.8.0(hono@4.12.32)(zod@4.4.3)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -121,8 +121,8 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0(@aws-sdk/client-s3@3.713.0)(@aws-sdk/s3-request-presigner@3.713.0)
       hono:
-        specifier: ^4.12.29
-        version: 4.12.31
+        specifier: ^4.12.32
+        version: 4.12.32
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.6
@@ -1228,6 +1228,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@eslint-community/eslint-utils@4.10.1':
+    resolution: {integrity: sha512-cuadcxVFE8sDK6iWJbs8Sn0av2Nrh2QSGQhVlBW9AaAHqHwjWsZHT8LJ4hFGPh7ASBV2deFdM7H/DPjulmh8rg==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    peerDependencies:
+      eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
 
   '@eslint-community/eslint-utils@4.9.1':
     resolution: {integrity: sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ==}
@@ -4304,8 +4310,8 @@ packages:
     resolution: {integrity: sha512-f7ccFPK3SXFHpx15UIGyRJ/FJQctuKZ0zVuN3frBo4HnK3cay9VEW0R6yPYFHC0AgqhukPzKjq22t5DmAyqGyw==}
     engines: {node: '>=16'}
 
-  flatted@3.4.2:
-    resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
+  flatted@3.4.3:
+    resolution: {integrity: sha512-/zipXxyO6rGvuNGDiULY9MvEGSkb2gaG4GGH4ygMi0ZZzyMHdUZBmntJmx5x1G2VuPytCwGN4xsJP6cw+sK+vQ==}
 
   flattie@1.1.1:
     resolution: {integrity: sha512-9UbaD6XdAL97+k/n+N7JwX46K/M6Zc6KcFYskrYL8wbBV/Uyk0CTAMY0VT+qiK5PM7AIc9aTWYtq65U7T+aCNQ==}
@@ -4447,8 +4453,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hono@4.12.31:
-    resolution: {integrity: sha512-zJIHFrl6bq3RDd2YusFNCDlM8qUprxKswyi/OPzPyzKDdyBXDqWx8bZlZ7R+saTdSTatUmb3O7K4SspGPaEOQg==}
+  hono@4.12.32:
+    resolution: {integrity: sha512-XcuyW9qE2kJn07PkecMOBd5Vq/hMy7mmGw+idz1yblbg9N17ijJODrvPkn7/dwL3Kulj8LcRJ69DLOWf91dRUg==}
     engines: {node: '>=16.9.0'}
 
   hookable@6.1.1:
@@ -5328,6 +5334,10 @@ packages:
 
   postcss@8.5.20:
     resolution: {integrity: sha512-lW616l85ucIQL+FocMmL7pQFPqBmwejrCMg+iPxyImlrANNJG9NHq/RkyCZopDhd8C3LA03PHRJDjkbGu8vvug==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.5.23:
+    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
     engines: {node: ^10 || ^12 || >=14}
 
   postgres-array@2.0.0:
@@ -6711,14 +6721,14 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.974.2
       tslib: 2.8.1
     optional: true
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.974.2
       tslib: 2.8.1
     optional: true
 
@@ -6726,7 +6736,7 @@ snapshots:
     dependencies:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.974.2
       '@aws-sdk/util-locate-window': 3.965.8
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -6737,7 +6747,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.974.2
       '@aws-sdk/util-locate-window': 3.965.8
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -6746,7 +6756,7 @@ snapshots:
   '@aws-crypto/sha256-js@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.974.2
       tslib: 2.8.1
     optional: true
 
@@ -6757,7 +6767,7 @@ snapshots:
 
   '@aws-crypto/util@5.2.0':
     dependencies:
-      '@aws-sdk/types': 3.713.0
+      '@aws-sdk/types': 3.974.2
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
     optional: true
@@ -7833,6 +7843,11 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
+  '@eslint-community/eslint-utils@4.10.1(eslint@10.2.1(jiti@2.7.0))':
+    dependencies:
+      eslint: 10.2.1(jiti@2.7.0)
+      eslint-visitor-keys: 3.4.3
+
   '@eslint-community/eslint-utils@4.9.1(eslint@10.2.1(jiti@2.7.0))':
     dependencies:
       eslint: 10.2.1(jiti@2.7.0)
@@ -7897,7 +7912,7 @@ snapshots:
       '@opentelemetry/context-async-hooks': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.9.0(@opentelemetry/api@1.9.1)
-      hono: 4.12.31
+      hono: 4.12.32
 
   '@fedify/fedify@2.3.3':
     dependencies:
@@ -7919,10 +7934,10 @@ snapshots:
       structured-field-values: 2.0.4
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@2.3.3(@fedify/fedify@2.3.3)(hono@4.12.31)':
+  '@fedify/hono@2.3.3(@fedify/fedify@2.3.3)(hono@4.12.32)':
     dependencies:
       '@fedify/fedify': 2.3.3
-      hono: 4.12.31
+      hono: 4.12.32
 
   '@fedify/lint@2.3.3(@fedify/fedify@2.3.3)(eslint@10.2.1(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
@@ -8000,13 +8015,13 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@1.19.14(hono@4.12.31)':
+  '@hono/node-server@1.19.14(hono@4.12.32)':
     dependencies:
-      hono: 4.12.31
+      hono: 4.12.32
 
-  '@hono/zod-validator@0.8.0(hono@4.12.31)(zod@4.4.3)':
+  '@hono/zod-validator@0.8.0(hono@4.12.32)(zod@4.4.3)':
     dependencies:
-      hono: 4.12.31
+      hono: 4.12.32
       zod: 4.4.3
 
   '@humanfs/core@0.19.2':
@@ -10742,7 +10757,7 @@ snapshots:
 
   eslint@10.2.1(jiti@2.7.0):
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.1(eslint@10.2.1(jiti@2.7.0))
+      '@eslint-community/eslint-utils': 4.10.1(eslint@10.2.1(jiti@2.7.0))
       '@eslint-community/regexpp': 4.12.2
       '@eslint/config-array': 0.23.5
       '@eslint/config-helpers': 0.5.5
@@ -10935,10 +10950,10 @@ snapshots:
 
   flat-cache@4.0.1:
     dependencies:
-      flatted: 3.4.2
+      flatted: 3.4.3
       keyv: 4.5.4
 
-  flatted@3.4.2: {}
+  flatted@3.4.3: {}
 
   flattie@1.1.1: {}
 
@@ -11205,7 +11220,7 @@ snapshots:
       property-information: 7.2.0
       space-separated-tokens: 2.0.2
 
-  hono@4.12.31: {}
+  hono@4.12.32: {}
 
   hookable@6.1.1: {}
 
@@ -12358,6 +12373,12 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  postcss@8.5.23:
+    dependencies:
+      nanoid: 3.3.16
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
   postgres-array@2.0.0:
     optional: true
 
@@ -13271,7 +13292,7 @@ snapshots:
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
-      postcss: 8.5.20
+      postcss: 8.5.23
       rolldown: 1.1.5
       tinyglobby: 0.2.17
     optionalDependencies:
