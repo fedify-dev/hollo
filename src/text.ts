@@ -1,11 +1,20 @@
-import { hashtag } from "@fedify/markdown-it-hashtag";
-import { mention } from "@fedify/markdown-it-mention";
+import {
+  hashtag,
+  type PluginOptions as HashtagPluginOptions,
+} from "@fedify/markdown-it-hashtag";
+import {
+  mention,
+  type PluginOptions as MentionPluginOptions,
+} from "@fedify/markdown-it-mention";
 import { type DocumentLoader, isActor, lookupObject } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { inArray } from "drizzle-orm";
 import { escape } from "es-toolkit";
-import MarkdownIt from "markdown-it";
-import replaceLink from "markdown-it-replace-link";
+import MarkdownIt, {
+  type Env as MarkdownItEnv,
+  type MarkdownIt as MarkdownItInstance,
+} from "markdown-it";
+import replaceLink, { type ReplaceLinkOptions } from "markdown-it-replace-link";
 
 import { CUSTOM_EMOJI_REGEXP } from "./custom-emoji";
 import type { DatabaseLike } from "./db";
@@ -28,13 +37,28 @@ export interface FormatResult {
   quoteTarget: ASPost | null;
 }
 
-interface Env {
+interface Env extends MarkdownItEnv {
   hashtags: string[];
   previewLink: string | null;
   links: string[];
 }
 
-type MarkdownItPlugin = Parameters<MarkdownIt["use"]>[0];
+type MarkdownItPlugin<Params extends unknown[] = []> = (
+  md: MarkdownItInstance,
+  ...params: Params
+) => void;
+
+function asMarkdownItPlugin<Params extends unknown[]>(
+  plugin: unknown,
+): MarkdownItPlugin<Params> {
+  return plugin as MarkdownItPlugin<Params>;
+}
+
+// These plugins still publish markdown-it 14 types, but their runtime plugin
+// API remains compatible with markdown-it 15.
+const hashtagPlugin = asMarkdownItPlugin<[HashtagPluginOptions]>(hashtag);
+const mentionPlugin = asMarkdownItPlugin<[MentionPluginOptions]>(mention);
+const replaceLinkPlugin = asMarkdownItPlugin<[ReplaceLinkOptions]>(replaceLink);
 
 const FENCED_CODE_BLOCK_REGEXP = /(^|\n) {0,3}(?:`{3,}|~{3,})/;
 const INDENTED_CODE_BLOCK_REGEXP = /(^|\n)(?: {4}|\t)\S/;
@@ -45,17 +69,25 @@ async function getShikiPlugin(): Promise<MarkdownItPlugin> {
   if (shikiPluginPromise == null) {
     shikiPluginPromise = (async () => {
       const { default: Shiki } = await import("@shikijs/markdown-it");
-      return await Shiki({
-        themes: {
-          light: "one-light",
-          dark: "one-dark-pro",
-        },
-        defaultColor: "light-dark()",
-      });
+      return asMarkdownItPlugin(
+        await Shiki({
+          themes: {
+            light: "one-light",
+            dark: "one-dark-pro",
+          },
+          defaultColor: "light-dark()",
+        }),
+      );
     })();
   }
 
   return await shikiPluginPromise;
+}
+
+export function createMarkdownIt(): MarkdownItInstance {
+  const md = new MarkdownIt({ linkify: true, html: ALLOW_HTML });
+  md.linkify.set({ fuzzyLink: true, urlAuth: true });
+  return md;
 }
 
 function containsCodeBlock(text: string): boolean {
@@ -74,9 +106,9 @@ export async function formatText(
   },
 ): Promise<FormatResult> {
   // List all mentions:
-  const draft = new MarkdownIt({ linkify: true, html: ALLOW_HTML })
-    .use(mention, {})
-    .use(hashtag, {});
+  const draft = createMarkdownIt()
+    .use(mentionPlugin, {})
+    .use(hashtagPlugin, {});
   const draftEnv: { mentions: string[] } = { mentions: [] };
   draft.render(text, draftEnv);
 
@@ -122,8 +154,8 @@ export async function formatText(
       : [];
 
   // Render the final HTML:
-  const md = new MarkdownIt({ linkify: true, html: ALLOW_HTML })
-    .use(mention, {
+  const md = createMarkdownIt()
+    .use(mentionPlugin, {
       link(handle) {
         if (handle in handles) return handles[handle].href;
         return null;
@@ -141,7 +173,7 @@ export async function formatText(
         return `@<span>${escape(bareHandle)}</span>`;
       },
     })
-    .use(hashtag, {
+    .use(hashtagPlugin, {
       link(tag) {
         return new URL(
           `/tags/${encodeURIComponent(tag.substring(1))}`,
@@ -159,8 +191,7 @@ export async function formatText(
         return `#<span>${escape(tag.substring(1))}</span>`;
       },
     })
-    // oxlint-disable-next-line typescript/no-explicit-any
-    .use(replaceLink as any, {
+    .use(replaceLinkPlugin, {
       processHTML: false,
       replaceLink(link: string, env: Env) {
         if (link.startsWith("http://") || link.startsWith("https://")) {
