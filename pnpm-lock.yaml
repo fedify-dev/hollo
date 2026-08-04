@@ -23,7 +23,7 @@ importers:
         version: 2.3.3
       '@fedify/hono':
         specifier: ~2.3.2
-        version: 2.3.3(@fedify/fedify@2.3.3)(hono@4.12.32)
+        version: 2.3.3(@fedify/fedify@2.3.3)(hono@4.12.34)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -44,10 +44,10 @@ importers:
         version: 2.0.4
       '@hono/node-server':
         specifier: ^2.0.10
-        version: 2.0.12(hono@4.12.32)
+        version: 2.0.12(hono@4.12.34)
       '@hono/zod-validator':
         specifier: ^0.8.0
-        version: 0.8.0(hono@4.12.32)(zod@4.4.3)
+        version: 0.8.0(hono@4.12.34)(zod@4.4.3)
       '@js-temporal/polyfill':
         specifier: ^0.5.0
         version: 0.5.1
@@ -121,8 +121,8 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0(@aws-sdk/client-s3@3.713.0)(@aws-sdk/s3-request-presigner@3.713.0)
       hono:
-        specifier: ^4.12.32
-        version: 4.12.32
+        specifier: ^4.12.34
+        version: 4.12.34
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.6
@@ -4339,8 +4339,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hono@4.12.32:
-    resolution: {integrity: sha512-XcuyW9qE2kJn07PkecMOBd5Vq/hMy7mmGw+idz1yblbg9N17ijJODrvPkn7/dwL3Kulj8LcRJ69DLOWf91dRUg==}
+  hono@4.12.34:
+    resolution: {integrity: sha512-GqXJqY/xJkJmuloTrnV1ZEXG3fqte+VjkUqoRNZXcrUidiUOP4fMSIHHY4tsqZBK++kVyWmt/AAfSUuy57/eSA==}
     engines: {node: '>=16.9.0'}
 
   hookable@6.1.1:
@@ -7715,7 +7715,7 @@ snapshots:
       '@opentelemetry/context-async-hooks': 2.10.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core': 2.10.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.10.0(@opentelemetry/api@1.9.1)
-      hono: 4.12.32
+      hono: 4.12.34
 
   '@fedify/fedify@2.3.3':
     dependencies:
@@ -7737,10 +7737,10 @@ snapshots:
       structured-field-values: 2.0.4
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/hono@2.3.3(@fedify/fedify@2.3.3)(hono@4.12.32)':
+  '@fedify/hono@2.3.3(@fedify/fedify@2.3.3)(hono@4.12.34)':
     dependencies:
       '@fedify/fedify': 2.3.3
-      hono: 4.12.32
+      hono: 4.12.34
 
   '@fedify/lint@2.3.3(@fedify/fedify@2.3.3)(@typescript/typescript6@6.0.2)(eslint@10.2.1(jiti@2.7.0))':
     dependencies:
@@ -7818,13 +7818,13 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@2.0.12(hono@4.12.32)':
+  '@hono/node-server@2.0.12(hono@4.12.34)':
     dependencies:
-      hono: 4.12.32
+      hono: 4.12.34
 
-  '@hono/zod-validator@0.8.0(hono@4.12.32)(zod@4.4.3)':
+  '@hono/zod-validator@0.8.0(hono@4.12.34)(zod@4.4.3)':
     dependencies:
-      hono: 4.12.32
+      hono: 4.12.34
       zod: 4.4.3
 
   '@humanfs/core@0.19.2':
@@ -10974,7 +10974,7 @@ snapshots:
       property-information: 7.2.0
       space-separated-tokens: 2.0.2
 
-  hono@4.12.32: {}
+  hono@4.12.34: {}
 
   hookable@6.1.1: {}
 
