@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, inArray } from "drizzle-orm";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { z } from "zod";
 
 import { db } from "../../db";
@@ -13,7 +13,7 @@ import {
   type AccountOwnerVariables,
 } from "../../oauth/middleware";
 import { listMembers, lists } from "../../schema";
-import { isUuid, uuid, uuidv7 } from "../../uuid";
+import { isUuid, uuid, uuidv7, type Uuid } from "../../uuid";
 
 const app = new Hono<{ Variables: AccountOwnerVariables }>();
 
@@ -150,17 +150,63 @@ app.get(
   },
 );
 
-const membersSchema = z.object({
-  account_ids: z.array(uuid).min(1),
-});
+const accountIdsSchema = z.array(uuid).min(1);
+
+async function getAccountIds(
+  c: Context<{ Variables: AccountOwnerVariables }>,
+): Promise<
+  { success: true; accountIds: Uuid[] } | { success: false; response: Response }
+> {
+  let accountIds: unknown =
+    c.req.queries("account_ids[]") ?? c.req.queries("account_ids");
+  if (accountIds == null) {
+    const contentType = c.req
+      .header("Content-Type")
+      ?.split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+    if (
+      contentType === "application/json" ||
+      contentType?.endsWith("+json") === true
+    ) {
+      try {
+        const body: unknown = await c.req.json();
+        accountIds =
+          typeof body === "object" && body != null && "account_ids" in body
+            ? body.account_ids
+            : undefined;
+      } catch {
+        return {
+          success: false,
+          response: c.json({ error: "Malformed JSON in request body" }, 400),
+        };
+      }
+    } else {
+      const body = await c.req.parseBody({ all: true });
+      accountIds = body["account_ids[]"] ?? body.account_ids;
+      if (accountIds != null && !Array.isArray(accountIds)) {
+        accountIds = [accountIds];
+      }
+    }
+  }
+  const result = accountIdsSchema.safeParse(accountIds);
+  if (!result.success) {
+    return {
+      success: false,
+      response: c.json(result, 400),
+    };
+  }
+  return { success: true, accountIds: result.data };
+}
 
 app.post(
   "/:id/accounts",
   tokenRequired,
   scopeRequired(["write:lists"]),
   withAccountOwner,
-  zValidator("json", membersSchema),
   async (c) => {
+    const result = await getAccountIds(c);
+    if (!result.success) return result.response;
     const listId = c.req.param("id");
     if (!isUuid(listId)) return c.json({ error: "Record not found" }, 404);
     const owner = c.get("accountOwner");
@@ -171,10 +217,12 @@ app.post(
       },
     });
     if (list == null) return c.json({ error: "Record not found" }, 404);
-    const accountIds = c.req.valid("json").account_ids;
     await db
       .insert(listMembers)
-      .values(accountIds.map((id) => ({ listId: list.id, accountId: id })));
+      .values(
+        result.accountIds.map((id) => ({ listId: list.id, accountId: id })),
+      )
+      .onConflictDoNothing();
     return c.json({});
   },
 );
@@ -184,8 +232,9 @@ app.delete(
   tokenRequired,
   scopeRequired(["write:lists"]),
   withAccountOwner,
-  zValidator("json", membersSchema),
   async (c) => {
+    const result = await getAccountIds(c);
+    if (!result.success) return result.response;
     const listId = c.req.param("id");
     if (!isUuid(listId)) return c.json({ error: "Record not found" }, 404);
     const owner = c.get("accountOwner");
@@ -196,13 +245,12 @@ app.delete(
       },
     });
     if (list == null) return c.json({ error: "Record not found" }, 404);
-    const accountIds = c.req.valid("json").account_ids;
     await db
       .delete(listMembers)
       .where(
         and(
           eq(listMembers.listId, list.id),
-          inArray(listMembers.accountId, accountIds),
+          inArray(listMembers.accountId, result.accountIds),
         ),
       );
     return c.json({});

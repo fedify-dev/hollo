@@ -54,6 +54,19 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 
 
+Version 0.9.11
+--------------
+
+Released on August 13, 2026.
+
+ -  Fixed Mastodon API compatibility bugs that prevented clients such as
+    SubwayTooter from adding or removing accounts from lists.  Following an
+    already-followed account is now idempotent, and list membership endpoints
+    accept Mastodon-style form and query parameters.  [[#563]]
+
+[#563]: https://github.com/fedify-dev/hollo/issues/563
+
+
 Version 0.9.10
 --------------
 

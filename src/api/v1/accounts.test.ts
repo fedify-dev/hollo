@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
@@ -94,6 +94,48 @@ describe.sequential("/api/v1/accounts/:id/following", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject([
       { id: followedAccount.id },
+    ]);
+  });
+});
+
+describe.sequential("POST /api/v1/accounts/:id/follow", () => {
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let owner: Awaited<ReturnType<typeof createAccount>>;
+  let followedAccount: Awaited<ReturnType<typeof createAccount>>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+
+    owner = await createAccount({ username: "owner" });
+    followedAccount = await createAccount({ username: "followed" });
+    client = await createOAuthApplication({ scopes: ["write:follows"] });
+    await db.insert(follows).values({
+      iri: `https://hollo.test/follows/${crypto.randomUUID()}`,
+      followingId: followedAccount.id,
+      followerId: owner.id,
+      approved: new Date(),
+    });
+  });
+
+  it("returns the existing relationship when already following", async () => {
+    expect.assertions(3);
+
+    const accessToken = await getAccessToken(client, owner, ["write:follows"]);
+    const response = await app.request(
+      `/api/v1/accounts/${followedAccount.id}/follow`,
+      {
+        method: "POST",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: followedAccount.id,
+      following: true,
+    });
+    await expect(db.select({ count: count() }).from(follows)).resolves.toEqual([
+      { count: 1 },
     ]);
   });
 });
