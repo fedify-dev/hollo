@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.11
 --------------
 
-To be released.
+Released on August 13, 2026.
 
  -  Fixed Mastodon API compatibility bugs that prevented clients such as
     SubwayTooter from adding or removing accounts from lists.  Following an
