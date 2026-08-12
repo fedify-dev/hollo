@@ -583,7 +583,16 @@ export async function followAccount(
     } satisfies schema.NewFollow)
     .onConflictDoNothing()
     .returning();
-  if (result.length < 1) return null;
+  if (result.length < 1) {
+    return (
+      (await db.query.follows.findFirst({
+        where: {
+          followingId: { eq: following.id },
+          followerId: { eq: follower.id },
+        },
+      })) ?? null
+    );
+  }
   await updateAccountStats(db, follower);
   await updateAccountStats(db, following);
   const follow = result[0];
