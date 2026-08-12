@@ -1,6 +1,6 @@
 [tools]
 node = "24"
-"npm:pnpm" = "latest"
+pnpm = "11.21.0"
 
 [tools."github:dahlia/hongdown"]
 version = "0.3.11"
@@ -22,10 +22,20 @@ run = "pnpm run fmt"
 run = "hongdown --write"
 
 [tasks.check]
-depends = ["check:pnpm", "check:md"]
+depends = ["check:pnpm-version", "check:pnpm", "check:md"]
 
 [tasks."check:ci"]
-depends = ["check:pnpm:ci", "check:md"]
+depends = ["check:pnpm-version", "check:pnpm:ci", "check:md"]
+
+[tasks."check:pnpm-version"]
+run = """
+expected="$(node -p 'require("./package.json").packageManager.split("@")[1].split("+")[0]')"
+actual="$(mise current pnpm)"
+if [ "$actual" != "$expected" ]; then
+  echo "pnpm version mismatch: mise.toml has $actual, package.json has $expected" >&2
+  exit 1
+fi
+"""
 
 [tasks."check:pnpm"]
 run = "pnpm run check"
