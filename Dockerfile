@@ -47,7 +47,8 @@ RUN pnpm install --frozen-lockfile
 COPY . /app/
 ARG VERSION
 RUN \
-  if [ "$VERSION" != "" ]; then \
+  rm -rf /app/docs \
+  && if [ "$VERSION" != "" ]; then \
     jq --arg version "$VERSION" '.version = $version' package.json > .pkg.json \
     && mv .pkg.json package.json \
     && pnpm install --offline --frozen-lockfile; \
@@ -81,7 +82,8 @@ COPY --from=builder /app/dist /app/dist
 ARG VERSION
 LABEL org.opencontainers.image.version="${VERSION}"
 RUN \
-  if [ "$VERSION" != "" ]; then \
+  rm -rf /app/docs \
+  && if [ "$VERSION" != "" ]; then \
     jq --arg version "$VERSION" '.version = $version' package.json > .pkg.json \
     && mv .pkg.json package.json \
     && pnpm install --offline --frozen-lockfile --prod; \
