@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.12
 --------------
 
-To be released.
+Released on Agust 13, 2026.
 
  -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
     Docker images now install the project-pinned pnpm version through mise
