@@ -52,7 +52,7 @@
     "@opentelemetry/context-async-hooks": "^2.10.0",
     "@opentelemetry/core": "^2.10.0",
     "@opentelemetry/sdk-trace-base": "^2.10.0",
-    "@sentry/core": "^10.68.0",
+    "@sentry/core": "^10.70.0",
     "@sentry/node": "^10.68.0",
     "@shikijs/markdown-it": "^4.0.2",
     "@simplewebauthn/browser": "^13.3.0",
