@@ -153,9 +153,7 @@ describe.sequential("OAuth / Middleware", () => {
 
       const response = await app.request("/tokenRequired", {
         method: "GET",
-        headers: {
-          /* deliberately no Authorization header */
-        },
+        headers: {/* deliberately no Authorization header */},
       });
 
       expect(response.status).toBe(401);
