@@ -416,11 +416,12 @@ app.post(
     const handle = owner.handle;
     const id = uuidv7();
     const url = fedCtx.getObjectUri(Note, { username: handle, id });
+    const language = data.language ?? owner.language;
     const { formatPostContent } = await import("../../text");
     const content =
       data.status == null
         ? null
-        : await formatPostContent(db, data.status, data.language, fmtOpts);
+        : await formatPostContent(db, data.status, language, fmtOpts);
     const summary =
       data.spoiler_text == null || data.spoiler_text.trim() === ""
         ? null
@@ -532,7 +533,7 @@ app.post(
             summary,
             content: data.status,
             contentHtml: content?.html,
-            language: data.language ?? owner.language,
+            language,
             pollId: poll == null ? null : poll.id,
             tags,
             emojis,
@@ -680,11 +681,12 @@ app.put(
         username: owner.handle,
       }),
     };
+    const language = data.language ?? owner.language;
     const { formatPostContent } = await import("../../text");
     const content =
       data.status == null
         ? null
-        : await formatPostContent(db, data.status, data.language, fmtOpts);
+        : await formatPostContent(db, data.status, language, fmtOpts);
     const summary =
       data.spoiler_text == null || data.spoiler_text.trim() === ""
         ? null
@@ -758,7 +760,7 @@ app.put(
             contentHtml: content?.html,
             sensitive: data.sensitive,
             summary,
-            language: data.language ?? owner.language,
+            language,
             tags,
             emojis,
             previewCard,

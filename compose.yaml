@@ -12,6 +12,7 @@ services:
       SECRET_KEY: "${SECRET_KEY}"
       LOG_LEVEL: "${LOG_LEVEL}"
       BEHIND_PROXY: "${BEHIND_PROXY}"
+      # GUKHANMUN: "ko,ko-*"
       DRIVE_DISK: s3
       STORAGE_URL_BASE: http://localhost:9000/hollo/
       S3_REGION: us-east-1

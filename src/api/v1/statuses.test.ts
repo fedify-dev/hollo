@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
 import {
@@ -12,6 +12,7 @@ import {
 import db from "../../db";
 import app from "../../index";
 import {
+  accountOwners,
   accounts,
   follows,
   instances,
@@ -20,6 +21,10 @@ import {
   posts,
 } from "../../schema";
 import { uuidv7 } from "../../uuid";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe.sequential("/api/v1/accounts/verify_credentials", () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
@@ -91,6 +96,53 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
     expect(json.content).toBe("<p>Hello world</p>\n");
     expect(json.account.id).toBe(account.id);
     expect(json.application.name).toBe(application.name);
+  });
+
+  it("formats a status using the account's default matching language", async () => {
+    vi.stubEnv("GUKHANMUN", "ko,ko-*");
+    await db
+      .update(accountOwners)
+      .set({ language: "ko-Kore-KR" })
+      .where(eq(accountOwners.id, account.id));
+
+    const response = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "漢字와 來日" }),
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.language).toBe("ko-Kore-KR");
+    expect(json.content).toBe(
+      "<p><ruby>漢字<rp>(</rp><rt>한자</rt><rp>)</rp></ruby>와 " +
+        "<ruby>來日<rp>(</rp><rt>내일</rt><rp>)</rp></ruby></p>\n",
+    );
+    const post = await db.query.posts.findFirst({ where: { id: json.id } });
+    expect(post?.contentHtml).toBe(json.content);
+  });
+
+  it("uses North Korean readings for an explicit ko-KP language", async () => {
+    vi.stubEnv("GUKHANMUN", "ko,ko-*");
+
+    const response = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "來日", language: "ko-KP" }),
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.language).toBe("ko-KP");
+    expect(json.content).toBe(
+      "<p><ruby>來日<rp>(</rp><rt>래일</rt><rp>)</rp></ruby></p>\n",
+    );
   });
 
   it("Preserves the requested media attachment order", async () => {
@@ -260,6 +312,38 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
 
     expect(typeof updateJson).toBe("object");
     expect(updateJson.content).toBe("<p>Test Update</p>\n");
+  });
+
+  it("formats an updated status when its language matches", async () => {
+    vi.stubEnv("GUKHANMUN", "ko,ko-*");
+    const createResponse = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "Unformatted", language: "en" }),
+    });
+    expect(createResponse.status).toBe(200);
+    const created = await createResponse.json();
+
+    const response = await app.request(`/api/v1/statuses/${created.id}`, {
+      method: "PUT",
+      headers: {
+        authorization: bearerAuthorization(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "漢字", language: "ko-KR" }),
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.language).toBe("ko-KR");
+    expect(json.content).toBe(
+      "<p><ruby>漢字<rp>(</rp><rt>한자</rt><rp>)</rp></ruby></p>\n",
+    );
+    const post = await db.query.posts.findFirst({ where: { id: created.id } });
+    expect(post?.contentHtml).toBe(json.content);
   });
 
   it("Returns 404 when a status disappears during an update", async () => {

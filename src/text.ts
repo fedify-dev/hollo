@@ -20,6 +20,7 @@ import { CUSTOM_EMOJI_REGEXP } from "./custom-emoji";
 import type { DatabaseLike } from "./db";
 import { persistAccount } from "./federation/account";
 import { type ASPost, isPost } from "./federation/post";
+import { transformPostHtmlWithGukhanmun } from "./gukhanmun";
 import * as schema from "./schema";
 import type { Uuid } from "./uuid";
 
@@ -256,9 +257,6 @@ export async function extractCustomEmojis(
   );
 }
 
-// oxlint-disable-next-line typescript/dot-notation
-const SEONBI_URL = process.env["SEONBI_URL"];
-
 export async function formatPostContent(
   db: DatabaseLike,
   text: string,
@@ -270,57 +268,7 @@ export async function formatPostContent(
   },
 ): Promise<FormatResult> {
   const result = await formatText(db, text, options);
-  if (
-    SEONBI_URL != null &&
-    (language === "ko" || language?.startsWith("ko-"))
-  ) {
-    const response = await fetch(SEONBI_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        content: result.html,
-        contentType: "text/html",
-        quote: "HorizontalCornerBrackets",
-        cite: "AngleQuotes",
-        arrow: {
-          bidirArrow: true,
-          doubleArrow: true,
-        },
-        ellipsis: true,
-        emDash: true,
-        stop: "Horizontal",
-        hanja: {
-          rendering: "HanjaInRuby",
-          reading: {
-            initialSoundLaw: true,
-            useDictionaries: ["kr-stdict"],
-            dictionary: {},
-          },
-        },
-      }),
-    });
-    try {
-      const seonbiResult = await response.json();
-      if (seonbiResult.success) {
-        result.html = seonbiResult.content;
-        if (
-          Array.isArray(seonbiResult.warnings) &&
-          seonbiResult.warnings.length > 0
-        ) {
-          logger.warn("Seonbi warnings: {warnings}", {
-            warnings: seonbiResult.warnings,
-          });
-        }
-      } else {
-        logger.error("Seonbi failed to format post content: {message}", {
-          message: seonbiResult.message,
-        });
-      }
-    } catch (error) {
-      logger.error("Failed to format post content with Seonbi: {error}", {
-        error,
-      });
-    }
-  }
+  result.html = await transformPostHtmlWithGukhanmun(result.html, language);
   return result;
 }
 

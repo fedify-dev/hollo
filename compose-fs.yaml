@@ -8,6 +8,7 @@ services:
       SECRET_KEY: "${SECRET_KEY}"
       LOG_LEVEL: "${LOG_LEVEL}"
       BEHIND_PROXY: "${BEHIND_PROXY}"
+      # GUKHANMUN: "ko,ko-*"
       DRIVE_DISK: fs
       STORAGE_URL_BASE: http://localhost:3000/assets/
       FS_STORAGE_PATH: /var/lib/hollo

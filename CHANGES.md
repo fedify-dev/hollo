@@ -41,6 +41,13 @@ To be released.
     successor account at the top of the profile card and muting the old
     profile's visual treatment.
 
+ -  Replaced the undocumented `SEONBI_URL` integration with the embedded
+    [Gukhanmun] Node-API binding.  Set `GUKHANMUN` to a comma-separated list of
+    locale patterns, such as `ko,ko-*`, to add Hangul readings to Hanja in
+    matching local posts.  Patterns can contain `*` wildcards.  Posts with a
+    `KP` region subtag use North Korean readings.  Seonbi's broader punctuation
+    transformations are no longer applied.
+
  -  Replaced the archived MinIO images in the Docker Compose example with
     RustFS and the official AWS CLI image.  The setup continues to create a
     publicly readable bucket for media storage automatically.  Existing
@@ -49,6 +56,7 @@ To be released.
 
 [CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 [FEP-c0e0]: https://w3id.org/fep/c0e0
+[Gukhanmun]: https://gukhanmun.org/
 [#524]: https://github.com/fedify-dev/hollo/issues/524
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 [#549]: https://github.com/fedify-dev/hollo/issues/549
