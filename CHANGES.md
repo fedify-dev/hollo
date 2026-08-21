@@ -10,7 +10,7 @@ To be released.
 Version 0.9.12
 --------------
 
-Released on Agust 13, 2026.
+Released on August 13, 2026.
 
  -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
     Docker images now install the project-pinned pnpm version through mise
