@@ -12,8 +12,12 @@ import { URL_SAFE_REGEXP } from "../helpers";
 import * as schema from "../schema";
 import {
   calculatePKCECodeChallenge,
+  createAccessGrant,
   generatePKCECodeVerifier,
   getAccessToken,
+  revokeAccessToken,
+  revokeAccessTokenByCode,
+  revokeApplicationAccess,
 } from "./helpers";
 
 describe("OAuth Helpers", () => {
@@ -111,6 +115,144 @@ describe("OAuth Helpers", () => {
       });
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ token: null });
+    });
+  });
+
+  describe("token revocation", () => {
+    beforeEach(async () => {
+      await cleanDatabase();
+    });
+
+    describe("revokeAccessTokenByCode", () => {
+      it("revokes the token belonging to the given application", async () => {
+        expect.assertions(2);
+
+        const account = await createAccount();
+        const client = await createOAuthApplication({ scopes: ["read"] });
+        const accessToken = await oauthHelpers.getAccessToken(client, account, [
+          "read",
+        ]);
+
+        const revoked = await revokeAccessTokenByCode(
+          accessToken.token,
+          client.id,
+        );
+
+        expect(revoked).toBe(1);
+        expect(
+          await oauthHelpers.findAccessToken(accessToken.token),
+        ).toBeUndefined();
+      });
+
+      it("leaves a token belonging to another application alone", async () => {
+        // This scoping is what stops one OAuth client from revoking another
+        // client's tokens through POST /oauth/revoke.
+        expect.assertions(2);
+
+        const account = await createAccount();
+        const client = await createOAuthApplication({ scopes: ["read"] });
+        const other = await createOAuthApplication({ scopes: ["read"] });
+        const accessToken = await oauthHelpers.getAccessToken(client, account, [
+          "read",
+        ]);
+
+        const revoked = await revokeAccessTokenByCode(
+          accessToken.token,
+          other.id,
+        );
+
+        expect(revoked).toBe(0);
+        expect(
+          await oauthHelpers.findAccessToken(accessToken.token),
+        ).toBeDefined();
+      });
+    });
+
+    describe("revokeAccessToken", () => {
+      it("revokes the token with the given surrogate id", async () => {
+        expect.assertions(3);
+
+        const account = await createAccount();
+        const client = await createOAuthApplication({ scopes: ["read"] });
+        const doomed = await oauthHelpers.getAccessToken(client, account, [
+          "read",
+        ]);
+        const survivor = await oauthHelpers.getAccessToken(client, account, [
+          "read",
+        ]);
+        const stored = await oauthHelpers.findAccessToken(doomed.token);
+
+        const revoked = await revokeAccessToken(stored!.id);
+
+        expect(revoked).toBe(1);
+        expect(
+          await oauthHelpers.findAccessToken(doomed.token),
+        ).toBeUndefined();
+        expect(
+          await oauthHelpers.findAccessToken(survivor.token),
+        ).toBeDefined();
+      });
+
+      it("reports zero when no token has that id", async () => {
+        expect.assertions(1);
+
+        const revoked = await revokeAccessToken(crypto.randomUUID());
+
+        expect(revoked).toBe(0);
+      });
+    });
+
+    describe("revokeApplicationAccess", () => {
+      it("revokes every token of the application and no others", async () => {
+        expect.assertions(4);
+
+        const account = await createAccount();
+        const target = await createOAuthApplication({
+          scopes: ["read"],
+          confidential: true,
+        });
+        const other = await createOAuthApplication({ scopes: ["read"] });
+        const first = await oauthHelpers.getAccessToken(target, account, [
+          "read",
+        ]);
+        const second = await oauthHelpers.getClientCredentialToken(target, [
+          "read",
+        ]);
+        const untouched = await oauthHelpers.getAccessToken(other, account, [
+          "read",
+        ]);
+
+        const revoked = await revokeApplicationAccess(target.id);
+
+        expect(revoked).toBe(2);
+        expect(await oauthHelpers.findAccessToken(first.token)).toBeUndefined();
+        expect(
+          await oauthHelpers.findAccessToken(second.token),
+        ).toBeUndefined();
+        expect(
+          await oauthHelpers.findAccessToken(untouched.token),
+        ).toBeDefined();
+      });
+
+      it("marks the application's pending access grants as revoked", async () => {
+        expect.assertions(2);
+
+        const account = await createAccount();
+        const client = await createOAuthApplication({ scopes: ["read"] });
+        const { code } = await createAccessGrant(
+          client.id,
+          account.id,
+          ["read"],
+          "urn:ietf:wg:oauth:2.0:oob",
+        );
+        expect((await oauthHelpers.findAccessGrant(code)).revoked).toBeNull();
+
+        await revokeApplicationAccess(client.id);
+
+        expect(
+          (await oauthHelpers.findAccessGrant(code)).revoked,
+        ).not.toBeNull();
+      });
     });
   });
 });

@@ -155,6 +155,8 @@ The OAuth system supports:
 
  -  OAuth 2.0 authorization code flow with PKCE
  -  Token revocation (RFC 7009)
+ -  Manual token revocation from the admin dashboard's `/auth` page; the
+    shared helpers live in *src/oauth/helpers.ts*
  -  OAuth server metadata (RFC 8414)
  -  OpenID Connect userinfo endpoint
  -  Mastodon-compatible top-level and granular scopes; use `scopeEnum` in

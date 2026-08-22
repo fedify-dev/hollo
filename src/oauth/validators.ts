@@ -18,5 +18,9 @@ export const scopesSchema = z
       }
       scopes.push(scope as Scope);
     }
-    return scopes;
+    // RFC 6749 treats `scope` as a set, so repeating a scope means nothing.
+    // Deduplicating keeps a request like `scope=read read read ...` from
+    // storing an arbitrarily long array in `access_tokens.scopes`, which the
+    // admin dashboard would then have to read back and render.
+    return [...new Set(scopes)];
   });

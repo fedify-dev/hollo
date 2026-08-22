@@ -53,7 +53,10 @@ const applicationSchema = z.strictObject({
       return scopes;
     })
     .optional(),
-  website: z.url().optional(),
+  // Bounded because this endpoint needs no authentication and the value is
+  // stored in an unbounded `text` column, then rendered on the admin
+  // dashboard.  2048 is the conventional practical limit for a URL.
+  website: z.url().max(2048).optional(),
 });
 
 app.post("/", async (c) => {

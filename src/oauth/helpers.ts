@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { lt } from "drizzle-orm";
+import { and, eq, isNull, lt } from "drizzle-orm";
 import type { Context, Env, HonoRequest } from "hono";
 
 import db, { type Transaction } from "../db";
@@ -109,7 +109,9 @@ export async function createAccessToken(
       code,
       applicationId: accessGrant.applicationId,
       accountOwnerId: accessGrant.resourceOwnerId,
-      scopes: accessGrant.scopes,
+      // Deduplicated defensively: `scopesSchema` collapses repeats now, but a
+      // grant created before it did could still carry them.
+      scopes: [...new Set(accessGrant.scopes)],
       grant_type: "authorization_code",
     })
     .returning();
@@ -149,7 +151,7 @@ export async function createClientCredential(
     .values({
       code,
       applicationId: application.id,
-      scopes: scopes ?? application.scopes,
+      scopes: [...new Set(scopes ?? application.scopes)],
       grant_type: "client_credentials",
     })
     .returning();
@@ -173,6 +175,104 @@ export async function createClientCredential(
     scope: result[0].scopes.join(" "),
     created: (+result[0].created / 1000) | 0,
   };
+}
+
+/**
+ * Revokes an access token by its bearer code, scoped to the application it was
+ * issued to.  Revocation is a hard delete: `authenticateToken()` treats a row's
+ * existence as the entire validity test, so the token stops working instantly.
+ * @param code The bearer token to revoke.
+ * @param applicationId The application the token must belong to.  A token
+ *                      issued to any other application is left untouched.
+ * @returns The number of tokens revoked, which is either 0 or 1.
+ */
+export async function revokeAccessTokenByCode(
+  code: string,
+  applicationId: Uuid,
+): Promise<number> {
+  // No RETURNING: the driver reports the affected row count, so nothing is
+  // materialized in this process just to be counted.
+  const revoked = await db
+    .delete(schema.accessTokens)
+    .where(
+      and(
+        eq(schema.accessTokens.code, code),
+        eq(schema.accessTokens.applicationId, applicationId),
+      ),
+    );
+  return revoked.count;
+}
+
+/**
+ * Revokes a single access token by its surrogate id.  The admin dashboard uses
+ * this instead of {@link revokeAccessTokenByCode} because it must never handle,
+ * or render, the bearer code itself.
+ * @param id The access token's surrogate id.
+ * @returns The number of tokens revoked, which is either 0 or 1.
+ */
+export async function revokeAccessToken(id: Uuid): Promise<number> {
+  const revoked = await db
+    .delete(schema.accessTokens)
+    .where(eq(schema.accessTokens.id, id));
+  return revoked.count;
+}
+
+/**
+ * Revokes every access token issued to an application, and marks the
+ * application's still-pending access grants as revoked.  Without the latter, an
+ * application holding an authorization code that has not been exchanged yet
+ * could trade it for a fresh token moments after the operator revoked
+ * everything.
+ *
+ * This clears what an application holds *now*; it does not ban the application.
+ * A confidential application that still knows its client secret can call
+ * `POST /oauth/token` with `grant_type=client_credentials` immediately
+ * afterwards and receive a new app-only token carrying its registered scopes.
+ * That is deliberate rather than an oversight: `POST /api/v1/apps` needs no
+ * authentication and hardcodes `confidential: true`, so anyone at all can
+ * register an application and mint such a token at will.  Re-issuance
+ * therefore hands an application nothing that a stranger does not already
+ * have, and `withAccountOwner` keeps app-only tokens (whose `accountOwnerId`
+ * is null) away from account-scoped endpoints.
+ *
+ * Banning an application durably would need persistent state on `applications`
+ * plus enforcement in `clientAuthentication()`, and it would have to cover the
+ * endpoints that use `tokenRequired` without `withAccountOwner` (for example
+ * `PUT /api/v1/media/:id`), which app-only tokens can still reach today.  The
+ * `/auth` UI is worded to promise only what this function actually delivers.
+ * @param applicationId The application whose current access is being cleared.
+ * @returns The number of access tokens revoked.
+ */
+export async function revokeApplicationAccess(
+  applicationId: Uuid,
+): Promise<number> {
+  return await db.transaction(async (tx) => {
+    // Revoke the pending grants *before* deleting the tokens.  A concurrent
+    // `POST /oauth/token` exchange takes `SELECT ... FOR UPDATE` on the grant
+    // row, so with this ordering it either blocks until the grant is already
+    // revoked and then fails, or it commits first and the delete below sweeps
+    // up the token it just issued.  Deleting first would leave a window where
+    // an exchange slips a fresh token in behind the delete and then marks the
+    // grant revoked itself, hiding it from the update.
+    await tx
+      .update(schema.accessGrants)
+      .set({ revoked: new Date() })
+      .where(
+        and(
+          eq(schema.accessGrants.applicationId, applicationId),
+          isNull(schema.accessGrants.revoked),
+        ),
+      );
+    // No RETURNING here in particular: an application that has been flooded
+    // with tokens is exactly the case this page exists to clean up, and
+    // returning one row object per deleted token would make the recovery path
+    // fail on memory just when it is needed.  The driver's affected row count
+    // costs nothing.
+    const revoked = await tx
+      .delete(schema.accessTokens)
+      .where(eq(schema.accessTokens.applicationId, applicationId));
+    return revoked.count;
+  });
 }
 
 /**

@@ -1,10 +1,8 @@
-import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import db from "../../db";
 import { requestBody } from "../../helpers";
-import * as Schema from "../../schema";
+import { revokeAccessTokenByCode } from "../helpers";
 import {
   type ClientAuthenticationVariables,
   clientAuthentication,
@@ -44,14 +42,7 @@ app.post("/", clientAuthentication, async (c) => {
     );
   }
 
-  await db
-    .delete(Schema.accessTokens)
-    .where(
-      and(
-        eq(Schema.accessTokens.code, result.data.token),
-        eq(Schema.accessTokens.applicationId, client.id),
-      ),
-    );
+  await revokeAccessTokenByCode(result.data.token, client.id);
 
   // The spec is a little strange here in that the response status is 200, but
   // there's actually no response body, so 204 would be more appropriate.

@@ -418,6 +418,13 @@ app.post("/token", clientAuthentication, async (c) => {
   }
 
   if (form.grant_type === "client_credentials") {
+    // Nothing here consults whether an operator has revoked this application's
+    // access from /auth: `revokeApplicationAccess()` clears the tokens an
+    // application holds, and a confidential client that still knows its secret
+    // can mint a replacement here right afterwards.  See that function's
+    // documentation for why this is acceptable today; a durable ban would be
+    // enforced at this point and in `clientAuthentication()`.
+    //
     // Public clients cannot use the client_credentials grant flow
     if (!client.confidential) {
       return c.json(

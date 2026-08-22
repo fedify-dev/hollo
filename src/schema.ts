@@ -412,7 +412,12 @@ export const accessGrants = pgTable(
       .default(currentTimestamp),
     revoked: timestamp("revoked", { withTimezone: true }),
   },
-  (table) => [index().on(table.resourceOwnerId)],
+  (table) => [
+    index().on(table.resourceOwnerId),
+    // Serves `revokeApplicationAccess()`, which revokes an application's
+    // still-pending grants, and the cascade from `applications`.
+    index().on(table.applicationId),
+  ],
 );
 
 export type AccessGrant = typeof accessGrants.$inferSelect;
@@ -425,23 +430,46 @@ export const grantTypeEnum = pgEnum("grant_type", [
 
 export type GrantType = (typeof grantTypeEnum.enumValues)[number];
 
-export const accessTokens = pgTable("access_tokens", {
-  code: text("code").primaryKey(),
-  applicationId: uuid("application_id")
-    .$type<Uuid>()
-    .notNull()
-    .references(() => applications.id, { onDelete: "cascade" }),
-  accountOwnerId: uuid("account_owner_id")
-    .$type<Uuid>()
-    .references(() => accountOwners.id, { onDelete: "cascade" }),
-  grant_type: grantTypeEnum("grant_type")
-    .notNull()
-    .default("authorization_code"),
-  scopes: scopeEnum("scopes").array().notNull(),
-  created: timestamp("created", { withTimezone: true })
-    .notNull()
-    .default(currentTimestamp),
-});
+export const accessTokens = pgTable(
+  "access_tokens",
+  {
+    // Surrogate key.  The primary key is the bearer token itself, which must
+    // never appear in a rendered page, so the admin dashboard addresses tokens
+    // by this non-secret id instead.  The default is database-side, unlike the
+    // app-side uuids elsewhere in this file, so that adding the column
+    // backfills existing rows in a single statement.
+    id: uuid("id")
+      .$type<Uuid>()
+      .notNull()
+      .unique()
+      .default(sql`gen_random_uuid()`),
+    code: text("code").primaryKey(),
+    applicationId: uuid("application_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    accountOwnerId: uuid("account_owner_id")
+      .$type<Uuid>()
+      .references(() => accountOwners.id, { onDelete: "cascade" }),
+    grant_type: grantTypeEnum("grant_type")
+      .notNull()
+      .default("authorization_code"),
+    scopes: scopeEnum("scopes").array().notNull(),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+  },
+  (table) => [
+    // Serves the admin dashboard's newest-tokens-per-application lookup, the
+    // revoke-all delete, and the cascade from `applications`.  The trailing
+    // `id` matches the query's tie-breaker so the scan stays ordered.
+    index().on(table.applicationId, table.created, table.id),
+    index().on(table.accountOwnerId),
+    // Serves the bounded "newest N tokens overall" window the dashboard groups
+    // over, so that scan stays independent of how large the table has grown.
+    index().on(table.created, table.id),
+  ],
+);
 
 export type AccessToken = typeof accessTokens.$inferSelect;
 export type NewAccessToken = typeof accessTokens.$inferInsert;
