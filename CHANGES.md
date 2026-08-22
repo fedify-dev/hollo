@@ -6,6 +6,13 @@ Version 0.9.13
 
 To be released.
 
+ -  Upgraded Fedify to 2.2.10, which fixes an SSRF vulnerability in
+    authenticated document loaders where public document URLs could redirect
+    signed requests to loopback, link-local, or private addresses.
+    [[CVE-2026-77632]]
+
+[CVE-2026-77632]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-cxc3-7q96-6cpx
+
 
 Version 0.9.12
 --------------
@@ -584,6 +591,19 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.10
+--------------
+
+Released on August 22, 2026.
+
+ -  Upgraded Fedify to 2.1.21, which fixes an SSRF vulnerability in
+    authenticated document loaders where public document URLs could redirect
+    signed requests to loopback, link-local, or private addresses.
+    [[CVE-2026-77632]]
+
+[CVE-2026-77632]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-cxc3-7q96-6cpx
 
 
 Version 0.8.9

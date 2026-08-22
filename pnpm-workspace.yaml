@@ -10,3 +10,6 @@ allowBuilds:
 overrides:
   fast-xml-parser@<4.5.5: ^4.5.5
   fast-xml-parser@>=5.0.0 <5.7.0: ^5.7.0
+
+minimumReleaseAgeExclude:
+- '@fedify/*'
