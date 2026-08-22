@@ -6,6 +6,10 @@ Version 0.8.11
 
 To be released.
 
+ -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
+    Docker images now install the project-pinned pnpm version through mise
+    instead of using Alpine Linux's floating pnpm package.
+
 
 Version 0.8.10
 --------------
