@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.13
 --------------
 
-To be released.
+Released on August 23, 2026.
 
  -  Upgraded Fedify to 2.2.10, which fixes an SSRF vulnerability in
     authenticated document loaders where public document URLs could redirect
