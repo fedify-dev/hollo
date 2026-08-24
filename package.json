@@ -104,7 +104,7 @@
     "concurrently": "^10.0.4",
     "linkedom": "^0.18.13",
     "oxfmt": "^0.63.0",
-    "oxlint": "^1.77.0",
+    "oxlint": "^1.79.0",
     "skills-npm": "^1.1.1",
     "timekeeper": "^2.3.1",
     "tsdown": "^0.22.3",
