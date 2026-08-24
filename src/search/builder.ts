@@ -72,7 +72,7 @@ export function buildSearchFilter(
  */
 function buildTermFilter(node: TermNode, table: PostsTable): SQL {
   const condition = buildOperatorFilter(node.operator, table);
-  return node.negated ? not(condition) : condition;
+  return node.negated ? not(condition)! : condition;
 }
 
 /**
