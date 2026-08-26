@@ -244,18 +244,6 @@ describe("Poll notifications", () => {
       remoteAccount.id,
       expires,
     );
-    const alternatePostId = crypto.randomUUID() as Uuid;
-    await db.insert(Schema.posts).values({
-      id: alternatePostId,
-      iri: `https://remote.test/@remote_user/${alternatePostId}`,
-      type: "Question",
-      accountId: remoteAccount.id,
-      visibility: "public",
-      contentHtml: "<p>Which option?</p>",
-      content: "Which option?",
-      pollId,
-      published: new Date(+expires - 30_000),
-    });
 
     const notificationId = await createNotification({
       accountOwnerId: localAccount.id as Uuid,
@@ -267,7 +255,7 @@ describe("Poll notifications", () => {
     const duplicateNotificationId = await createNotification({
       accountOwnerId: localAccount.id as Uuid,
       type: "poll",
-      targetPostId: alternatePostId,
+      targetPostId: postId,
       targetPollId: pollId,
       created: expires,
     });

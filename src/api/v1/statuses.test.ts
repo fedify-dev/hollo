@@ -18,6 +18,7 @@ import {
   instances,
   media,
   mentions,
+  polls,
   posts,
 } from "../../schema";
 import { uuidv7 } from "../../uuid";
@@ -1816,6 +1817,50 @@ describe.sequential("/api/v1/statuses/:id/reblog", () => {
     expect(json.reblog).not.toBeNull();
     expect(json.reblog.id).toBe(quotePostId);
     expect(json.reblog.quote_id).toBe(quotedPostId);
+  });
+
+  it("does not carry a poll on the boost wrapper", async () => {
+    expect.assertions(6);
+    const pollId = uuidv7();
+    await db.insert(polls).values({
+      id: pollId,
+      multiple: false,
+      expires: new Date("2026-09-01T00:00:00.000Z"),
+    });
+    const pollPostId = uuidv7();
+    await db.insert(posts).values({
+      id: pollPostId,
+      iri: `https://hollo.test/@hollo/${pollPostId}`,
+      type: "Question",
+      accountId: account.id,
+      visibility: "public",
+      content: "Which option?",
+      contentHtml: "<p>Which option?</p>",
+      pollId,
+      published: new Date(),
+    });
+
+    const response = await app.request(
+      `/api/v1/statuses/${pollPostId}/reblog`,
+      {
+        method: "POST",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.poll).toBeNull();
+    expect(json.reblog).not.toBeNull();
+    expect(json.reblog.poll.id).toBe(pollId);
+    const sharingPost = await db.query.posts.findFirst({
+      where: { sharingId: { eq: pollPostId } },
+    });
+    expect(sharingPost?.pollId).toBeNull();
+    const originalPost = await db.query.posts.findFirst({
+      where: { id: { eq: pollPostId } },
+    });
+    expect(originalPost?.pollId).toBe(pollId);
   });
 });
 

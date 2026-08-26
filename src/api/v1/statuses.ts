@@ -1275,6 +1275,7 @@ app.post(
           replyTargetId: null,
           quoteTargetId: null,
           sharingId: originalPostId,
+          pollId: null,
           visibility,
           url: url.href,
           published,

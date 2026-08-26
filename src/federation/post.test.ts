@@ -25,7 +25,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanDatabase } from "../../tests/helpers";
 import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
-import { accounts, follows, instances, posts } from "../schema";
+import { accounts, follows, instances, polls, posts } from "../schema";
 import type { Uuid } from "../uuid";
 import { toTemporalInstant } from "./date";
 import { onPostShared } from "./inbox";
@@ -317,6 +317,34 @@ describe("persistSharingPost", () => {
     expect(sharingPosts).toHaveLength(1);
     expect(timelineRows).toHaveLength(1);
     expect(originalPost?.sharesCount).toBe(1);
+  });
+
+  it("does not copy a poll to the sharing post", async () => {
+    expect.assertions(2);
+    const { actor, object, originalPostId, originalPostIri, sharer } =
+      await seedShareScenario();
+    const pollId = crypto.randomUUID() as Uuid;
+    await db.insert(polls).values({
+      id: pollId,
+      multiple: false,
+      expires: new Date("2026-09-01T00:00:00.000Z"),
+    });
+    await db.update(posts).set({ pollId }).where(eq(posts.id, originalPostId));
+
+    const share = await persistSharingPost(
+      db,
+      createAnnounce(
+        "https://remote.test/@sharer/announces/poll",
+        actor,
+        originalPostIri,
+      ),
+      object,
+      "https://hollo.test",
+      { account: sharer },
+    );
+
+    expect(share).not.toBeNull();
+    expect(share?.pollId).toBeNull();
   });
 
   it("does not forward duplicate announces for a local post", async () => {

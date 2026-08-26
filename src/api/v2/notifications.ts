@@ -105,7 +105,9 @@ app.get(
       where: {
         accountOwnerId: { eq: owner.id },
         type: { in: types },
-        AND: paginationConditions,
+        ...(paginationConditions.length > 0
+          ? { AND: paginationConditions }
+          : {}),
       },
       // Use COALESCE to handle NULL latestPageNotificationAt values
       // (e.g., from older migrations that didn't set this field)

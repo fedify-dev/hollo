@@ -80,6 +80,37 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 
 
+Version 0.9.14
+--------------
+
+Released on August 26, 2026.
+
+ -  Fixed boosts of poll posts copying the original post's poll reference.
+    Existing boost rows are repaired, and the missing `posts.poll_id` unique
+    constraint is now created.  This prevents poll notifications from being
+    attributed to the boosting account and gives expired-poll queries the
+    index they need.  [[#593]]
+
+ -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
+    Docker images now install the project-pinned pnpm version through mise
+    instead of using Alpine Linux's floating pnpm package.
+
+[#593]: https://github.com/fedify-dev/hollo/issues/593
+
+
+Version 0.9.13
+--------------
+
+Released on August 23, 2026.
+
+ -  Upgraded Fedify to 2.2.10, which fixes an SSRF vulnerability in
+    authenticated document loaders where public document URLs could redirect
+    signed requests to loopback, link-local, or private addresses.
+    [[CVE-2026-77632]]
+
+[CVE-2026-77632]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-cxc3-7q96-6cpx
+
+
 Version 0.9.12
 --------------
 
@@ -655,6 +686,27 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.11
+--------------
+
+Released on August 23, 2026.
+
+ -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
+    Docker images now install the project-pinned pnpm version through mise
+    instead of using Alpine Linux's floating pnpm package.
+
+
+Version 0.8.10
+--------------
+
+Released on August 22, 2026.
+
+ -  Upgraded Fedify to 2.1.21, which fixes an SSRF vulnerability in
+    authenticated document loaders where public document URLs could redirect
+    signed requests to loopback, link-local, or private addresses.
+    [[CVE-2026-77632]]
 
 
 Version 0.8.9
@@ -1322,7 +1374,7 @@ Released on February 23, 2026.
     compatibility workaround for Bonfire's current signature handling.
     This is intended to be reverted to Fedify's default RFC 9421-first
     behavior after the Bonfire fix is released.
-    [[bonfire-networks/activity_pub#8]]
+    [[bonfire-networks/activity\_pub#8][bonfire-networks/activity_pub#8]]
 
 [bonfire-networks/activity_pub#8]: https://github.com/bonfire-networks/activity_pub/issues/8
 
