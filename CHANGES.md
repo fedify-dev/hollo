@@ -80,6 +80,38 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 
 
+Version 0.9.15
+--------------
+
+Released on August 26, 2026.
+
+ -  Added a partial hash index on `posts.quote_authorization_iri`, preventing
+    federated `Delete` activities from repeatedly scanning the entire posts
+    table while checking for revoked quote authorizations.  On large
+    installations, create the index before upgrading to avoid blocking writes
+    during the automatic migration:
+
+    ~~~~ sql
+    CREATE INDEX CONCURRENTLY
+      posts_quote_authorization_iri_index
+    ON posts USING hash (quote_authorization_iri)
+    WHERE quote_authorization_iri IS NOT NULL;
+    ~~~~
+
+    If this concurrent build fails or is interrupted, PostgreSQL can leave an
+    invalid index behind.  Drop it and retry the command above before
+    upgrading:
+
+    ~~~~ sql
+    DROP INDEX CONCURRENTLY IF EXISTS
+      posts_quote_authorization_iri_index;
+    ~~~~
+
+    [[#595]]
+
+[#595]: https://github.com/fedify-dev/hollo/issues/595
+
+
 Version 0.9.14
 --------------
 

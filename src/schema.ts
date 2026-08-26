@@ -546,6 +546,9 @@ export const posts = pgTable(
     index().on(table.replyTargetId),
     index().on(table.accountId, table.replyTargetId),
     index().on(table.quoteTargetId).where(isNotNull(table.quoteTargetId)),
+    index()
+      .using("hash", table.quoteAuthorizationIri)
+      .where(isNotNull(table.quoteAuthorizationIri)),
     index().on(table.visibility, table.accountId),
     index()
       .on(table.visibility, table.accountId, table.sharingId)
