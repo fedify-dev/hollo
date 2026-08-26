@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.14
 --------------
 
-To be released.
+Released on August 26, 2026.
 
  -  Fixed boosts of poll posts copying the original post's poll reference.
     Existing boost rows are repaired, and the missing `posts.poll_id` unique
