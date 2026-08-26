@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.15
 --------------
 
-To be released.
+Released on August 26, 2026.
 
  -  Added a partial hash index on `posts.quote_authorization_iri`, preventing
     federated `Delete` activities from repeatedly scanning the entire posts
