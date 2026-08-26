@@ -736,6 +736,7 @@ export async function persistSharingPost(
       replyTargetId: null,
       sharingId: originalPost.id,
       quoteTargetId: null,
+      pollId: null,
       visibility: announce.toIds
         .map((iri) => iri.href)
         .includes(vocab.PUBLIC_COLLECTION.href)

@@ -6,6 +6,14 @@ Version 0.9.14
 
 To be released.
 
+ -  Fixed boosts of poll posts copying the original post's poll reference.
+    Existing boost rows are repaired, and the missing `posts.poll_id` unique
+    constraint is now created.  This prevents poll notifications from being
+    attributed to the boosting account and gives expired-poll queries the
+    index they need.  [[#593]]
+
+[#593]: https://github.com/fedify-dev/hollo/issues/593
+
 
 Version 0.9.13
 --------------
@@ -608,8 +616,6 @@ Released on August 22, 2026.
     authenticated document loaders where public document URLs could redirect
     signed requests to loopback, link-local, or private addresses.
     [[CVE-2026-77632]]
-
-[CVE-2026-77632]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-cxc3-7q96-6cpx
 
 
 Version 0.8.9
