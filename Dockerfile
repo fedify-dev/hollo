@@ -66,7 +66,7 @@ LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 RUN \
   apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg jq libatomic1 \
+  && apt-get install -y --no-install-recommends ffmpeg jq libatomic1 wget \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=toolchain /opt/pnpm /opt/pnpm

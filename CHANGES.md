@@ -12,6 +12,10 @@ To be released.
     attributed to the boosting account and gives expired-poll queries the
     index they need.  [[#593]]
 
+ -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
+    Docker images now install the project-pinned pnpm version through mise
+    instead of using Alpine Linux's floating pnpm package.
+
 [#593]: https://github.com/fedify-dev/hollo/issues/593
 
 
@@ -605,6 +609,16 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.11
+--------------
+
+Released on August 23, 2026.
+
+ -  Fixed Docker image builds failing during `pnpm install --frozen-lockfile`.
+    Docker images now install the project-pinned pnpm version through mise
+    instead of using Alpine Linux's floating pnpm package.
 
 
 Version 0.8.10
@@ -1283,7 +1297,7 @@ Released on February 23, 2026.
     compatibility workaround for Bonfire's current signature handling.
     This is intended to be reverted to Fedify's default RFC 9421-first
     behavior after the Bonfire fix is released.
-    [[bonfire-networks/activity_pub#8]]
+    [[bonfire-networks/activity\_pub#8][bonfire-networks/activity_pub#8]]
 
 [bonfire-networks/activity_pub#8]: https://github.com/bonfire-networks/activity_pub/issues/8
 

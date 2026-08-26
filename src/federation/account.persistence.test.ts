@@ -308,23 +308,23 @@ describe.sequential("persistAccount canonical handle reassignment", () => {
   it("refuses to delete a local account that still owns the canonical handle", async () => {
     expect.assertions(3);
 
+    const canonicalHandle = "@hollo@1.1.1.1";
+    const actorIri = "https://8.8.8.8/users/hollo";
     await createAccount({ username: "hollo" });
-    mockCanonicalOwnership(
-      "@hollo@hollo.test",
-      "https://remote.test/users/hollo",
-    );
+    await db.update(Schema.accounts).set({ handle: canonicalHandle });
+    mockCanonicalOwnership(canonicalHandle, actorIri);
 
     await expect(
       persistAccount(
         db,
-        createRemotePerson("https://remote.test/users/hollo", "hollo"),
+        createRemotePerson(actorIri, "hollo"),
         "https://hollo.test",
       ),
     ).rejects.toThrow(AccountHandleConflictError);
 
     const error = await persistAccount(
       db,
-      createRemotePerson("https://remote.test/users/hollo", "hollo"),
+      createRemotePerson(actorIri, "hollo"),
       "https://hollo.test",
     ).catch((e) => e);
     expect(error).toBeInstanceOf(AccountHandleConflictError);
