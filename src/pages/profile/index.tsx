@@ -232,7 +232,12 @@ function ProfilePage({
         {tag != null && (
           <h2 class="mt-10 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
             Posts tagged{" "}
-            <span class="text-brand-700 dark:text-brand-400">#{tag}</span>
+            <span
+              lang={accountOwner.language}
+              class="text-brand-700 dark:text-brand-400"
+            >
+              #{tag}
+            </span>
           </h2>
         )}
         {featuredTags.length > 0 && (
@@ -243,6 +248,7 @@ function ProfilePage({
             {featuredTags.map((tag) => (
               <a
                 href={`/@${accountOwner.handle}/tagged/${encodeURIComponent(tag.name)}`}
+                lang={accountOwner.language}
                 class="rounded-full border border-brand-200 bg-brand-50 px-3 py-0.5 font-medium text-brand-700 transition-colors hover:bg-brand-100 hover:border-brand-300 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-400 dark:hover:bg-brand-900/40 dark:hover:border-brand-800"
               >
                 #{tag.name}

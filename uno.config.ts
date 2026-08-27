@@ -23,12 +23,7 @@ export default defineConfig({
     presetWebFonts({
       provider: "bunny",
       fonts: {
-        sans: [
-          { name: "Inter", weights: ["400", "500", "600", "700"] },
-          { name: "Noto Sans KR", weights: ["400", "500", "700"] },
-          { name: "Noto Sans JP", weights: ["400", "500", "700"] },
-          { name: "Noto Sans SC", weights: ["400", "500", "700"] },
-        ],
+        sans: [{ name: "Inter", weights: ["400", "500", "600", "700"] }],
         mono: [{ name: "JetBrains Mono", weights: ["400", "500", "700"] }],
       },
     }),
@@ -43,6 +38,55 @@ export default defineConfig({
           --un-ring-opacity: 100%;
           --un-divide-opacity: 100%;
           --un-placeholder-opacity: 100%;
+          --font-sans-ko:
+            "Inter", "Noto Sans KR", "Noto Sans CJK KR",
+            "Apple SD Gothic Neo", "Malgun Gothic",
+            ui-sans-serif, system-ui, sans-serif;
+          --font-sans-ja:
+            "Inter", "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans",
+            "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo,
+            ui-sans-serif, system-ui, sans-serif;
+          --font-sans-zh-hans:
+            "Inter", "Noto Sans SC", "Noto Sans CJK SC", "PingFang SC",
+            "Microsoft YaHei UI", "Microsoft YaHei",
+            ui-sans-serif, system-ui, sans-serif;
+          --font-sans-zh-hant:
+            "Inter", "Noto Sans TC", "Noto Sans CJK TC", "PingFang TC",
+            "Microsoft JhengHei UI", "Microsoft JhengHei",
+            ui-sans-serif, system-ui, sans-serif;
+          --font-sans-zh-hk:
+            "Inter", "Noto Sans HK", "Noto Sans CJK HK", "PingFang HK",
+            "Microsoft JhengHei UI", "Microsoft JhengHei",
+            ui-sans-serif, system-ui, sans-serif;
+        }
+        /* Match explicit language boundaries so nested code keeps its
+           monospace font while inheriting the surrounding language. */
+        :where([lang|="ko" i]) {
+          font-family: var(--font-sans-ko);
+        }
+        :where([lang|="ja" i]) {
+          font-family: var(--font-sans-ja);
+        }
+        :where(
+          [lang="zh" i],
+          [lang|="zh-Hans" i],
+          [lang|="zh-CN" i],
+          [lang|="zh-SG" i]
+        ) {
+          font-family: var(--font-sans-zh-hans);
+        }
+        :where(
+          [lang|="zh-Hant" i],
+          [lang|="zh-TW" i],
+          [lang|="zh-MO" i]
+        ) {
+          font-family: var(--font-sans-zh-hant);
+        }
+        :where(
+          [lang|="zh" i][lang$="-HK" i]:not([lang*="-Hans-" i]),
+          [lang|="zh" i][lang*="-HK-" i]:not([lang*="-Hans-" i])
+        ) {
+          font-family: var(--font-sans-zh-hk);
         }
         input:where(:not([type="file"], [type="checkbox"], [type="radio"])),
         textarea,

@@ -143,17 +143,25 @@ Typography
 
 ### Type families
 
-| Role     | Family                                         | Source                    |
-| -------- | ---------------------------------------------- | ------------------------- |
-| Sans     | *Inter*                                        | bunny.net (Google mirror) |
-| Sans CJK | *Noto Sans KR*, *Noto Sans JP*, *Noto Sans SC* | bunny.net                 |
-| Mono     | *JetBrains Mono*                               | bunny.net                 |
+| Role     | Family                         | Source                    |
+| -------- | ------------------------------ | ------------------------- |
+| Sans     | *Inter*                        | bunny.net (Google mirror) |
+| Sans CJK | Language-specific system fonts | Operating system          |
+| Mono     | *JetBrains Mono*               | bunny.net                 |
 
 Fonts are loaded through UnoCSS's `presetWebFonts` with the `bunny`
-provider, which is a privacy-respecting mirror of Google Fonts.  The CSS
-font stack lists Inter first, then the three Noto Sans CJK families, and
-falls back to the system stack so initial paint never blocks on a
-network request.
+provider, which is a privacy-respecting mirror of Google Fonts.  Only Inter
+and JetBrains Mono are loaded from the provider.  CJK web fonts are split into
+hundreds of Unicode-range files per family and weight, so a multilingual
+timeline can download most of those files.  Hollo avoids that cost by using
+language-specific system font stacks for Korean, Japanese, Simplified Chinese,
+Traditional Chinese, and Hong Kong Chinese.  Add a `lang` attribute to the
+boundary of user-authored text whenever its language is known; the font stack
+is selected from that explicit boundary and inherited by its contents.  The
+bare `zh` value offered by account settings uses the Simplified Chinese stack;
+script-specific and region-specific tags select the matching stack instead.  An
+explicit `Hans` script takes precedence over the Hong Kong region, while
+`zh-Hant-HK` uses the Hong Kong stack.
 
 ### Type scale
 

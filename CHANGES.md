@@ -80,6 +80,17 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 
 
+Version 0.9.16
+--------------
+
+Released on August 28, 2026.
+
+ -  Fixed public profile pages downloading hundreds of CJK web font fragments
+    when rendering multilingual timelines.  CJK text now uses
+    language-specific system font stacks, while Inter and JetBrains Mono remain
+    web fonts.
+
+
 Version 0.9.15
 --------------
 
