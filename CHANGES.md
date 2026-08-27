@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.16
 --------------
 
-To be released.
+Released on August 28, 2026.
 
  -  Fixed public profile pages downloading hundreds of CJK web font fragments
     when rendering multilingual timelines.  CJK text now uses
