@@ -135,6 +135,7 @@ export function Post({
               href={authorUrl}
               dangerouslySetInnerHTML={{ __html: authorNameHtml }}
               aria-label={account.name}
+              lang={account.owner?.language}
               class="hover:underline"
             />
           </div>
@@ -147,6 +148,7 @@ export function Post({
                   Reply to{" "}
                   <a
                     href={post.replyTarget.url ?? post.replyTarget.iri}
+                    lang={post.replyTarget.account.owner?.language}
                     class="hover:text-brand-700 dark:hover:text-brand-400"
                   >
                     {post.replyTarget.account.name}
@@ -383,17 +385,23 @@ function PostContent({ post, featured, baseUrl }: PostContentProps) {
           lang={post.language ?? undefined}
         />
       )}
-      {post.poll != null && <Poll poll={post.poll} />}
+      {post.poll != null && <Poll poll={post.poll} language={post.language} />}
       {post.media.length > 0 && (
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
           {orderMedia(post.media).map((medium) => (
             <figure class="m-0">
-              <Medium medium={medium} baseUrl={baseUrl} />
+              <Medium
+                medium={medium}
+                language={post.language}
+                baseUrl={baseUrl}
+              />
               {medium.description && medium.description.trim() !== "" && (
                 <figcaption class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   <details>
                     <summary class="cursor-pointer">ALT text</summary>
-                    <p class="mt-1">{medium.description}</p>
+                    <p lang={post.language ?? undefined} class="mt-1">
+                      {medium.description}
+                    </p>
                   </details>
                 </figcaption>
               )}
@@ -534,9 +542,10 @@ function PreviewCardView({ card, baseUrl }: PreviewCardViewProps) {
 
 interface PollProps {
   readonly poll: DbPoll & { options: PollOption[] };
+  readonly language: string | null;
 }
 
-function Poll({ poll }: PollProps) {
+function Poll({ poll, language }: PollProps) {
   const options = poll.options;
   options.sort((a, b) => (a.index < b.index ? -1 : 1));
   const totalVotes = options.reduce(
@@ -558,7 +567,10 @@ function Poll({ poll }: PollProps) {
               aria-hidden="true"
             />
             <div class="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
-              <span class="text-neutral-900 dark:text-neutral-100">
+              <span
+                lang={language ?? undefined}
+                class="text-neutral-900 dark:text-neutral-100"
+              >
                 {option.title}
               </span>
               <span class="text-neutral-500 tabular-nums dark:text-neutral-400">
@@ -574,10 +586,11 @@ function Poll({ poll }: PollProps) {
 
 interface MediumProps {
   readonly medium: DbMedium;
+  readonly language: string | null;
   readonly baseUrl: URL | string;
 }
 
-function Medium({ medium, baseUrl }: MediumProps) {
+function Medium({ medium, language, baseUrl }: MediumProps) {
   const linkUrl = proxyUrl(medium.url, baseUrl);
   const thumbnailUrl = medium.thumbnailCleaned
     ? null
@@ -592,6 +605,7 @@ function Medium({ medium, baseUrl }: MediumProps) {
         key={medium.id}
         src={thumbnailUrl}
         alt={medium.description ?? ""}
+        lang={language ?? undefined}
         width={medium.thumbnailWidth}
         height={medium.thumbnailHeight}
         class="block h-auto w-full object-cover"

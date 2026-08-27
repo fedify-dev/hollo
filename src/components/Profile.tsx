@@ -60,6 +60,7 @@ export function Profile({ accountOwner, baseUrl }: ProfileProps) {
               href={url}
               dangerouslySetInnerHTML={{ __html: nameHtml }}
               aria-label={account.name}
+              lang={accountOwner.language}
               class="hover:underline"
             />
           </h1>
@@ -104,12 +105,16 @@ export function Profile({ accountOwner, baseUrl }: ProfileProps) {
             <div
               class="prose prose-sm prose-neutral dark:prose-invert prose-a:text-brand-700 dark:prose-a:text-brand-400 mt-4 max-w-none"
               dangerouslySetInnerHTML={{ __html: bioHtml }}
+              lang={accountOwner.language}
             />
           )}
           {fieldEntries.length > 0 && (
             <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               {fieldEntries.map(([key, value]) => (
-                <div class="border-t border-neutral-200 pt-3 dark:border-neutral-800">
+                <div
+                  lang={accountOwner.language}
+                  class="border-t border-neutral-200 pt-3 dark:border-neutral-800"
+                >
                   <dt class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                     {key}
                   </dt>

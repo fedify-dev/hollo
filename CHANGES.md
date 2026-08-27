@@ -6,6 +6,11 @@ Version 0.9.16
 
 To be released.
 
+ -  Fixed public profile pages downloading hundreds of CJK web font fragments
+    when rendering multilingual timelines.  CJK text now uses
+    language-specific system font stacks, while Inter and JetBrains Mono remain
+    web fonts.
+
 
 Version 0.9.15
 --------------
