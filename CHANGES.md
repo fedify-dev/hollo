@@ -80,6 +80,35 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 
 
+Version 0.9.17
+--------------
+
+Released on August 30, 2026.
+
+ -  Fixed status URL searches timing out on installations with large posts
+    tables by adding a partial hash index on `posts.url`.  On large
+    installations, create the index before upgrading to avoid blocking writes
+    during the automatic migration:
+
+    ~~~~ sql
+    CREATE INDEX CONCURRENTLY posts_url_index
+    ON posts USING hash (url)
+    WHERE url IS NOT NULL;
+    ~~~~
+
+    If this concurrent build fails or is interrupted, PostgreSQL can leave an
+    invalid index behind.  Drop it and retry the command above before
+    upgrading:
+
+    ~~~~ sql
+    DROP INDEX CONCURRENTLY IF EXISTS posts_url_index;
+    ~~~~
+
+    [[#596]]
+
+[#596]: https://github.com/fedify-dev/hollo/issues/596
+
+
 Version 0.9.16
 --------------
 
