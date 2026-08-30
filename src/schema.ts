@@ -514,6 +514,7 @@ export const posts = pgTable(
     unique().on(table.accountId, table.sharingId),
     index().on(table.sharingId),
     index().on(table.accountId),
+    index().using("hash", table.url).where(isNotNull(table.url)),
     index().on(table.accountId, table.sharingId),
     index().on(table.replyTargetId),
     index().on(table.accountId, table.replyTargetId),
