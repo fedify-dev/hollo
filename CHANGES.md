@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.17
 --------------
 
-To be released.
+Released on August 30, 2026.
 
  -  Fixed status URL searches timing out on installations with large posts
     tables by adding a partial hash index on `posts.url`.  On large
