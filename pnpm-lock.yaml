@@ -52,8 +52,8 @@ importers:
         specifier: ^2.0.4
         version: 2.0.4
       '@hono/node-server':
-        specifier: ^2.0.10
-        version: 2.0.12(hono@4.13.5)
+        specifier: ^2.1.1
+        version: 2.1.1(hono@4.13.5)
       '@hono/zod-validator':
         specifier: ^0.9.0
         version: 0.9.0(hono@4.13.5)(zod@4.4.3)
@@ -628,10 +628,6 @@ packages:
   '@aws-sdk/types@3.713.0':
     resolution: {integrity: sha512-AMSYVKi1MxrJqGGbjcFC7/4g8E+ZHGfg/eW0+GXQJmsVjMjccHtU+s1dYloX4KEDgrY42QPep+dpSVRR4W7U1Q==}
     engines: {node: '>=16.0.0'}
-
-  '@aws-sdk/types@3.974.3':
-    resolution: {integrity: sha512-ECAqfpNsef+7MO8qtR0h9KcFIBAygaE7Cm6UOiQl+ft+uVap+1G7bNEjs4mdJE2OnA4m6k7i8peH8uGIAsOMGw==}
-    engines: {node: '>=20.0.0'}
 
   '@aws-sdk/types@3.974.5':
     resolution: {integrity: sha512-LkwLL2BLbC6wNNm4JaH9mbEqBMdOZCct6VAYqhdN4U1xrWM+fUJQEfbHwQgDypapOWTRtlk25akb5afM0P8CIQ==}
@@ -1302,8 +1298,8 @@ packages:
   '@hexagon/base64@2.0.4':
     resolution: {integrity: sha512-H/ZY6rGyaEuk0mwQgZ3BVi9hMjFTYpBNFbmtOuec/pPibuGhCMXd8fGtwBaO0h44FkWMurysMsDrpkJsBRmoWQ==}
 
-  '@hono/node-server@2.0.12':
-    resolution: {integrity: sha512-eWpQYr67tqJLeaSUl0Q+TquuYfUdTibpOJlUMV2FfUP7+KqCC5TufnwnlXL6mobZBJbGAYRd7ZvEBDCbLInjhg==}
+  '@hono/node-server@2.1.1':
+    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -2829,10 +2825,6 @@ packages:
   '@smithy/types@3.7.2':
     resolution: {integrity: sha512-bNwBYYmN8Eh9RyjS1p2gW6MIhSO2rl7X9QeLM8iTdcGRP+eDiIWDt66c9IysCc22gefKszZv+ubV9qZc7hdESg==}
     engines: {node: '>=16.0.0'}
-
-  '@smithy/types@4.17.0':
-    resolution: {integrity: sha512-Aw4joiM0ZdErpo39lCj8phT2lxoiKZV+KZzBxnnQhWVtU2Is/WffQSL04uUWRcXUse9Ln8vXZK6V/FwqRVnQpg==}
-    engines: {node: '>=18.0.0'}
 
   '@smithy/types@4.17.2':
     resolution: {integrity: sha512-FOKpVZob9MPTn2znRzGrnsMHv7BOsKVw3XiP/cOyYLDVZ9qKp4nifIiSCuUU/fIj5Vu0UOAxCFr+qRAtG0NUkA==}
@@ -6761,14 +6753,14 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.3
+      '@aws-sdk/types': 3.974.5
       tslib: 2.8.1
     optional: true
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.3
+      '@aws-sdk/types': 3.974.5
       tslib: 2.8.1
     optional: true
 
@@ -6776,7 +6768,7 @@ snapshots:
     dependencies:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.3
+      '@aws-sdk/types': 3.974.5
       '@aws-sdk/util-locate-window': 3.965.9
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -6787,7 +6779,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.3
+      '@aws-sdk/types': 3.974.5
       '@aws-sdk/util-locate-window': 3.965.9
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -6796,7 +6788,7 @@ snapshots:
   '@aws-crypto/sha256-js@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.3
+      '@aws-sdk/types': 3.974.5
       tslib: 2.8.1
     optional: true
 
@@ -6807,7 +6799,7 @@ snapshots:
 
   '@aws-crypto/util@5.2.0':
     dependencies:
-      '@aws-sdk/types': 3.974.3
+      '@aws-sdk/types': 3.974.5
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
     optional: true
@@ -7424,12 +7416,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@aws-sdk/types@3.974.3':
-    dependencies:
-      '@smithy/types': 4.17.0
-      tslib: 2.8.1
-    optional: true
-
   '@aws-sdk/types@3.974.5':
     dependencies:
       '@smithy/types': 4.17.2
@@ -8017,7 +8003,7 @@ snapshots:
 
   '@hexagon/base64@2.0.4': {}
 
-  '@hono/node-server@2.0.12(hono@4.13.5)':
+  '@hono/node-server@2.1.1(hono@4.13.5)':
     dependencies:
       hono: 4.13.5
 
@@ -9340,11 +9326,6 @@ snapshots:
     optional: true
 
   '@smithy/types@3.7.2':
-    dependencies:
-      tslib: 2.8.1
-    optional: true
-
-  '@smithy/types@4.17.0':
     dependencies:
       tslib: 2.8.1
     optional: true
