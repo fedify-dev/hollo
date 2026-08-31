@@ -92,7 +92,7 @@
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.71.3",
     "@fedify/lint": "~2.3.4",
-    "@iconify-json/lucide": "^1.2.123",
+    "@iconify-json/lucide": "^1.2.126",
     "@reporters/github": "^2.1.2",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^26.1.1",
