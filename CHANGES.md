@@ -15,6 +15,13 @@ To be released.
     NodeInfo lookups that could allow remote instances to make Hollo fetch
     non-public network destinations.  [[CVE-2026-62857]]
 
+ -  Quotes awaiting FEP-044f approval now expose `quoteUrl` for compatibility
+    with older software when the original public or unlisted post explicitly
+    allows automatic approval for everyone.  The `quote` field and generated
+    fallback still wait for approval.  Rejection or revocation removes the
+    reference through an `Update`; failed rejection updates can be retried
+    without changing the quote state or counts.  [[#602]]
+
  -  Added WebP (`image/webp`) as an accepted format for profile avatar and
     banner image uploads.  Previously only JPEG, PNG, and GIF were accepted
     by both the Mastodon-compatible
@@ -78,6 +85,7 @@ To be released.
 [#524]: https://github.com/fedify-dev/hollo/issues/524
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 [#549]: https://github.com/fedify-dev/hollo/issues/549
+[#602]: https://github.com/fedify-dev/hollo/issues/602
 
 
 Version 0.9.17

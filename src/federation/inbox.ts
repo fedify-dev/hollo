@@ -458,7 +458,9 @@ async function updateQuoteRequestState(
     with: { quoteTarget: { with: { account: true } } },
   });
   if (quote == null) return false;
-  if (quote.quoteState !== "pending") return false;
+  const repeatedRejection =
+    state === "rejected" && quote.quoteState === "rejected";
+  if (quote.quoteState !== "pending" && !repeatedRejection) return false;
   const target =
     request.targetIri == null
       ? quote.quoteTarget
@@ -474,6 +476,9 @@ async function updateQuoteRequestState(
   if (request.targetIri != null && quote.quoteTargetIri !== request.targetIri) {
     return false;
   }
+  // Enqueue may have failed after the first rejection was committed. A
+  // validated retry can resend the clearing Update without changing its ID.
+  if (repeatedRejection) return true;
   await db.transaction(async (tx) => {
     await tx
       .update(posts)
@@ -562,17 +567,19 @@ export async function onQuoteRequestAccepted(
 }
 
 export async function onQuoteRequestRejected(
-  _ctx: InboxContext<void>,
+  ctx: InboxContext<void>,
   reject: Reject,
 ): Promise<boolean> {
   const request = await getQuoteRequestReferenceFromActivity(reject);
   if (request == null) return false;
-  return await updateQuoteRequestState(
+  const rejected = await updateQuoteRequestState(
     request,
     reject.actorId?.href ?? null,
     "rejected",
     null,
   );
+  if (rejected) await sendQuoteUpdate(ctx, request.quoteIri);
+  return rejected;
 }
 
 export async function onQuoteAuthorizationDeleted(

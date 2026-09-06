@@ -1246,8 +1246,6 @@ describe.sequential("/api/v1/statuses quotes", () => {
   });
 
   it("requests authorization for cached remote public quote policies", async () => {
-    expect.assertions(7);
-
     const remoteAccountId = uuidv7();
     const quotedPostId = uuidv7();
     const quotedPostIri = `https://remote.test/@fep-author/${quotedPostId}`;
@@ -1265,6 +1263,12 @@ describe.sequential("/api/v1/statuses quotes", () => {
       followersUrl: "https://remote.test/@fep-author/followers",
       sharedInboxUrl: "https://remote.test/inbox",
       instanceHost: "remote.test",
+    });
+    await db.insert(follows).values({
+      iri: `https://remote.test/follows/${crypto.randomUUID()}`,
+      followingId: quoter.id,
+      followerId: remoteAccountId,
+      approved: new Date(),
     });
     await db.insert(posts).values({
       id: quotedPostId,
@@ -1293,6 +1297,7 @@ describe.sequential("/api/v1/statuses quotes", () => {
       expect(quote.quote.quoted_status).toBeNull();
 
       let hasQuoteRequest = false;
+      let hasCreate = false;
       await vi.waitFor(async () => {
         const activities = await Promise.all(
           fetch.mock.calls.map(async ([input]) => {
@@ -1303,7 +1308,9 @@ describe.sequential("/api/v1/statuses quotes", () => {
         hasQuoteRequest = activities.some(
           (activity) => activity?.type === "QuoteRequest",
         );
-        if (!hasQuoteRequest) throw new Error("QuoteRequest was not sent yet");
+        hasCreate = activities.some((activity) => activity?.type === "Create");
+        if (!hasQuoteRequest || !hasCreate)
+          throw new Error("Quote activities were not sent yet");
       });
       expect(hasQuoteRequest).toBe(true);
 
@@ -1312,16 +1319,40 @@ describe.sequential("/api/v1/statuses quotes", () => {
       });
       const object = await objectResponse.json();
       expect(object.quote).toBeUndefined();
-      expect(object.quoteUrl).toBeUndefined();
+      expect(object.quoteUrl).toBe(quotedPostIri);
       expect(object.quoteAuthorization).toBeUndefined();
+      expect(object.content).not.toContain("quote-inline");
+      expect(JSON.stringify(object.tag ?? [])).not.toContain(quotedPostIri);
+
+      const activities = await Promise.all(
+        fetch.mock.calls.map(async ([input]) =>
+          input instanceof Request ? await input.clone().json() : null,
+        ),
+      );
+      const created = activities.find(
+        (activity) => activity?.type === "Create",
+      );
+      expect(created?.object.quoteUrl).toBe(quotedPostIri);
+      expect(created?.object).not.toHaveProperty("quote");
+      expect(created?.object).not.toHaveProperty("quoteAuthorization");
+      expect(created?.object.content).not.toContain("quote-inline");
+      expect(JSON.stringify(created?.object.tag ?? [])).not.toContain(
+        quotedPostIri,
+      );
+      const request = activities.find(
+        (activity) => activity?.type === "QuoteRequest",
+      );
+      expect(request?.instrument).toMatchObject({
+        quote: quotedPostIri,
+        quoteUrl: quotedPostIri,
+      });
+      expect(request?.instrument.content).toContain("quote-inline");
     } finally {
       fetch.mockRestore();
     }
   });
 
   it("requests authorization for cached remote followers-only quotes from approved followers", async () => {
-    expect.assertions(3);
-
     const remoteAccountId = uuidv7();
     const quotedPostId = uuidv7();
     const quotedPostIri = `https://remote.test/@followers-author/${quotedPostId}`;
@@ -1384,6 +1415,25 @@ describe.sequential("/api/v1/statuses quotes", () => {
         if (!hasQuoteRequest) throw new Error("QuoteRequest was not sent yet");
       });
       expect(hasQuoteRequest).toBe(true);
+      const objectResponse = await app.request(`/@quote-quoter/${quote.id}`, {
+        headers: { Accept: "application/activity+json" },
+      });
+      const object = await objectResponse.json();
+      expect(object).not.toHaveProperty("quote");
+      expect(object).not.toHaveProperty("quoteUrl");
+      expect(object).not.toHaveProperty("quoteAuthorization");
+      const activities = await Promise.all(
+        fetch.mock.calls.map(async ([input]) =>
+          input instanceof Request ? await input.clone().json() : null,
+        ),
+      );
+      const request = activities.find(
+        (activity) => activity?.type === "QuoteRequest",
+      );
+      expect(request?.instrument).toMatchObject({
+        quote: quotedPostIri,
+        quoteUrl: quotedPostIri,
+      });
     } finally {
       fetch.mockRestore();
     }

@@ -15,7 +15,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanDatabase } from "../../tests/helpers";
 import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
-import { accounts, blocks, follows, instances, posts } from "../schema";
+import {
+  accounts,
+  blocks,
+  follows,
+  instances,
+  mentions,
+  posts,
+} from "../schema";
 import type { Uuid } from "../uuid";
 import {
   onFollowAccepted,
@@ -24,6 +31,7 @@ import {
   onQuoteRequestAccepted,
   onQuoteRequested,
   onQuoteRequestRejected,
+  sendQuoteUpdate,
 } from "./inbox";
 
 type SeededFollow = {
@@ -324,7 +332,7 @@ describe("quote request lifecycle", () => {
   });
 
   it("federates the quote update after Accept<QuoteRequest>", async () => {
-    expect.assertions(7);
+    expect.assertions(10);
 
     const seeded = await seedPendingQuote();
     const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
@@ -354,6 +362,10 @@ describe("quote request lifecycle", () => {
     const object = await (activity as Update).getObject();
     expect(object).toBeInstanceOf(Note);
     expect((object as Note).quoteAuthorizationId?.href).toBe(authorizationIri);
+    const json = (await object!.toJsonLd()) as Record<string, unknown>;
+    expect(json.quote).toBe(seeded.quotedPostIri);
+    expect(json.quoteUrl).toBe(seeded.quotedPostIri);
+    expect(json.content).toContain('class="quote-inline"');
   });
 
   it("marks a pending quote accepted from Accept<QuoteRequest IRI>", async () => {
@@ -461,7 +473,13 @@ describe("quote request lifecycle", () => {
       }),
     });
 
-    await onQuoteRequestRejected(ctx, reject);
+    await onQuoteRequestRejected(
+      {
+        ...ctx,
+        sendActivity: vi.fn(async () => undefined),
+      } as unknown as InboxContext<void>,
+      reject,
+    );
 
     const quote = await db.query.posts.findFirst({
       where: { id: { eq: seeded.quotePostId } },
@@ -482,7 +500,13 @@ describe("quote request lifecycle", () => {
       object: new URL(`${seeded.quotePostIri}#quote-request`),
     });
 
-    await onQuoteRequestRejected(ctx, reject);
+    await onQuoteRequestRejected(
+      {
+        ...ctx,
+        sendActivity: vi.fn(async () => undefined),
+      } as unknown as InboxContext<void>,
+      reject,
+    );
 
     const quote = await db.query.posts.findFirst({
       where: { id: { eq: seeded.quotePostId } },
@@ -506,7 +530,13 @@ describe("quote request lifecycle", () => {
       }),
     });
 
-    await onQuoteRequestRejected(ctx, reject);
+    await onQuoteRequestRejected(
+      {
+        ...ctx,
+        sendActivity: vi.fn(async () => undefined),
+      } as unknown as InboxContext<void>,
+      reject,
+    );
 
     const quote = await db.query.posts.findFirst({
       where: { id: { eq: seeded.quotePostId } },
@@ -516,6 +546,177 @@ describe("quote request lifecycle", () => {
     });
     expect(quote?.quoteState).toBe("rejected");
     expect(quoted?.quotesCount).toBe(0);
+  });
+
+  it.each(["public", "followers"] as const)(
+    "clears a speculative quote after rejection even when target policy is %s",
+    async (quoteApprovalPolicy) => {
+      const seeded = await seedPendingQuote();
+      const recipientId = await seedRemoteAccount("quote-recipient");
+      await db
+        .insert(mentions)
+        .values({ postId: seeded.quotePostId, accountId: recipientId });
+      const sendActivity = vi.fn(async () => undefined);
+      const requestCtx = {
+        ...ctx,
+        sendActivity,
+      } as unknown as InboxContext<void>;
+      await sendQuoteUpdate(requestCtx, seeded.quotePostIri);
+      const initial = sendActivity.mock.calls[0] as unknown as [
+        unknown,
+        unknown,
+        Update,
+      ];
+      const initialObject = await initial[2].getObject();
+      expect(await initialObject!.toJsonLd()).toMatchObject({
+        quoteUrl: seeded.quotedPostIri,
+      });
+      sendActivity.mockClear();
+      await db
+        .update(posts)
+        .set({ quoteApprovalPolicy })
+        .where(eq(posts.id, seeded.quotedPostId));
+
+      const handled = await onQuoteRequestRejected(
+        requestCtx,
+        new Reject({
+          actor: new URL("https://hollo.test/@quote-author"),
+          object: new QuoteRequest({
+            object: new URL(seeded.quotedPostIri),
+            instrument: new URL(seeded.quotePostIri),
+          }),
+        }),
+      );
+      expect(handled).toBe(true);
+      expect(sendActivity).toHaveBeenCalledTimes(2);
+      const calls = sendActivity.mock.calls as unknown as [
+        unknown,
+        unknown,
+        Update,
+        { orderingKey: string },
+      ][];
+      expect(calls[0][1]).toEqual([
+        expect.objectContaining({
+          id: new URL("https://remote.test/@quote-recipient"),
+        }),
+      ]);
+      expect(calls[1][1]).toBe("followers");
+      for (const [sender, , activity, options] of calls) {
+        expect(sender).toEqual({ username: "quote-quoter" });
+        expect(options.orderingKey).toBe(`post:${seeded.quotePostIri}`);
+        const object = await activity.getObject();
+        const json = (await object!.toJsonLd()) as Record<string, unknown>;
+        expect(json).not.toHaveProperty("quote");
+        expect(json).not.toHaveProperty("quoteUrl");
+        expect(json).not.toHaveProperty("quoteAuthorization");
+        expect(json.content).toBe("<p>Quote post</p>");
+      }
+    },
+  );
+
+  it("retries a clearing Update after rejection was committed but enqueue failed", async () => {
+    const seeded = await seedPendingQuote();
+    const sendActivity = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Queue unavailable"))
+      .mockResolvedValue(undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+    const reject = new Reject({
+      actor: new URL("https://hollo.test/@quote-author"),
+      object: new QuoteRequest({
+        object: new URL(seeded.quotedPostIri),
+        instrument: new URL(seeded.quotePostIri),
+      }),
+    });
+    await expect(onQuoteRequestRejected(requestCtx, reject)).rejects.toThrow(
+      "Queue unavailable",
+    );
+    const beforeRetry = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotePostId } },
+    });
+    expect(beforeRetry?.quoteState).toBe("rejected");
+    expect(await onQuoteRequestRejected(requestCtx, reject)).toBe(true);
+    expect(await onQuoteRequestRejected(requestCtx, reject)).toBe(true);
+    expect(sendActivity).toHaveBeenCalledTimes(3);
+    const afterRetry = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotePostId } },
+    });
+    expect(afterRetry).toEqual(beforeRetry);
+    const target = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotedPostId } },
+    });
+    expect(target?.quotesCount).toBe(0);
+    const firstId = (sendActivity.mock.calls[0][2] as Update).id?.href;
+    for (const call of sendActivity.mock.calls) {
+      const activity = call[2] as Update;
+      expect(activity.id?.href).toBe(firstId);
+      const object = await activity.getObject();
+      const json = (await object!.toJsonLd()) as Record<string, unknown>;
+      expect(json).not.toHaveProperty("quoteUrl");
+      expect(json).not.toHaveProperty("quote");
+    }
+    expect(
+      await onQuoteRequestRejected(
+        requestCtx,
+        reject.clone({ actor: new URL("https://remote.test/@forged") }),
+      ),
+    ).toBe(false);
+    expect(
+      await onQuoteRequestRejected(
+        requestCtx,
+        reject.clone({
+          object: new QuoteRequest({
+            object: new URL("https://hollo.test/other-target"),
+            instrument: new URL(seeded.quotePostIri),
+          }),
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      await onQuoteRequestAccepted(
+        requestCtx,
+        new Accept({
+          actor: reject.actorId,
+          object:
+            reject.objectId ??
+            new QuoteRequest({
+              object: new URL(seeded.quotedPostIri),
+              instrument: new URL(seeded.quotePostIri),
+            }),
+          result: new URL(`${seeded.quotedPostIri}/authorization`),
+        }),
+      ),
+    ).toBe(false);
+    expect(sendActivity).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not clear an accepted quote in response to a late Reject", async () => {
+    const seeded = await seedPendingQuote();
+    await db
+      .update(posts)
+      .set({ quoteState: "accepted" })
+      .where(eq(posts.id, seeded.quotePostId));
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+    expect(
+      await onQuoteRequestRejected(
+        requestCtx,
+        new Reject({
+          actor: new URL("https://hollo.test/@quote-author"),
+          object: new QuoteRequest({
+            object: new URL(seeded.quotedPostIri),
+            instrument: new URL(seeded.quotePostIri),
+          }),
+        }),
+      ),
+    ).toBe(false);
+    expect(sendActivity).not.toHaveBeenCalled();
   });
 
   it("marks an accepted quote revoked when its authorization is deleted", async () => {
@@ -564,7 +765,7 @@ describe("quote request lifecycle", () => {
   });
 
   it("federates the quote update after authorization deletion", async () => {
-    expect.assertions(7);
+    expect.assertions(10);
 
     const seeded = await seedPendingQuote();
     const authorizationIri = `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
@@ -612,6 +813,10 @@ describe("quote request lifecycle", () => {
     const object = await (activity as Update).getObject();
     expect(object).toBeInstanceOf(Note);
     expect((object as Note).quoteAuthorizationId).toBeNull();
+    const json = (await object!.toJsonLd()) as Record<string, unknown>;
+    expect(json).not.toHaveProperty("quote");
+    expect(json).not.toHaveProperty("quoteUrl");
+    expect(json.content).not.toContain('class="quote-inline"');
   });
 
   it("marks an accepted quote revoked from a deleted authorization IRI", async () => {

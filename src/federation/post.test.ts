@@ -1354,9 +1354,18 @@ describe("toObject", () => {
     });
   });
 
-  it.each(["pending", "rejected", "revoked", "unauthorized"] as const)(
-    "omits quote fields for %s quotes",
-    async (quoteState) => {
+  it.each([
+    ["pending", "followers", "public"],
+    ["pending", "nobody", "public"],
+    ["pending", null, "public"],
+    ["pending", "public", "private"],
+    ["pending", "public", "direct"],
+    ["rejected", "public", "public"],
+    ["revoked", "public", "public"],
+    ["unauthorized", "public", "public"],
+  ] as const)(
+    "omits quote fields for %s quotes with %s policy on %s targets",
+    async (quoteState, quoteApprovalPolicy, visibility) => {
       expect.assertions(3);
 
       const account = await createAccount({ username: "quote-author" });
@@ -1369,7 +1378,8 @@ describe("toObject", () => {
           iri: "https://remote.test/objects/inactive-quote-target",
           type: "Note",
           accountId: account.id as Uuid,
-          visibility: "public",
+          visibility,
+          quoteApprovalPolicy,
           contentHtml: "<p>Quoted post</p>",
           content: "Quoted post",
           published: new Date(),
@@ -1382,6 +1392,7 @@ describe("toObject", () => {
           quoteTargetId: quotedPostId,
           quoteTargetIri: "https://remote.test/objects/inactive-quote-target",
           quoteState,
+          quoteApprovalPolicy: "public",
           visibility: "public",
           contentHtml: "<p>My inactive quote</p>",
           content: "My inactive quote",
@@ -1394,6 +1405,79 @@ describe("toObject", () => {
       expect(json).not.toHaveProperty("quote");
       expect(json).not.toHaveProperty("quoteUrl");
       expect(JSON.stringify(json)).not.toContain("inactive-quote-target");
+    },
+  );
+
+  it.each(["public", "unlisted"] as const)(
+    "publishes only quoteUrl while a %s target's automatic approval is pending",
+    async (visibility) => {
+      const account = await createAccount({ username: "quote-author" });
+      const quotedPostId = crypto.randomUUID() as Uuid;
+      const quotePostId = crypto.randomUUID() as Uuid;
+      const targetIri = "https://remote.test/objects/pending-target";
+      const storedIri = `${targetIri}?original`;
+      const targetUrl = "https://remote.test/@author/1";
+      const contentHtml =
+        visibility === "public"
+          ? "<p>My pending quote</p>"
+          : `<p>Read <a href="${targetUrl}">the original</a></p>`;
+      await db.insert(posts).values([
+        {
+          id: quotedPostId,
+          iri: targetIri,
+          url: targetUrl,
+          type: "Note",
+          accountId: account.id as Uuid,
+          visibility,
+          quoteApprovalPolicy: "public",
+          contentHtml: "<p>Quoted post</p>",
+          published: new Date(),
+        },
+        {
+          id: quotePostId,
+          iri: `https://hollo.test/@quote-author/${quotePostId}`,
+          type: "Note",
+          accountId: account.id as Uuid,
+          visibility: "public",
+          quoteTargetId: quotedPostId,
+          quoteTargetIri: visibility === "public" ? storedIri : null,
+          quoteState: "pending",
+          quoteApprovalPolicy: "nobody",
+          contentHtml,
+          language: "en",
+          tags: { example: "https://hollo.test/tags/example" },
+          published: new Date(),
+        },
+      ]);
+
+      const json = (await getObjectJson(quotePostId)) as Record<
+        string,
+        unknown
+      >;
+      expect(json.quoteUrl).toBe(
+        visibility === "public" ? storedIri : targetIri,
+      );
+      expect(json).not.toHaveProperty("quote");
+      expect(json).not.toHaveProperty("quoteAuthorization");
+      expect(json.content).toBe(contentHtml);
+      expect(json.contentMap).toEqual({ en: contentHtml });
+      const tags =
+        json.tag == null ? [] : Array.isArray(json.tag) ? json.tag : [json.tag];
+      expect(tags).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "Link", href: targetIri }),
+        ]),
+      );
+      expect(tags).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "Hashtag", name: "example" }),
+        ]),
+      );
+
+      // A retained IRI alone cannot establish the target's approval policy.
+      await db.delete(posts).where(eq(posts.id, quotedPostId));
+      const orphan = await getObjectJson(quotePostId);
+      expect(orphan).not.toHaveProperty("quoteUrl");
     },
   );
 
@@ -1466,6 +1550,36 @@ describe("persistPost quotes", () => {
     expect(persisted?.quoteTargetId).toBe(quotedPostId);
     expect(persisted?.quoteTargetIri).toBe(quotedPostIri);
     expect(persisted?.quoteState).toBe("accepted");
+  });
+
+  it("does not approve a quoteUrl-only remote quote based on public policy", async () => {
+    const author = await seedRemoteAccount("quote-author");
+    const quoter = await seedRemoteAccount("quote-quoter");
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = "https://remote.test/objects/legacy-pending-target";
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id,
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      published: new Date(),
+    });
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/legacy-pending-quote"),
+        attribution: createPerson(quoter),
+        quoteUrl: new URL(quotedPostIri),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Pending quote</p>",
+      }),
+      "https://hollo.test",
+    );
+    expect(persisted?.quoteTargetId).toBe(quotedPostId);
+    expect(persisted?.quoteState).toBe("unauthorized");
+    expect(persisted?.quoteAuthorizationIri).toBeNull();
   });
 
   it("does not accept quotes with forged quote authorization", async () => {
@@ -1619,6 +1733,26 @@ describe("persistPost quotes", () => {
     expect(persisted?.quoteState).toBe("accepted");
     expect(persisted?.quoteAuthorizationIri).toBeNull();
     expect(persisted?.contentHtml).toBe("<p>Updated quote</p>");
+  });
+
+  it("persists explicit public automatic quote approval", async () => {
+    const author = await seedRemoteAccount("quote-author");
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/public-quote-policy"),
+        attribution: createPerson(author),
+        interactionPolicy: new InteractionPolicy({
+          canQuote: new InteractionRule({
+            automaticApproval: PUBLIC_COLLECTION,
+          }),
+        }),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Public quote policy</p>",
+      }),
+      "https://hollo.test",
+    );
+    expect(persisted?.quoteApprovalPolicy).toBe("public");
   });
 
   it("stores no quote approval policy when no interaction policy exists", async () => {

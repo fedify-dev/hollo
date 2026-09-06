@@ -1036,9 +1036,15 @@ export function toObject(
     post.quoteState === "accepted";
   const quoteTarget = shouldPublishQuoteTarget ? post.quoteTarget : null;
   const contentHtml = addQuoteInlineFallback(post.contentHtml, quoteTarget);
-  const quoteTargetIri = shouldPublishQuoteTarget
-    ? (post.quoteTargetIri ?? post.quoteTarget?.iri)
-    : null;
+  const quoteTargetIri = post.quoteTargetIri ?? post.quoteTarget?.iri;
+  // An explicit public policy permits speculative legacy display, but is
+  // not an authorization: structured quotes and fallback stay gated above.
+  const shouldPublishQuoteUrl =
+    shouldPublishQuoteTarget ||
+    (post.quoteState === "pending" &&
+      post.quoteTarget?.quoteApprovalPolicy === "public" &&
+      (post.quoteTarget.visibility === "public" ||
+        post.quoteTarget.visibility === "unlisted"));
   return new cls({
     id: new URL(post.iri),
     attribution: new URL(post.account.iri),
@@ -1147,8 +1153,14 @@ export function toObject(
             height: medium.height,
           }),
     ),
-    quote: quoteTargetIri == null ? null : new URL(quoteTargetIri),
-    quoteUrl: quoteTargetIri == null ? null : new URL(quoteTargetIri),
+    quote:
+      shouldPublishQuoteTarget && quoteTargetIri != null
+        ? new URL(quoteTargetIri)
+        : null,
+    quoteUrl:
+      shouldPublishQuoteUrl && quoteTargetIri != null
+        ? new URL(quoteTargetIri)
+        : null,
     quoteAuthorization:
       post.quoteAuthorizationIri == null
         ? null
