@@ -99,7 +99,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/semver": "^7.8.0",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@unocss/cli": "^66.7.5",
+    "@unocss/cli": "^66.10.0",
     "@vitest/coverage-v8": "4.1.10",
     "concurrently": "^10.0.5",
     "linkedom": "^0.18.13",
@@ -109,7 +109,7 @@
     "timekeeper": "^2.3.1",
     "tsdown": "^0.22.3",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "unocss": "^66.7.5",
+    "unocss": "^66.10.0",
     "vitest": "^4.1.10"
   },
   "packageManager": "pnpm@11.21.0+sha512.521705bce689924eac72f5a3587122f362689ef6571e55ba80076fd637c11132ecffada26fad4ea79c485bfddbfd3d5a2a5b05805a77e893de71ec8a6cca3bb1"
