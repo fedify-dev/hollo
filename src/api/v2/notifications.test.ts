@@ -77,6 +77,45 @@ async function createNotification(
   return notification;
 }
 
+// Helper to create a grouped notification (notification + group)
+async function createGroupedNotification(
+  accountOwnerId: Uuid,
+  type: Schema.NotificationType,
+  actorAccountId: Uuid,
+  createdAt?: Date,
+): Promise<Schema.Notification> {
+  const id = crypto.randomUUID() as Uuid;
+  const created = createdAt ?? new Date();
+  const groupKey = `${accountOwnerId}:${type}:grouped-${id}`;
+
+  const [notification] = await db
+    .insert(Schema.notifications)
+    .values({
+      id,
+      accountOwnerId,
+      type,
+      actorAccountId,
+      groupKey,
+      created,
+    })
+    .returning();
+
+  await db.insert(Schema.notificationGroups).values({
+    groupKey,
+    accountOwnerId,
+    type,
+    notificationsCount: 1,
+    mostRecentNotificationId: id,
+    sampleAccountIds: [actorAccountId],
+    pageMinId: id,
+    pageMaxId: id,
+    created,
+    updated: created,
+  });
+
+  return notification;
+}
+
 describe.sequential("/api/v2/notifications", () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
@@ -120,6 +159,135 @@ describe.sequential("/api/v2/notifications", () => {
 
       const body = await response.json();
       expect(body.notification_groups).toHaveLength(0);
+    });
+
+    it("hides notification groups from blocked accounts", async () => {
+      expect.assertions(3);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      await createGroupedNotification(
+        account.id as Uuid,
+        "follow",
+        remoteAccount.id,
+      );
+
+      const responseBefore = await app.request("/api/v2/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect((await responseBefore.json()).notification_groups).toHaveLength(1);
+
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: remoteAccount.id,
+      });
+
+      const responseAfter = await app.request("/api/v2/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(responseAfter.status).toBe(200);
+      expect((await responseAfter.json()).notification_groups).toHaveLength(0);
+    });
+
+    it("keeps a group visible when a non-sampled actor is not hidden", async () => {
+      expect.assertions(4);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+
+      // Two actors like the same post: block actor A, leave actor B visible.
+      const blockedActor = await createRemoteAccount("blocked_actor");
+      const groupKey = `${account.id as Uuid}:favourite:${crypto.randomUUID()}`;
+      const created = new Date();
+
+      for (const [actorId, id] of [
+        [remoteAccount.id, crypto.randomUUID() as Uuid],
+        [blockedActor.id, crypto.randomUUID() as Uuid],
+      ]) {
+        await db.insert(Schema.notifications).values({
+          id,
+          accountOwnerId: account.id as Uuid,
+          type: "favourite",
+          actorAccountId: actorId,
+          groupKey,
+          created,
+        });
+      }
+
+      // The cached sample only contains the blocked actor, which is what
+      // `sampleAccountIds` would hold after the cap logic.  The group must
+      // still resolve the visible actor B from its notifications.
+      await db.insert(Schema.notificationGroups).values({
+        groupKey,
+        accountOwnerId: account.id as Uuid,
+        type: "favourite",
+        notificationsCount: 2,
+        sampleAccountIds: [blockedActor.id],
+        created,
+        updated: created,
+      });
+
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: blockedActor.id,
+      });
+
+      const response = await app.request("/api/v2/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.notification_groups).toHaveLength(1);
+      expect(body.notification_groups[0].sample_account_ids).toEqual([
+        remoteAccount.id,
+      ]);
+      // The blocked actor must be excluded from the count too.
+      expect(body.notification_groups[0].notifications_count).toBe(1);
+    });
+
+    it("keeps only the visible actors of a partially hidden cached sample", async () => {
+      expect.assertions(3);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+
+      const blockedActor = await createRemoteAccount("blocked_actor");
+      // A follow group whose cached sample has both a visible and a blocked
+      // actor; the blocked actor must be filtered without needing a lookup.
+      const groupKey = `${account.id as Uuid}:follow:${crypto.randomUUID()}`;
+      const created = new Date();
+      await db.insert(Schema.notificationGroups).values({
+        groupKey,
+        accountOwnerId: account.id as Uuid,
+        type: "follow",
+        notificationsCount: 2,
+        sampleAccountIds: [remoteAccount.id, blockedActor.id],
+        created,
+        updated: created,
+      });
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: blockedActor.id,
+      });
+
+      const response = await app.request("/api/v2/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.notification_groups).toHaveLength(1);
+      expect(body.notification_groups[0].sample_account_ids).toEqual([
+        remoteAccount.id,
+      ]);
     });
   });
 
@@ -176,6 +344,141 @@ describe.sequential("/api/v2/notifications", () => {
         expires.toISOString(),
       );
       expect(body.statuses[0].id).toBe(postId);
+    });
+
+    it("drops a poll group whose post author is blocked", async () => {
+      expect.assertions(3);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      const blockedActor = await createRemoteAccount("blocked_poll_author");
+
+      // A poll post authored by a remote account that the owner has blocked.
+      const postId = crypto.randomUUID() as Uuid;
+      const postIri = `https://remote.test/@blocked_poll_author/${postId}`;
+      await db.insert(Schema.posts).values({
+        id: postId,
+        iri: postIri,
+        type: "Question",
+        accountId: blockedActor.id,
+        visibility: "public",
+        contentHtml: "<p>Which option?</p>",
+        content: "Which option?",
+        published: new Date(),
+      });
+
+      // A poll notification group targeting that post (no actor).
+      const notificationId = crypto.randomUUID() as Uuid;
+      const groupKey = `${account.id as Uuid}:poll:${crypto.randomUUID()}`;
+      const created = new Date();
+      await db.insert(Schema.notifications).values({
+        id: notificationId,
+        accountOwnerId: account.id as Uuid,
+        type: "poll",
+        targetPostId: postId,
+        groupKey,
+        created,
+      });
+      await db.insert(Schema.notificationGroups).values({
+        groupKey,
+        accountOwnerId: account.id as Uuid,
+        type: "poll",
+        targetPostId: postId,
+        notificationsCount: 1,
+        mostRecentNotificationId: notificationId,
+        sampleAccountIds: [],
+        created,
+        updated: created,
+      });
+
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: blockedActor.id,
+      });
+
+      const response = await app.request("/api/v2/notifications?types[]=poll", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+      expect(body.notification_groups).toHaveLength(0);
+      // The blocked author's post must not leak into the statuses list either.
+      expect(body.statuses).toHaveLength(0);
+    });
+  });
+
+  describe("unread_count", () => {
+    it("excludes unread notifications from blocked accounts", async () => {
+      expect.assertions(3);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      await createGroupedNotification(
+        account.id as Uuid,
+        "follow",
+        remoteAccount.id,
+      );
+
+      const before = await app.request("/api/v2/notifications/unread_count", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect((await before.json()).count).toBe(1);
+
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: remoteAccount.id,
+      });
+
+      const after = await app.request("/api/v2/notifications/unread_count", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(after.status).toBe(200);
+      expect((await after.json()).count).toBe(0);
+    });
+
+    it("still counts unread notifications from accounts muted without hiding notifications", async () => {
+      expect.assertions(3);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      await createGroupedNotification(
+        account.id as Uuid,
+        "follow",
+        remoteAccount.id,
+      );
+
+      // A mute that does not hide notifications must not reduce the count.
+      await db.insert(Schema.mutes).values({
+        id: crypto.randomUUID() as Uuid,
+        accountId: account.id as Uuid,
+        mutedAccountId: remoteAccount.id,
+        notifications: false,
+      });
+
+      const response = await app.request("/api/v2/notifications/unread_count", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(response.status).toBe(200);
+      expect((await response.json()).count).toBe(1);
+
+      // A mute that hides notifications must reduce the count to zero.
+      await db.update(Schema.mutes).set({ notifications: true });
+      const response2 = await app.request(
+        "/api/v2/notifications/unread_count",
+        {
+          method: "GET",
+          headers: { authorization: bearerAuthorization(accessToken) },
+        },
+      );
+      expect((await response2.json()).count).toBe(0);
     });
   });
 });

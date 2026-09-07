@@ -18,6 +18,7 @@ import {
 } from "../../oauth/middleware";
 import { notificationTypeEnum, type NotificationType } from "../../schema";
 import type { Uuid } from "../../uuid";
+import { getHiddenNotificationAccountIds } from "../visibility";
 
 const logger = getLogger(["hollo", "notifications"]);
 
@@ -118,6 +119,10 @@ app.get(
     types = types.filter((t) => !excludeTypes?.includes(t));
 
     const startTime = performance.now();
+
+    // Accounts whose notifications should be hidden (blocked, or muted with
+    // notifications hidden).
+    const hiddenAccountIds = await getHiddenNotificationAccountIds(owner.id);
 
     // Use new notifications table for much better performance
     const notificationsData = await db.query.notifications.findMany({
@@ -233,6 +238,12 @@ app.get(
     }
 
     const serialized = allNotifications
+      .filter((n) => {
+        // Poll notifications have no actor; their account is the post author.
+        const accountId =
+          n.type === "poll" ? n.targetPost?.accountId : n.actorAccountId;
+        return accountId == null || !hiddenAccountIds.has(accountId);
+      })
       .map((n) => {
         const created_at = n.created.toISOString();
         const account = n.actorAccount;

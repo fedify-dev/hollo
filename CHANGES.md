@@ -6,6 +6,14 @@ Version 0.9.18
 
 To be released.
 
+ -  Fixed notifications from blocked accounts, and from accounts muted with
+    notifications hidden, remaining visible in the notifications lists (both
+    the v1 and v2 endpoints) after the block or mute was created.
+
+    [[#608]]
+
+[#608]: https://github.com/fedify-dev/hollo/issues/608
+
 
 Version 0.9.17
 --------------
