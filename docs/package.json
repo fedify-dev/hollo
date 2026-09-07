@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",
-    "@astrojs/starlight": "^0.41.4",
+    "@astrojs/starlight": "^0.42.0",
     "@iconify-json/lucide": "^1.2.126",
-    "astro": "^7.1.0",
+    "astro": "^7.3.1",
     "astro-icon": "^1.1.5",
     "sharp": "^0.35.2",
     "typescript": "^6.0.3",
