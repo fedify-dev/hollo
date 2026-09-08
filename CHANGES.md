@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.18
 --------------
 
-To be released.
+Released on September 8, 2026.
 
  -  Fixed notifications from blocked accounts, and from accounts muted with
     notifications hidden, remaining visible in the notifications lists (both
