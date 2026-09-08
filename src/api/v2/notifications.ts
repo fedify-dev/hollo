@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { db } from "../../db";
@@ -22,6 +22,11 @@ import {
   type NotificationType,
 } from "../../schema";
 import type { Uuid } from "../../uuid";
+import {
+  getBlockedAccountIdsSubquery,
+  getHiddenNotificationAccountIds,
+  getMutedAccountIdsSubquery,
+} from "../visibility";
 
 const logger = getLogger(["hollo", "api", "v2", "notifications"]);
 
@@ -88,6 +93,10 @@ app.get(
 
     const startTime = performance.now();
 
+    // Accounts whose notifications should be hidden (blocked, or muted with
+    // notifications hidden).
+    const hiddenAccountIds = await getHiddenNotificationAccountIds(owner.id);
+
     const paginationConditions = [];
 
     // Pagination conditions
@@ -128,13 +137,115 @@ app.get(
       },
     );
 
+    // Determine each group's visibility and its visible sample actors.
+    // Fast path: when nothing is hidden, every group and its cached sample
+    // are already correct and no extra queries are needed.  Slow path: when
+    // some accounts are hidden, filter the cached sample and, for groups
+    // whose sample is fully hidden, look up their notifications (excluding
+    // hidden actors) to find any remaining visible actor — the cached sample
+    // is capped at ten, so it is not exhaustive.
+    const visibleGroups: (typeof groups)[number][] = [];
+    const visibleSampleAccountIds = new Map<string, Uuid[]>();
+    let visibleCounts: Map<string, number> | null = null;
+
+    if (hiddenAccountIds.size < 1) {
+      for (const group of groups) {
+        visibleGroups.push(group);
+        visibleSampleAccountIds.set(group.groupKey, group.sampleAccountIds);
+      }
+    } else {
+      const needsLookup: string[] = [];
+      for (const group of groups) {
+        if (group.type === "poll") {
+          // Poll notifications have no actor; visibility is resolved against
+          // the poll's post author once posts are fetched below.
+          visibleGroups.push(group);
+          visibleSampleAccountIds.set(group.groupKey, group.sampleAccountIds);
+          continue;
+        }
+        const filteredSample = group.sampleAccountIds.filter(
+          (id) => !hiddenAccountIds.has(id),
+        );
+        if (filteredSample.length > 0) {
+          visibleGroups.push(group);
+          visibleSampleAccountIds.set(group.groupKey, filteredSample);
+        } else {
+          needsLookup.push(group.groupKey);
+        }
+      }
+
+      if (needsLookup.length > 0) {
+        // Query per group with its own limit so a single large group cannot
+        // starve the others out of the shared row budget.
+        const perGroup = await Promise.all(
+          needsLookup.map((groupKey) =>
+            db.query.notifications.findMany({
+              where: {
+                groupKey: { eq: groupKey },
+                actorAccountId: { notIn: [...hiddenAccountIds] },
+              },
+              orderBy: (notifications, { desc }) => [
+                desc(notifications.created),
+              ],
+              limit: 10,
+            }),
+          ),
+        );
+        for (let i = 0; i < needsLookup.length; i++) {
+          const notifications2 = perGroup[i];
+          const visibleActorIds: Uuid[] = [];
+          for (const notification of notifications2) {
+            if (notification.actorAccountId == null) continue;
+            if (!visibleActorIds.includes(notification.actorAccountId)) {
+              visibleActorIds.push(notification.actorAccountId);
+            }
+          }
+          if (visibleActorIds.length < 1) continue;
+          const group = groups.find((g) => g.groupKey === needsLookup[i]);
+          if (group == null) continue;
+          visibleGroups.push(group);
+          visibleSampleAccountIds.set(group.groupKey, visibleActorIds);
+        }
+      }
+
+      // Recompute per-group counts so hidden actors are not leaked through
+      // `notifications_count`.  Poll groups keep their stored count.
+      const groupKeys = groups.map((g) => g.groupKey);
+      const countRows =
+        groupKeys.length > 0
+          ? await db
+              .select({
+                groupKey: notifications.groupKey,
+                count: sql<number>`COUNT(*)::integer`,
+              })
+              .from(notifications)
+              .where(
+                and(
+                  inArray(notifications.groupKey, groupKeys),
+                  or(
+                    sql`${notifications.actorAccountId} IS NULL`,
+                    and(
+                      sql`${notifications.actorAccountId} NOT IN (${getBlockedAccountIdsSubquery(owner.id)})`,
+                      sql`${notifications.actorAccountId} NOT IN (${getMutedAccountIdsSubquery(owner.id, true)})`,
+                    ),
+                  ),
+                ),
+              )
+              .groupBy(notifications.groupKey)
+          : [];
+      visibleCounts = new Map(
+        countRows.map((r) => [r.groupKey, r.count] as const),
+      );
+    }
+
     // Collect all account IDs, post IDs, and notification IDs to fetch
     const accountIds = new Set<string>();
     const postIds = new Set<string>();
     const notificationIds = new Set<string>();
 
-    for (const group of groups) {
-      for (const accountId of group.sampleAccountIds) {
+    for (const group of visibleGroups) {
+      for (const accountId of visibleSampleAccountIds.get(group.groupKey) ??
+        []) {
         accountIds.add(accountId);
       }
       if (group.targetPostId != null) {
@@ -194,21 +305,37 @@ app.get(
           ),
     );
 
-    // Serialize statuses for deduplication
-    const serializedStatuses = postsData.map((post) =>
-      serializePost(post, owner, c.req.url),
+    // Drop poll groups whose post author is hidden.  Poll notifications carry
+    // no actor, so their displayed account is the post author, and they must
+    // not remain visible when that author is blocked or notification-muted.
+    const finalVisibleGroups = visibleGroups.filter((group) => {
+      if (group.type !== "poll") return true;
+      const post = group.targetPostId ? postsMap.get(group.targetPostId) : null;
+      return post == null || !hiddenAccountIds.has(post.accountId);
+    });
+
+    // Serialize statuses for deduplication, restricted to posts referenced by
+    // a surviving (visible) group so hidden poll authors' posts are not leaked.
+    const visibleTargetPostIds = new Set(
+      finalVisibleGroups.flatMap((g) =>
+        g.targetPostId != null ? [g.targetPostId] : [],
+      ),
     );
+    const serializedStatuses = postsData
+      .filter((post) => visibleTargetPostIds.has(post.id))
+      .map((post) => serializePost(post, owner, c.req.url));
 
     // Serialize notification groups
-    const notificationGroupsData = groups.map((group) => {
+    const notificationGroupsData = finalVisibleGroups.map((group) => {
       const targetPost = group.targetPostId
         ? postsMap.get(group.targetPostId)
         : null;
 
-      // Get sample account IDs
-      const sampleAccountIds = group.sampleAccountIds.filter((id) =>
-        accountsMap.has(id),
-      );
+      // Get the visible sample account IDs, keeping those that resolve
+      // against fetched accounts.
+      const sampleAccountIds = (
+        visibleSampleAccountIds.get(group.groupKey) ?? group.sampleAccountIds
+      ).filter((id) => accountsMap.has(id));
 
       const notificationId = group.mostRecentNotificationId;
       // Use the actual notification's created time for the composite ID
@@ -224,7 +351,8 @@ app.get(
 
       return {
         group_key: group.groupKey,
-        notifications_count: group.notificationsCount,
+        notifications_count:
+          visibleCounts?.get(group.groupKey) ?? group.notificationsCount,
         type: group.type,
         most_recent_notification_id:
           notificationId != null
@@ -247,7 +375,10 @@ app.get(
       ms: Math.round(afterSerialization - afterDataQuery),
     });
 
-    // Build pagination links
+    // Build pagination links.  These are based on the *unfiltered* `groups`
+    // so that filtering hidden groups out of the response does not break
+    // pagination: a page whose visible groups are fewer than `limit` must
+    // still expose `rel="next"` when more (possibly hidden) groups follow.
     let nextLink: URL | null = null;
     let prevLink: URL | null = null;
 
@@ -307,7 +438,9 @@ app.get(
       1000,
     );
 
-    // Count unread notifications (notifications without readAt)
+    // Count unread notifications (notifications without readAt), excluding
+    // notifications from hidden accounts (blocked, or muted with notifications
+    // hidden).
     const result = await db
       .select({
         count: sql<number>`CAST(COUNT(DISTINCT ${notificationGroups.groupKey}) AS INTEGER)`,
@@ -321,6 +454,13 @@ app.get(
         and(
           eq(notificationGroups.accountOwnerId, owner.id),
           sql`${notifications.readAt} IS NULL`,
+          or(
+            sql`${notifications.actorAccountId} IS NULL`,
+            and(
+              sql`${notifications.actorAccountId} NOT IN (${getBlockedAccountIdsSubquery(owner.id)})`,
+              sql`${notifications.actorAccountId} NOT IN (${getMutedAccountIdsSubquery(owner.id, true)})`,
+            ),
+          ),
         ),
       )
       .limit(limit);

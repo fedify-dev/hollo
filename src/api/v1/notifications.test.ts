@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
@@ -364,6 +365,78 @@ describe.sequential("/api/v1/notifications", () => {
       const body = await response.json();
       expect(body).toHaveLength(0);
     });
+
+    it("hides notifications from blocked accounts", async () => {
+      expect.assertions(3);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      await createNotification(account.id as Uuid, "follow", remoteAccount.id);
+
+      const responseBefore = await app.request("/api/v1/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(await responseBefore.json()).toHaveLength(1);
+
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: remoteAccount.id,
+      });
+
+      const responseAfter = await app.request("/api/v1/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(responseAfter.status).toBe(200);
+      expect(await responseAfter.json()).toHaveLength(0);
+    });
+
+    it("hides notifications from accounts muted with notifications hidden", async () => {
+      expect.assertions(4);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      await createNotification(account.id as Uuid, "follow", remoteAccount.id);
+
+      // A mute that hides notifications (notifications=true) hides the
+      // notification.
+      await db.insert(Schema.mutes).values({
+        id: crypto.randomUUID() as Uuid,
+        accountId: account.id as Uuid,
+        mutedAccountId: remoteAccount.id,
+        notifications: true,
+      });
+
+      const responseMuted = await app.request("/api/v1/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(await responseMuted.json()).toHaveLength(0);
+
+      // A mute that does not hide notifications (notifications=false) does
+      // not hide the notification.
+      await db
+        .update(Schema.mutes)
+        .set({ notifications: false })
+        .where(
+          and(
+            eq(Schema.mutes.accountId, account.id as Uuid),
+            eq(Schema.mutes.mutedAccountId, remoteAccount.id),
+          ),
+        );
+
+      const responseNotified = await app.request("/api/v1/notifications", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(responseNotified.status).toBe(200);
+      const body = await responseNotified.json();
+      expect(body).toHaveLength(1);
+      expect(body[0].type).toBe("follow");
+    });
   });
 
   describe("Poll notifications", () => {
@@ -423,6 +496,49 @@ describe.sequential("/api/v1/notifications", () => {
         `${expires.toISOString()}/poll/${notification?.id}`,
       );
       expect(notifications[0].type).toBe("poll");
+    });
+
+    it("hides a poll notification whose post author is blocked", async () => {
+      expect.assertions(2);
+
+      const accessToken = await getAccessToken(client, account, [
+        "read:notifications",
+      ]);
+      const blockedActor = await createRemoteAccount("blocked_poll_author");
+
+      const postId = crypto.randomUUID() as Uuid;
+      const postIri = `https://remote.test/@blocked_poll_author/${postId}`;
+      await db.insert(Schema.posts).values({
+        id: postId,
+        iri: postIri,
+        type: "Question",
+        accountId: blockedActor.id,
+        visibility: "public",
+        contentHtml: "<p>Which option?</p>",
+        content: "Which option?",
+        url: postIri,
+      });
+
+      await db.insert(Schema.notifications).values({
+        id: crypto.randomUUID() as Uuid,
+        accountOwnerId: account.id as Uuid,
+        type: "poll",
+        targetPostId: postId,
+        groupKey: `poll-${crypto.randomUUID()}`,
+        created: new Date(),
+      });
+
+      await db.insert(Schema.blocks).values({
+        accountId: account.id as Uuid,
+        blockedAccountId: blockedActor.id,
+      });
+
+      const response = await app.request("/api/v1/notifications?types[]=poll", {
+        method: "GET",
+        headers: { authorization: bearerAuthorization(accessToken) },
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toHaveLength(0);
     });
   });
 
