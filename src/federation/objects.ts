@@ -28,6 +28,7 @@ import { toTemporalInstant } from "./date";
 import { toEmoji } from "./emoji";
 import { federation } from "./federation";
 import { toObject } from "./post";
+import { createRepliesQueryCache } from "./replies-cache";
 
 const EMOJI_REACTIONS_COLLECTION = "emojiReactions";
 const EMOJI_REACTIONS_PAGE_SIZE = 40;
@@ -65,11 +66,12 @@ type LocalPostForAuthorization = Post & {
 async function canFetchLocalPost(
   ctx: RequestContext<unknown>,
   post: LocalPostForAuthorization,
+  getKeyOwner = () => ctx.getSignedKeyOwner(),
 ): Promise<boolean> {
   if (post.visibility !== "private" && post.visibility !== "direct") {
     return true;
   }
-  const keyOwner = await ctx.getSignedKeyOwner();
+  const keyOwner = await getKeyOwner();
   const keyOwnerId = keyOwner?.id;
   if (keyOwnerId == null) return false;
   if (post.mentions.some((m) => m.account.iri === keyOwnerId.href)) {
@@ -115,22 +117,91 @@ async function findAuthorizedLocalPost(
   return (await canFetchLocalPost(ctx, post)) ? post : null;
 }
 
-async function authorizeLocalPostResource(
+type RepliesAccess = {
+  post: LocalPostForAuthorization | null;
+  authorized: boolean;
+};
+
+type RepliesRequestState = {
+  access: Map<string, Promise<RepliesAccess>>;
+  getKeyOwner: RequestContext<unknown>["getSignedKeyOwner"];
+  visibility?: Promise<Awaited<ReturnType<typeof getPostVisibilityScope>>>;
+};
+
+const repliesRequests = new WeakMap<
+  RequestContext<unknown>,
+  RepliesRequestState
+>();
+export const repliesQueryCache =
+  createRepliesQueryCache<LocalPostForAuthorization | null>();
+
+function getRepliesRequestState(
   ctx: RequestContext<unknown>,
-  values: Record<"username" | "id", string>,
-): Promise<boolean> {
-  const post = await findLocalPostForAuthorization(values);
-  return post == null || (await canFetchLocalPost(ctx, post));
+): RepliesRequestState {
+  let state = repliesRequests.get(ctx);
+  if (state == null) {
+    let keyOwner:
+      | ReturnType<RequestContext<unknown>["getSignedKeyOwner"]>
+      | undefined;
+    state = {
+      access: new Map(),
+      getKeyOwner: () =>
+        (keyOwner ??= Promise.resolve().then(() => ctx.getSignedKeyOwner())),
+    };
+    repliesRequests.set(ctx, state);
+  }
+  return state;
 }
 
-async function getRequestPostVisibilityScope(ctx: RequestContext<unknown>) {
-  const keyOwner = await ctx.getSignedKeyOwner();
-  const keyOwnerId = keyOwner?.id;
-  if (keyOwnerId == null) return getPostVisibilityScope(null);
-  const account = await db.query.accounts.findFirst({
-    where: { iri: { eq: keyOwnerId.href } },
-  });
-  return getPostVisibilityScope(account?.id);
+async function getRepliesAccess(
+  ctx: RequestContext<unknown>,
+  values: RepliesCollectionValues,
+): Promise<RepliesAccess> {
+  if (!values.id.match(/^[-a-f0-9]+$/) || !isUuid(values.id)) {
+    return { post: null, authorized: false };
+  }
+  const state = getRepliesRequestState(ctx);
+  const key = JSON.stringify([values.username, values.id]);
+  let access = state.access.get(key);
+  if (access == null) {
+    access = Promise.resolve().then(async () => {
+      const post = await repliesQueryCache.loadRoot(key, () =>
+        findLocalPostForAuthorization(values),
+      );
+      return {
+        post,
+        authorized:
+          post != null &&
+          (await canFetchLocalPost(ctx, post, state.getKeyOwner)),
+      };
+    });
+    state.access.set(key, access);
+  }
+  return access;
+}
+
+async function authorizeLocalPostResource(
+  ctx: RequestContext<unknown>,
+  values: Record<string, string>,
+): Promise<boolean> {
+  const { username, id } = values;
+  if (username == null || id == null) return true;
+  const { post, authorized } = await getRepliesAccess(ctx, { username, id });
+  // Let Fedify dispatch missing roots to its not-found handler.
+  return post == null || authorized;
+}
+
+function getRequestPostVisibilityScope(ctx: RequestContext<unknown>) {
+  const state = getRepliesRequestState(ctx);
+  return (state.visibility ??= Promise.resolve().then(async () => {
+    const keyOwner = await state.getKeyOwner();
+    const keyOwnerId = keyOwner?.id;
+    if (keyOwnerId == null) return getPostVisibilityScope(null);
+    const account = await db.query.accounts.findFirst({
+      where: { iri: { eq: keyOwnerId.href } },
+    });
+    return getPostVisibilityScope(account?.id);
+  }));
 }
 
 type RepliesCollectionValues = Record<"username" | "id", string>;
@@ -143,8 +214,8 @@ export async function dispatchRepliesCollection(
   if (cursor == null || !cursor.match(/^\d+$/)) return null;
   const offset = Number.parseInt(cursor, 10);
   if (!Number.isSafeInteger(offset) || offset < 0) return null;
-  const post = await findAuthorizedLocalPost(ctx, values);
-  if (post == null) return null;
+  const { post, authorized } = await getRepliesAccess(ctx, values);
+  if (post == null || !authorized) return null;
   const visibilityScope = await getRequestPostVisibilityScope(ctx);
   const rows = await db.query.posts.findMany({
     columns: { iri: true },
@@ -174,20 +245,35 @@ export async function countRepliesCollection(
   ctx: RequestContext<unknown>,
   values: RepliesCollectionValues,
 ) {
-  const post = await findAuthorizedLocalPost(ctx, values);
-  if (post == null) return null;
+  const { post, authorized } = await getRepliesAccess(ctx, values);
+  if (post == null || !authorized) return null;
   const visibilityScope = await getRequestPostVisibilityScope(ctx);
-  const result = await db
-    .select({ cnt: count() })
-    .from(posts)
-    .where(
-      and(
-        eq(posts.replyTargetId, post.id),
-        buildPostVisibilityConditions(visibilityScope),
-      ),
-    );
-  if (result.length < 1) return 0;
-  return result[0].cnt;
+  const load = async () => {
+    const result = await db
+      .select({ cnt: count() })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.replyTargetId, post.id),
+          buildPostVisibilityConditions(visibilityScope),
+        ),
+      );
+    return result[0]?.cnt ?? 0;
+  };
+  const request = ctx.request;
+  if (
+    post.visibility === "public" &&
+    request != null &&
+    request.method === "GET" &&
+    !new URL(request.url).searchParams.has("cursor") &&
+    !["Signature", "Signature-Input", "Authorization"].some((header) =>
+      request.headers.has(header),
+    ) &&
+    (await getRepliesRequestState(ctx).getKeyOwner()) == null
+  ) {
+    return repliesQueryCache.loadCount(post.id, load);
+  }
+  return load();
 }
 
 federation.setObjectDispatcher(
@@ -228,8 +314,8 @@ federation
     "/@{username}/{id}/replies",
     dispatchRepliesCollection,
   )
-  .setFirstCursor(async (_ctx, values) =>
-    (await findLocalPostForAuthorization(values)) == null ? null : "0",
+  .setFirstCursor(async (ctx, values) =>
+    (await getRepliesAccess(ctx, values)).post == null ? null : "0",
   )
   .setCounter(countRepliesCollection)
   .authorize(authorizeLocalPostResource);

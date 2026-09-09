@@ -42,7 +42,7 @@ To be released.
     advertise paginated `replies` collections at
     `/@{username}/{id}/replies` instead of embedding replies inline.  The
     collections apply signed-fetch visibility rules so each requester sees
-    only replies they are allowed to access.
+    only replies they are allowed to access.  [[#609]]
 
  -  Public profile pages now make moved accounts more obvious by showing the
     successor account at the top of the profile card and muting the old
@@ -86,6 +86,7 @@ To be released.
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 [#602]: https://github.com/fedify-dev/hollo/issues/602
+[#609]: https://github.com/fedify-dev/hollo/issues/609
 
 
 Version 0.9.18

@@ -1,6 +1,7 @@
 import type { RequestContext } from "@fedify/fedify";
 import { Person } from "@fedify/vocab";
-import { beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../tests/helpers";
 import { createAccount } from "../../tests/helpers/oauth";
@@ -16,14 +17,18 @@ import {
   posts,
 } from "../schema";
 import { type Uuid, uuidv7 } from "../uuid";
-import { countRepliesCollection, dispatchRepliesCollection } from "./objects";
+import {
+  countRepliesCollection,
+  dispatchRepliesCollection,
+  repliesQueryCache,
+} from "./objects";
 
 const ACTIVITY_JSON = "application/activity+json";
 
-function activityRequest(path: string) {
+function activityRequest(path: string, headers: Record<string, string> = {}) {
   return app.request(
     new Request(new URL(path, "https://hollo.test"), {
-      headers: { Accept: ACTIVITY_JSON },
+      headers: { Accept: ACTIVITY_JSON, ...headers },
     }),
   );
 }
@@ -90,8 +95,12 @@ async function createRemoteAccount(username: string) {
   return { id, iri };
 }
 
-function requestContext(keyOwnerIri: string | null): RequestContext<unknown> {
+function requestContext(
+  keyOwnerIri: string | null,
+  request = new Request("https://hollo.test/replies"),
+): RequestContext<unknown> {
   return {
+    request,
     getSignedKeyOwner: async () =>
       keyOwnerIri == null ? null : new Person({ id: new URL(keyOwnerIri) }),
     getCollectionUri: (
@@ -122,6 +131,7 @@ describe("replies collection", () => {
   let accountId: string;
 
   beforeEach(async () => {
+    repliesQueryCache.clear();
     await cleanDatabase();
     const account = await createAccount({ generateKeyPair: true });
     accountId = account.id;
@@ -138,6 +148,322 @@ describe("replies collection", () => {
       expect(body.replies).toBe(`https://hollo.test/@hollo/${postId}/replies`);
     },
   );
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("bounds database work for bare and page requests", async () => {
+    const rootId = await createPost(accountId);
+    const queries = vi.spyOn(db.$client, "unsafe");
+    const bare = await activityRequest(`/@hollo/${rootId}/replies`);
+    expect(bare.status).toBe(200);
+    expect(queries).toHaveBeenCalledTimes(3);
+    queries.mockClear();
+    const repeated = await activityRequest(`/@hollo/${rootId}/replies`);
+    expect(repeated.status).toBe(200);
+    expect(queries).toHaveBeenCalledTimes(2);
+    queries.mockClear();
+    const page = await activityRequest(`/@hollo/${rootId}/replies?cursor=0`);
+    expect(page.status).toBe(200);
+    expect(queries).toHaveBeenCalledTimes(3);
+  });
+
+  it("coalesces overlapping HTTP root reads and counts", async () => {
+    const rootId = await createPost(accountId);
+    const rootsReady = Promise.withResolvers<void>();
+    const countsReady = Promise.withResolvers<void>();
+    const loadRoot = repliesQueryCache.loadRoot.bind(repliesQueryCache);
+    const loadCount = repliesQueryCache.loadCount.bind(repliesQueryCache);
+    const roots = vi
+      .spyOn(repliesQueryCache, "loadRoot")
+      .mockImplementation((key, load) =>
+        loadRoot(key, async () => {
+          await rootsReady.promise;
+          return load();
+        }),
+      );
+    const counts = vi
+      .spyOn(repliesQueryCache, "loadCount")
+      .mockImplementation((key, load) =>
+        loadCount(key, async () => {
+          await countsReady.promise;
+          return load();
+        }),
+      );
+    const queries = vi.spyOn(db.$client, "unsafe");
+    const requests = Array.from({ length: 10 }, () =>
+      activityRequest(`/@hollo/${rootId}/replies`),
+    );
+    try {
+      await vi.waitFor(() => expect(roots).toHaveBeenCalledTimes(10));
+      rootsReady.resolve();
+      await vi.waitFor(() => expect(counts).toHaveBeenCalledTimes(10));
+      countsReady.resolve();
+      const responses = await Promise.all(requests);
+      expect(responses.map((response) => response.status)).toEqual(
+        Array(10).fill(200),
+      );
+      expect(queries).toHaveBeenCalledTimes(3);
+    } finally {
+      rootsReady.resolve();
+      countsReady.resolve();
+      await Promise.allSettled(requests);
+    }
+  });
+
+  it.each([
+    ["abc", "hollo", 0, 404],
+    ["missing-post", "hollo", 2, 404],
+    ["missing-post", "missing-owner", 1, 404],
+    ["private", "hollo", 2, 401],
+    ["direct", "hollo", 2, 401],
+  ] as const)(
+    "bounds rejected requests for %s/%s",
+    async (kind, username, sqlCount, status) => {
+      const id =
+        kind === "abc"
+          ? "abc"
+          : kind === "missing-post"
+            ? uuidv7()
+            : await createPost(accountId, { visibility: kind });
+      const queries = vi.spyOn(db.$client, "unsafe");
+      const rootLoads = vi.spyOn(repliesQueryCache, "loadRoot");
+      for (const suffix of ["", "?cursor=0"]) {
+        queries.mockClear();
+        const response = await activityRequest(
+          `/@${username}/${id}/replies${suffix}`,
+        );
+        expect(response.status).toBe(status);
+        expect(queries).toHaveBeenCalledTimes(sqlCount);
+      }
+      expect(rootLoads).toHaveBeenCalledTimes(kind === "abc" ? 0 : 2);
+    },
+  );
+
+  it("does not load replies for invalid cursors", async () => {
+    const id = await createPost(accountId);
+    const queries = vi.spyOn(db.$client, "unsafe");
+    const response = await activityRequest(
+      `/@hollo/${id}/replies?cursor=invalid`,
+    );
+    expect(response.status).toBe(404);
+    expect(queries).toHaveBeenCalledTimes(2);
+    queries.mockClear();
+    await expect(
+      dispatchRepliesCollection(
+        requestContext(null),
+        { username: "hollo", id },
+        "invalid",
+      ),
+    ).resolves.toBeNull();
+    expect(queries).not.toHaveBeenCalled();
+  });
+
+  it("keeps unlisted roots live and separates different public roots", async () => {
+    const publicId = await createPost(accountId);
+    const otherId = await createPost(accountId);
+    const unlistedId = await createPost(accountId, { visibility: "unlisted" });
+    const queries = vi.spyOn(db.$client, "unsafe");
+    for (const [id, expected] of [
+      [publicId, 3],
+      [publicId, 2],
+      [otherId, 3],
+      [unlistedId, 3],
+      [unlistedId, 3],
+    ] as const) {
+      queries.mockClear();
+      const response = await activityRequest(`/@hollo/${id}/replies`);
+      expect(response.status).toBe(200);
+      expect(queries).toHaveBeenCalledTimes(expected);
+    }
+  });
+
+  it.each(["Signature", "Signature-Input", "Authorization"])(
+    "bypasses cached counts with a present %s header, including empty values",
+    async (header) => {
+      const id = await createPost(accountId);
+      const values = { username: "hollo", id };
+      const url = `https://hollo.test/@hollo/${id}/replies`;
+      const ctx = () => requestContext(null, new Request(url));
+      await expect(countRepliesCollection(ctx(), values)).resolves.toBe(0);
+      await createPost(accountId, { replyTargetId: id });
+      for (const value of ["", "test"]) {
+        const signed = requestContext(
+          null,
+          new Request(url, { headers: { [header]: value } }),
+        );
+        await expect(countRepliesCollection(signed, values)).resolves.toBe(1);
+      }
+      // Header-bearing requests neither read nor replace the anonymous entry.
+      await expect(countRepliesCollection(ctx(), values)).resolves.toBe(0);
+    },
+  );
+
+  it("does not share an invalid signed HTTP request's count or reach the network", async () => {
+    const id = await createPost(accountId);
+    const path = `/@hollo/${id}/replies`;
+    const network = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("unexpected network"));
+    const first = await activityRequest(path);
+    expect((await first.json()).totalItems).toBe(0);
+    await createPost(accountId, { replyTargetId: id });
+    const signed = await activityRequest(path, {
+      Signature:
+        'keyId="https://remote.test/key",algorithm="rsa-sha256",headers="date",signature="dGVzdA=="',
+    });
+    expect(signed.status).toBe(200);
+    expect((await signed.json()).totalItems).toBe(1);
+    const anonymous = await activityRequest(path);
+    expect((await anonymous.json()).totalItems).toBe(0);
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it("shares request-local viewer resolution but not identities or roots", async () => {
+    const id = await createPost(accountId);
+    const otherId = await createPost(accountId);
+    const remote = await createRemoteAccount("recipient");
+    await createPost(accountId, {
+      replyTargetId: id,
+      visibility: "direct",
+      mentionedAccountIds: [remote.id],
+    });
+    const values = { username: "hollo", id };
+    for (const [actor, expected] of [
+      [null, 0],
+      [remote.iri, 1],
+      ["https://remote.test/unknown", 0],
+    ] as const) {
+      const ctx = requestContext(actor);
+      const keyOwner = vi.spyOn(ctx, "getSignedKeyOwner");
+      const [count, page] = await Promise.all([
+        countRepliesCollection(ctx, values),
+        dispatchRepliesCollection(ctx, values, "0"),
+      ]);
+      expect(count).toBe(expected);
+      expect(page?.items).toHaveLength(expected);
+      await expect(
+        countRepliesCollection(ctx, { username: "hollo", id: otherId }),
+      ).resolves.toBe(0);
+      expect(keyOwner).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("reuses viewer resolution failures only within the failed request", async () => {
+    const id = await createPost(accountId);
+    const values = { username: "hollo", id };
+    const ctx = requestContext(null);
+    const failure = new Error("key lookup failed");
+    const keyOwner = vi
+      .spyOn(ctx, "getSignedKeyOwner")
+      .mockRejectedValue(failure);
+    const results = await Promise.allSettled([
+      countRepliesCollection(ctx, values),
+      dispatchRepliesCollection(ctx, values, "0"),
+    ]);
+    expect(results).toEqual([
+      { status: "rejected", reason: failure },
+      { status: "rejected", reason: failure },
+    ]);
+    expect(keyOwner).toHaveBeenCalledTimes(1);
+    await expect(
+      countRepliesCollection(requestContext(null), values),
+    ).resolves.toBe(0);
+  });
+
+  it.each(["private", "direct", "delete"] as const)(
+    "rechecks a warm root after %s",
+    async (change) => {
+      const id = await createPost(accountId);
+      const path = `/@hollo/${id}/replies`;
+      expect((await activityRequest(path)).status).toBe(200);
+      if (change === "delete") await db.delete(posts).where(eq(posts.id, id));
+      else
+        await db
+          .update(posts)
+          .set({ visibility: change })
+          .where(eq(posts.id, id));
+      for (const suffix of ["", "?cursor=0"]) {
+        expect((await activityRequest(path + suffix)).status).toBe(
+          change === "delete" ? 404 : 401,
+        );
+      }
+    },
+  );
+
+  it("refreshes counts after expiry while pages reflect reply changes immediately", async () => {
+    const id = await createPost(accountId);
+    const replyId = await createPost(accountId, { replyTargetId: id });
+    const path = `/@hollo/${id}/replies`;
+    const start = performance.now();
+    const clock = vi.spyOn(performance, "now").mockReturnValue(start);
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(1);
+    await db
+      .update(posts)
+      .set({ visibility: "private" })
+      .where(eq(posts.id, replyId));
+    {
+      const page = await activityRequest(path + "?cursor=0");
+      expect(page.status).toBe(200);
+      expect(await page.json()).toMatchObject({
+        type: "OrderedCollectionPage",
+      });
+      // JSON-LD omits an empty orderedItems property.
+      const empty = await activityRequest(path + "?cursor=0");
+      expect(await empty.json()).not.toHaveProperty("orderedItems");
+    }
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(1);
+    clock.mockReturnValue(start + 5000);
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(0);
+    await db
+      .update(posts)
+      .set({ visibility: "public" })
+      .where(eq(posts.id, replyId));
+    clock.mockReturnValue(start + 10000);
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(1);
+    await db.delete(posts).where(eq(posts.id, replyId));
+    {
+      const page = await activityRequest(path + "?cursor=0");
+      expect(page.status).toBe(200);
+      expect(await page.json()).toMatchObject({
+        type: "OrderedCollectionPage",
+      });
+      // JSON-LD omits an empty orderedItems property.
+      const empty = await activityRequest(path + "?cursor=0");
+      expect(await empty.json()).not.toHaveProperty("orderedItems");
+    }
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(1);
+    clock.mockReturnValue(start + 15000);
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(0);
+    await createPost(accountId, { replyTargetId: id });
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(0);
+    clock.mockReturnValue(start + 20000);
+    expect((await (await activityRequest(path)).json()).totalItems).toBe(1);
+  });
+
+  it("rechecks follower authorization on a new request", async () => {
+    const id = await createPost(accountId, { visibility: "private" });
+    const follower = await createRemoteAccount("revoked-follower");
+    await db.insert(follows).values({
+      iri: `https://remote.test/follows/${crypto.randomUUID()}`,
+      followingId: accountId as Uuid,
+      followerId: follower.id,
+      approved: new Date(),
+    });
+    const values = { username: "hollo", id };
+    const ctx = requestContext(follower.iri);
+    const keyOwner = vi.spyOn(ctx, "getSignedKeyOwner");
+    await expect(countRepliesCollection(ctx, values)).resolves.toBe(0);
+    await expect(
+      dispatchRepliesCollection(ctx, values, "0"),
+    ).resolves.not.toBeNull();
+    expect(keyOwner).toHaveBeenCalledTimes(1);
+    await db.delete(follows).where(eq(follows.followerId, follower.id));
+    await expect(
+      countRepliesCollection(requestContext(follower.iri), values),
+    ).resolves.toBeNull();
+  });
 
   it("serves visible replies as a paginated ordered collection", async () => {
     const rootId = await createPost(accountId, { content: "root" });

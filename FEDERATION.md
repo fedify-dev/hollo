@@ -86,7 +86,11 @@ It sends `Flag` activities for reports.  Hollo also supports `EmojiReact`
 activities and paginated `emojiReactions` collections as defined by FEP-c0e0.
 Local posts expose direct replies through paginated `replies` collections,
 with each collection response filtered according to the requesting actor's
-signed-fetch permissions.
+signed-fetch permissions.  For unsigned GET requests to public roots, each web
+process reuses the visible reply count for up to five seconds from the start
+of its query.  Reply changes may therefore appear in `totalItems` later than
+in the pages, which are always queried afresh.  Root access is checked on
+every request; HTTP responses remain private and must not be cached.
 
 Quote posts use FEP-e232 object links and the FEP-044f quote,
 interaction-policy, request, acceptance, rejection, authorization, and
