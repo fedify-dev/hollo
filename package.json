@@ -53,7 +53,7 @@
     "@logtape/sentry": "~2.3.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/context-async-hooks": "^2.10.0",
-    "@opentelemetry/core": "^2.10.0",
+    "@opentelemetry/core": "^2.11.0",
     "@opentelemetry/sdk-trace-base": "^2.10.0",
     "@sentry/core": "^10.70.0",
     "@sentry/node": "^10.70.0",
@@ -110,7 +110,7 @@
     "tsdown": "^0.22.3",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "unocss": "^66.10.0",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   },
   "packageManager": "pnpm@11.21.0+sha512.521705bce689924eac72f5a3587122f362689ef6571e55ba80076fd637c11132ecffada26fad4ea79c485bfddbfd3d5a2a5b05805a77e893de71ec8a6cca3bb1"
 }
