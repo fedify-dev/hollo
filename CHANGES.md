@@ -6,6 +6,19 @@ Version 0.8.12
 
 To be released.
 
+ -  Upgraded Fedify to 2.1.24, which fixes three security vulnerabilities:
+    unverified public key ownership that let any HTTP server have activities
+    accepted as coming from any actor, unbounded reads of remote JSON
+    documents (authenticated documents, NodeInfo responses, and inbox bodies)
+    that could exhaust memory, and an SSRF flaw in outbound activity delivery
+    where inbox URLs and redirects were not validated against private network
+    addresses.  [[GHSA-q9f8-5hc7-898f], [GHSA-mc44-6cfg-2v6w],
+    [GHSA-f59r-8gcj-68f2]]
+
+[GHSA-q9f8-5hc7-898f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-q9f8-5hc7-898f
+[GHSA-mc44-6cfg-2v6w]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-mc44-6cfg-2v6w
+[GHSA-f59r-8gcj-68f2]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-f59r-8gcj-68f2
+
 
 Version 0.8.11
 --------------
