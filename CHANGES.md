@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.19
 --------------
 
-To be released.
+Released on September 22, 2026.
 
  -  Upgraded Fedify to 2.2.13, which fixes three security vulnerabilities:
     unverified public key ownership that let any HTTP server have activities
