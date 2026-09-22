@@ -6,14 +6,12 @@ Version 0.10.0
 
 To be released.
 
- -  Upgraded Fedify to 2.3.2.  Fedify 2.3 adds an outbound delivery circuit
+ -  Upgraded Fedify to 2.3.8.  Fedify 2.3 adds an outbound delivery circuit
     breaker (enabled by default for queued outbox delivery),
     `MessageQueue.getDepth()` support, OpenTelemetry metrics for
     federation operations, `mapActorAlias()` for fixed-path actor
     dispatchers, and significantly faster TypeScript type-checking of
-    dispatcher paths.  Fedify 2.3.2 also fixes a security vulnerability in
-    NodeInfo lookups that could allow remote instances to make Hollo fetch
-    non-public network destinations.  [[CVE-2026-62857]]
+    dispatcher paths.
 
  -  Quotes awaiting FEP-044f approval now expose `quoteUrl` for compatibility
     with older software when the original public or unlisted post explicitly
@@ -78,7 +76,6 @@ To be released.
     characters.  The endpoint requires no authentication, and the value was
     previously stored unbounded and shown on the admin dashboard.
 
-[CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
@@ -87,6 +84,25 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 [#602]: https://github.com/fedify-dev/hollo/issues/602
 [#609]: https://github.com/fedify-dev/hollo/issues/609
+
+
+Version 0.9.19
+--------------
+
+Released on September 22, 2026.
+
+ -  Upgraded Fedify to 2.2.13, which fixes three security vulnerabilities:
+    unverified public key ownership that let any HTTP server have activities
+    accepted as coming from any actor, unbounded reads of remote JSON
+    documents (authenticated documents, NodeInfo responses, and inbox bodies)
+    that could exhaust memory, and an SSRF flaw in outbound activity delivery
+    where inbox URLs and redirects were not validated against private network
+    addresses.  [[GHSA-q9f8-5hc7-898f], [GHSA-mc44-6cfg-2v6w],
+    [GHSA-f59r-8gcj-68f2]]
+
+[GHSA-q9f8-5hc7-898f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-q9f8-5hc7-898f
+[GHSA-mc44-6cfg-2v6w]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-mc44-6cfg-2v6w
+[GHSA-f59r-8gcj-68f2]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-f59r-8gcj-68f2
 
 
 Version 0.9.18
@@ -251,6 +267,8 @@ Released on July 19, 2026.
  -  Upgraded Fedify to 2.2.7 to fix a security vulnerability in NodeInfo
     lookups that could allow remote instances to make Hollo fetch non-public
     network destinations.  [[CVE-2026-62857]]
+
+[CVE-2026-62857]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-hqph-j65v-8cq5
 
 
 Version 0.9.8
@@ -781,6 +799,21 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.12
+--------------
+
+Released on September 22, 2026.
+
+ -  Upgraded Fedify to 2.1.24, which fixes three security vulnerabilities:
+    unverified public key ownership that let any HTTP server have activities
+    accepted as coming from any actor, unbounded reads of remote JSON
+    documents (authenticated documents, NodeInfo responses, and inbox bodies)
+    that could exhaust memory, and an SSRF flaw in outbound activity delivery
+    where inbox URLs and redirects were not validated against private network
+    addresses.  [[GHSA-q9f8-5hc7-898f], [GHSA-mc44-6cfg-2v6w],
+    [GHSA-f59r-8gcj-68f2]]
 
 
 Version 0.8.11
