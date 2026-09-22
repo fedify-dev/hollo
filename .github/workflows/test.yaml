@@ -50,7 +50,9 @@ jobs:
       # Set to true to test in local network
       # Will be replaced by list of allowed IPs once https://github.com/dahlia/fedify/issues/157
       # is implemented.
-      ALLOW_PRIVATE_ADDRESS: false
+      # Tests deliver to non-resolvable *.test hosts and mock fetch, so Fedify's
+      # outbound delivery SSRF check has to be disabled here.
+      ALLOW_PRIVATE_ADDRESS: true
 
       DRIVE_DISK: "fs"
       FS_STORAGE_PATH: ./tmp/fakes
