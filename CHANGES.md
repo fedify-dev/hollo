@@ -6,6 +6,38 @@ Version 0.9.20
 
 To be released.
 
+ -  Added indexes on the post foreign keys in `list_posts`, `timeline_posts`,
+    `remote_reply_scrape_jobs`, `notifications`, and `notification_groups` to
+    avoid full table scans during cascading post deletes.  On large
+    installations, run these commands before upgrading to avoid blocking
+    writes during the automatic migration.  Run each command separately,
+    outside a transaction:
+
+    ~~~~ sql
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS list_posts_post_id_index
+      ON public.list_posts (post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS timeline_posts_post_id_index
+      ON public.timeline_posts (post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS remote_reply_scrape_jobs_post_id_index
+      ON public.remote_reply_scrape_jobs (post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS notifications_target_post_id_index
+      ON public.notifications (target_post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS notification_groups_target_post_id_index
+      ON public.notification_groups (target_post_id);
+    ~~~~
+
+    The migration reuses existing indexes with these names after checking
+    their definitions and validity.  This includes indexes created for the
+    workaround in [#624].  If a concurrent build fails or is interrupted,
+    PostgreSQL can leave an invalid index behind.  Drop only the affected
+    index with `DROP INDEX CONCURRENTLY public.<index_name>` and retry its
+    creation command before upgrading.  An existing index with an unexpected
+    definition also causes the migration to fail; inspect it before replacing
+    it.  [[#624], [#626]]
+
+[#624]: https://github.com/fedify-dev/hollo/issues/624
+[#626]: https://github.com/fedify-dev/hollo/pull/626
+
 
 Version 0.9.19
 --------------

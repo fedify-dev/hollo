@@ -1001,6 +1001,7 @@ export const notifications = pgTable(
     readAt: timestamp("read_at", { withTimezone: true }),
   },
   (table) => [
+    index().on(table.targetPostId),
     index().on(table.accountOwnerId, table.created),
     index().on(table.accountOwnerId, table.readAt),
     index().on(table.groupKey),
@@ -1048,6 +1049,7 @@ export const notificationGroups = pgTable(
       .default(currentTimestamp),
   },
   (table) => [
+    index().on(table.targetPostId),
     index().on(table.accountOwnerId, table.updated),
     index().on(table.accountOwnerId, table.type),
   ],
@@ -1069,6 +1071,7 @@ export const timelinePosts = pgTable(
       .references(() => posts.id, { onDelete: "cascade" }),
   },
   (table) => [
+    index().on(table.postId),
     primaryKey({ columns: [table.accountId, table.postId] }),
     index().on(table.accountId, table.postId),
   ],
@@ -1090,6 +1093,7 @@ export const listPosts = pgTable(
       .references(() => posts.id, { onDelete: "cascade" }),
   },
   (table) => [
+    index().on(table.postId),
     primaryKey({ columns: [table.listId, table.postId] }),
     index().on(table.listId, table.postId),
   ],
@@ -1285,6 +1289,7 @@ export const remoteReplyScrapeJobs = pgTable(
       .default(currentTimestamp),
   },
   (table) => [
+    index().on(table.postId),
     index("remote_reply_scrape_jobs_claim_index").on(
       table.status,
       table.nextAttemptAt,
