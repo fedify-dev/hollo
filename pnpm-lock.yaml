@@ -212,8 +212,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       '@unocss/cli':
-        specifier: ^66.10.2
-        version: 66.10.2
+        specifier: ^66.10.5
+        version: 66.10.5
       '@vitest/coverage-v8':
         specifier: 4.1.10
         version: 4.1.10(vitest@4.1.10)
@@ -3228,14 +3228,27 @@ packages:
     resolution: {integrity: sha512-bvw9WM1aGZVUzVRDwvZltQCDAmKI9oFJtGeqgUgmS6IcMjrbJpUA340I1umqxPSgjX09EKhzzhLntUXzdg/0jg==}
     hasBin: true
 
+  '@unocss/cli@66.10.5':
+    resolution: {integrity: sha512-NjHkCNRsgnrU7m/hI1y2ryv8RMku+uejx9ChCnKcdKVKuBpgKFdhjmSjaTJQjpAHORyv5hLdT/7TkLbJzqk4tg==}
+    hasBin: true
+
   '@unocss/config@66.10.2':
     resolution: {integrity: sha512-4j2zyh4iftd86lqbWQA/xiXjtuz77lslhq3thrPJKzqaLUnb12r/RuTD+8/tlnYo8qCFp4dglDi9Emvr2+1BzA==}
+
+  '@unocss/config@66.10.5':
+    resolution: {integrity: sha512-ddmmmsJ+Vjg9oS4c5ElP8vR1oftID9dqG0yASDWLsLNY4uKo295EuCQXIBVbkyRnBZcdjpnOUfo71iwElaCeyA==}
 
   '@unocss/core@66.10.2':
     resolution: {integrity: sha512-KerWey/koorvS8DlBn0Vy98oFYvD0x3wAz+Huw8EDijlXg6rBgmY97lv388at2k98gercEP8eIun1h73JB+Nwg==}
 
+  '@unocss/core@66.10.5':
+    resolution: {integrity: sha512-fukv4bL32z/kWIiKgDy5ih452Jzf7S76p8RnP4N+3utqMFeqWayEApiqRidGv5b6NwPguTsKXaLsy+mbK9aMfA==}
+
   '@unocss/extractor-arbitrary-variants@66.10.2':
     resolution: {integrity: sha512-Y9Hv5SO9Xuni2VVpiQEFNIjcD4o5jarEcUVOw6jdW8DseJQT4AfXR8QwUHhOK2miIdz6k9nQABfdJIcBzD8ZqQ==}
+
+  '@unocss/extractor-arbitrary-variants@66.10.5':
+    resolution: {integrity: sha512-8qCJjByALdNiGQB1xHWK3tAl3n+hacBLlklqHhgNj0qWYtr3Hp+pfyA2nuyzJcPXkolqtGn1APJ1TNPbL5w+qg==}
 
   '@unocss/inspector@66.10.2':
     resolution: {integrity: sha512-09aiNVCBqzX8h6ZpcZj+/NrsQoEL8usCXiWAFhSArpPoO250bdTaBacDRlDZ7ZFk1qylvDAFz+zD2gtYW/uK0A==}
@@ -3248,6 +3261,9 @@ packages:
 
   '@unocss/preset-mini@66.10.2':
     resolution: {integrity: sha512-hEJnsVIGrHVnCHKlLfOJemlASOK84iYTcZcuaMqhl2zCA1h3pqQLfbKF32tyTuY+o7oc1ulb4LHNmdfo/lwTfQ==}
+
+  '@unocss/preset-mini@66.10.5':
+    resolution: {integrity: sha512-oFKjmK32jyKp8rMI8Zu5+1AaFOvbwlQ7wztNGjtiAhhglKREZoncThLBE6Yd3B2+p/xf8YXfSOr5TFzhzXnDIQ==}
 
   '@unocss/preset-tagify@66.10.2':
     resolution: {integrity: sha512-LHF++fRKsexAV7R7t/Sangzm0lXV7jZ4CHvZyjYvnId32w5imhi6VYoPY+VCKlmFdox8vnFnCNJ4hLxbc6dFwA==}
@@ -3264,8 +3280,14 @@ packages:
   '@unocss/preset-wind3@66.10.2':
     resolution: {integrity: sha512-Bbk3HKV5jnNHxH3HXCSP+ditDbFbcKAuImRJA+AH1BzjEsiw8aR1QdC1lFf+II0dfRCbcv5fWXLAfeUZTeAqyA==}
 
+  '@unocss/preset-wind3@66.10.5':
+    resolution: {integrity: sha512-1zjLAJ4JCVREQlRaLiajP5T/BQUQzc2ilpScD1kvgTkJLV8en+ae1G/ctjZwAThmosD0oicuuMT9ODjt2NfGOw==}
+
   '@unocss/preset-wind4@66.10.2':
     resolution: {integrity: sha512-iLFDwwVSs6JpaofVmfJBlKrq+/rCYU4QupXkhf55yx7NAg/Yy3bZPSIGTGDOqosqSoz72Im0SZYwSXYjpDQFrg==}
+
+  '@unocss/preset-wind4@66.10.5':
+    resolution: {integrity: sha512-rYLe20SyOEf5V9SsHkHVhdmFGE4qZJL0/yheZGAUXXv/kN0yR+qlMPB4Q6UR4JiDxrR5R+8U7BIa/juOks7EvA==}
 
   '@unocss/preset-wind@66.10.2':
     resolution: {integrity: sha512-pzemFoSSlRW7jZ66C7MDdHIvXc/hdPA0v42QrlqXyGYxGNj30SGslAIt+lhFW5vPLfoPMyv65h16C9uaUAow6w==}
@@ -3284,6 +3306,9 @@ packages:
   '@unocss/rule-utils@66.10.2':
     resolution: {integrity: sha512-iqLEQBwUylcz7eFtLHx59bUdTzw7mEcb1E6W1KQ1wWqC4RbUpxhS2hG2w/0aBtfna7JnqxoVmNoHQh3V6JLcdQ==}
 
+  '@unocss/rule-utils@66.10.5':
+    resolution: {integrity: sha512-ePcz9fJfEVN4VXJgx2bPdGSZ/ujdyUhiJOnMTwIWRxlUdZ2Wgc5aT6zTb9W9AjOB0eWxO2Iyb0HGhA9GGuIY8g==}
+
   '@unocss/transformer-attributify-jsx@66.10.2':
     resolution: {integrity: sha512-B0lzZWedKdbvLQMGzZDbRCtI9KZLOcuFGoQyz+oqOtGq9xbU3bhHpr3ECulZzc9qFL0TGG7IG8MOghMRmU6OCg==}
 
@@ -3292,6 +3317,9 @@ packages:
 
   '@unocss/transformer-directives@66.10.2':
     resolution: {integrity: sha512-lGLd8p16NxAl3u6HIEz0Ad966xn9oJ9QhAPXF5IbMflytxwl8Ay4tMYar/wTRgmE6uaAaFV9scr8lEPaA7ciTQ==}
+
+  '@unocss/transformer-directives@66.10.5':
+    resolution: {integrity: sha512-X7WkyesHojKlDBPzgytRzqgftI7lRqpSbSdz7kx+d09D/Xf/1V7i0IOc+mBxeFngvqh2ueuLElwZbaT3CuKHkg==}
 
   '@unocss/transformer-variant-group@66.10.2':
     resolution: {integrity: sha512-wMlroVXt7hjt6hI4ahJXwkGmgSM6otdhgAOAW/cBxSOtcCeIh3eu1usgo9LlkAfmLygh6eD7HFq9OvlfeeejSg==}
@@ -4810,6 +4838,9 @@ packages:
 
   magic-string@1.3.1:
     resolution: {integrity: sha512-rm91zr2Ou+XueDTohjQQjdQEcYM6zVi8KVUCG8Ec3vHwUEKrhSdCNyfuIywkA6hcCAteIn0ZOtAHA6eGpiX+Pg==}
+
+  magic-string@1.4.2:
+    resolution: {integrity: sha512-vG+rjFRj1PqdIBozIxAGMjPlOhaVe+GXpbttY/iSK7rGcJRMlwNJO7dcUwmUqkymsFLJiNGI06t4D7Fr7yRC9g==}
 
   magicast@0.5.3:
     resolution: {integrity: sha512-pVKE4UdSQ7DvHzivsCIFx2BJn1mHG6KsyrFcaxFx6tONdneEuThrDx0Cj3AMg58KyN4pzYT+LHOotxDQDjNvkw==}
@@ -9463,6 +9494,24 @@ snapshots:
       tinyglobby: 0.2.17
       unplugin-utils: 0.3.2
 
+  '@unocss/cli@66.10.5':
+    dependencies:
+      '@jridgewell/remapping': 2.3.5
+      '@unocss/config': 66.10.5
+      '@unocss/core': 66.10.5
+      '@unocss/preset-wind3': 66.10.5
+      '@unocss/preset-wind4': 66.10.5
+      '@unocss/transformer-directives': 66.10.5
+      cac: 7.0.0
+      chokidar: 5.0.0
+      colorette: 2.0.20
+      consola: 3.4.2
+      magic-string: 1.4.2
+      pathe: 2.0.3
+      perfect-debounce: 2.1.0
+      tinyglobby: 0.2.17
+      unplugin-utils: 0.3.2
+
   '@unocss/config@66.10.2':
     dependencies:
       '@unocss/core': 66.10.2
@@ -9470,11 +9519,24 @@ snapshots:
       consola: 3.4.2
       unconfig: 7.5.0
 
+  '@unocss/config@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
+      colorette: 2.0.20
+      consola: 3.4.2
+      unconfig: 7.5.0
+
   '@unocss/core@66.10.2': {}
+
+  '@unocss/core@66.10.5': {}
 
   '@unocss/extractor-arbitrary-variants@66.10.2':
     dependencies:
       '@unocss/core': 66.10.2
+
+  '@unocss/extractor-arbitrary-variants@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
 
   '@unocss/inspector@66.10.2(@devframes/hub@0.9.18(crossws@0.4.12(srvx@1.0.4))(devframe@0.9.18(cac@7.0.0)(srvx@1.0.4)))(cac@7.0.0)(crossws@0.4.12(srvx@1.0.4))(srvx@1.0.4)(vite@8.2.2(@types/node@26.1.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))':
     dependencies:
@@ -9514,6 +9576,12 @@ snapshots:
       '@unocss/extractor-arbitrary-variants': 66.10.2
       '@unocss/rule-utils': 66.10.2
 
+  '@unocss/preset-mini@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
+      '@unocss/extractor-arbitrary-variants': 66.10.5
+      '@unocss/rule-utils': 66.10.5
+
   '@unocss/preset-tagify@66.10.2':
     dependencies:
       '@unocss/core': 66.10.2
@@ -9539,11 +9607,23 @@ snapshots:
       '@unocss/preset-mini': 66.10.2
       '@unocss/rule-utils': 66.10.2
 
+  '@unocss/preset-wind3@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
+      '@unocss/preset-mini': 66.10.5
+      '@unocss/rule-utils': 66.10.5
+
   '@unocss/preset-wind4@66.10.2':
     dependencies:
       '@unocss/core': 66.10.2
       '@unocss/extractor-arbitrary-variants': 66.10.2
       '@unocss/rule-utils': 66.10.2
+
+  '@unocss/preset-wind4@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
+      '@unocss/extractor-arbitrary-variants': 66.10.5
+      '@unocss/rule-utils': 66.10.5
 
   '@unocss/preset-wind@66.10.2':
     dependencies:
@@ -9569,6 +9649,11 @@ snapshots:
       '@unocss/core': 66.10.2
       magic-string: 1.3.1
 
+  '@unocss/rule-utils@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
+      magic-string: 1.4.2
+
   '@unocss/transformer-attributify-jsx@66.10.2':
     dependencies:
       '@unocss/core': 66.10.2
@@ -9583,6 +9668,12 @@ snapshots:
     dependencies:
       '@unocss/core': 66.10.2
       '@unocss/rule-utils': 66.10.2
+      css-tree: 3.2.1
+
+  '@unocss/transformer-directives@66.10.5':
+    dependencies:
+      '@unocss/core': 66.10.5
+      '@unocss/rule-utils': 66.10.5
       css-tree: 3.2.1
 
   '@unocss/transformer-variant-group@66.10.2':
@@ -11060,6 +11151,10 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   magic-string@1.3.1:
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
+
+  magic-string@1.4.2:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
