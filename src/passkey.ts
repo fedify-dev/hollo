@@ -2,7 +2,6 @@ import { Buffer } from "node:buffer";
 
 import type {
   AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
   Base64URLString,
   CredentialDeviceType,
   PublicKeyCredentialCreationOptionsJSON,
@@ -45,7 +44,7 @@ export interface BuildRegistrationOptionsInput {
   email: string;
   existingCredentials: ReadonlyArray<{
     id: Base64URLString;
-    transports?: ReadonlyArray<AuthenticatorTransportFuture>;
+    transports?: ReadonlyArray<string>;
   }>;
 }
 
@@ -87,7 +86,7 @@ export interface VerifiedRegistration {
   credentialId: Base64URLString;
   publicKey: Uint8Array;
   counter: number;
-  transports: AuthenticatorTransportFuture[];
+  transports: string[];
   deviceType: CredentialDeviceType;
   backedUp: boolean;
 }
@@ -95,7 +94,10 @@ export interface VerifiedRegistration {
 // The set of transport hint values WebAuthn defines.  Anything else the
 // browser passes through gets dropped before we store it, so a malicious
 // or buggy client can't poison future `excludeCredentials` payloads.
-const VALID_TRANSPORTS: ReadonlySet<AuthenticatorTransportFuture> = new Set([
+// SimpleWebAuthn v14 types these hints as plain `string[]`, so we keep our
+// own allowlist (including the legacy "cable" alias for "hybrid" and the
+// newer "smart-card") to decide what is safe to persist.
+const VALID_TRANSPORTS: ReadonlySet<string> = new Set([
   "ble",
   "cable",
   "hybrid",
@@ -107,13 +109,11 @@ const VALID_TRANSPORTS: ReadonlySet<AuthenticatorTransportFuture> = new Set([
 
 export function sanitizeTransports(
   values: readonly string[] | undefined,
-): AuthenticatorTransportFuture[] {
+): string[] {
   if (values == null) return [];
-  const out: AuthenticatorTransportFuture[] = [];
+  const out: string[] = [];
   for (const v of values) {
-    if (VALID_TRANSPORTS.has(v as AuthenticatorTransportFuture)) {
-      out.push(v as AuthenticatorTransportFuture);
-    }
+    if (VALID_TRANSPORTS.has(v)) out.push(v);
   }
   return out;
 }
@@ -155,7 +155,7 @@ export interface BuildAuthenticationOptionsInput {
   rpInfo: RpInfo;
   allowedCredentials?: ReadonlyArray<{
     id: Base64URLString;
-    transports?: ReadonlyArray<AuthenticatorTransportFuture>;
+    transports?: ReadonlyArray<string>;
   }>;
 }
 
@@ -207,8 +207,7 @@ export async function verifyAuthentication(
         id: input.storedPasskey.id,
         publicKey: decodePublicKey(input.storedPasskey.publicKey),
         counter: input.storedPasskey.counter,
-        transports: input.storedPasskey
-          .transports as AuthenticatorTransportFuture[],
+        transports: input.storedPasskey.transports,
       },
     });
   } catch {

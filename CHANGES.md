@@ -76,9 +76,18 @@ To be released.
     characters.  The endpoint requires no authentication, and the value was
     previously stored unbounded and shown on the admin dashboard.
 
+ -  Upgraded *@simplewebauthn/server* to 14.0.3 and
+    *@simplewebauthn/browser* to 14.0.0, refreshing the vendored browser
+    bundle to match.  The server release fixes two moderate-severity
+    vulnerabilities in attestation certificate revocation handling, and version
+    14 adds post-quantum ML-DSA passkey support on runtimes that provide the
+    algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
+
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
+[GHSA-2g3p-m8c9-hhwh]: https://github.com/MasterKale/SimpleWebAuthn/security/advisories/GHSA-2g3p-m8c9-hhwh
+[GHSA-j3h4-m3m2-7p7j]: https://github.com/MasterKale/SimpleWebAuthn/security/advisories/GHSA-j3h4-m3m2-7p7j
 [#524]: https://github.com/fedify-dev/hollo/issues/524
 [#526]: https://github.com/fedify-dev/hollo/pull/526
 [#549]: https://github.com/fedify-dev/hollo/issues/549

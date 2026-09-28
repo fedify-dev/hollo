@@ -1,6 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
 import { getLogger } from "@logtape/logtape";
-import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import { count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
@@ -426,7 +425,7 @@ auth.post("/passkeys/registration/begin", async (c) => {
     email: credential.email,
     existingCredentials: enrolled.map((p) => ({
       id: p.id,
-      transports: p.transports as AuthenticatorTransportFuture[],
+      transports: p.transports,
     })),
   });
   const expiresAt = Date.now() + PASSKEY_REG_MAX_AGE_SECONDS * 1000;
