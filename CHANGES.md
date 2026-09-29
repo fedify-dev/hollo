@@ -6,6 +6,13 @@ Version 0.9.20
 
 To be released.
 
+ -  Upgraded Fedify to 2.2.14, which fixes a security vulnerability where the
+    remote document loaders followed unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm]]
+
  -  Added indexes on the post foreign keys in `list_posts`, `timeline_posts`,
     `remote_reply_scrape_jobs`, `notifications`, and `notification_groups` to
     avoid full table scans during cascading post deletes.  On large
@@ -35,6 +42,7 @@ To be released.
     definition also causes the migration to fail; inspect it before replacing
     it.  [[#624], [#626]]
 
+[GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
 [#624]: https://github.com/fedify-dev/hollo/issues/624
 [#626]: https://github.com/fedify-dev/hollo/pull/626
 
@@ -752,6 +760,19 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.13
+--------------
+
+Released on September 30, 2026.
+
+ -  Upgraded Fedify to 2.1.25, which fixes a security vulnerability where the
+    remote document loaders followed unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm]]
 
 
 Version 0.8.12
