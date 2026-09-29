@@ -6,12 +6,17 @@ Version 0.10.0
 
 To be released.
 
- -  Upgraded Fedify to 2.3.8.  Fedify 2.3 adds an outbound delivery circuit
+ -  Upgraded Fedify to 2.3.9.  Fedify 2.3 adds an outbound delivery circuit
     breaker (enabled by default for queued outbox delivery),
     `MessageQueue.getDepth()` support, OpenTelemetry metrics for
     federation operations, `mapActorAlias()` for fixed-path actor
     dispatchers, and significantly faster TypeScript type-checking of
-    dispatcher paths.
+    dispatcher paths.  It also fixes a security vulnerability where the
+    remote document loaders followed unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop
+    detection with HTTP redirects, and preserve the caller's cancellation
+    signal.  [[GHSA-97w4-f4rq-mgqm]]
 
  -  Quotes awaiting FEP-044f approval now expose `quoteUrl` for compatibility
     with older software when the original public or unlisted post explicitly
@@ -83,6 +88,7 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
+[GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
@@ -93,6 +99,51 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 [#602]: https://github.com/fedify-dev/hollo/issues/602
 [#609]: https://github.com/fedify-dev/hollo/issues/609
+
+
+Version 0.9.20
+--------------
+
+Released on September 30, 2026.
+
+ -  Upgraded Fedify to 2.2.14, which fixes a security vulnerability where the
+    remote document loaders followed unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm]]
+
+ -  Added indexes on the post foreign keys in `list_posts`, `timeline_posts`,
+    `remote_reply_scrape_jobs`, `notifications`, and `notification_groups` to
+    avoid full table scans during cascading post deletes.  On large
+    installations, run these commands before upgrading to avoid blocking
+    writes during the automatic migration.  Run each command separately,
+    outside a transaction:
+
+    ~~~~ sql
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS list_posts_post_id_index
+      ON public.list_posts (post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS timeline_posts_post_id_index
+      ON public.timeline_posts (post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS remote_reply_scrape_jobs_post_id_index
+      ON public.remote_reply_scrape_jobs (post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS notifications_target_post_id_index
+      ON public.notifications (target_post_id);
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS notification_groups_target_post_id_index
+      ON public.notification_groups (target_post_id);
+    ~~~~
+
+    The migration reuses existing indexes with these names after checking
+    their definitions and validity.  This includes indexes created for the
+    workaround in [#624].  If a concurrent build fails or is interrupted,
+    PostgreSQL can leave an invalid index behind.  Drop only the affected
+    index with `DROP INDEX CONCURRENTLY public.<index_name>` and retry its
+    creation command before upgrading.  An existing index with an unexpected
+    definition also causes the migration to fail; inspect it before replacing
+    it.  [[#624], [#626]]
+
+[#624]: https://github.com/fedify-dev/hollo/issues/624
+[#626]: https://github.com/fedify-dev/hollo/pull/626
 
 
 Version 0.9.19
@@ -808,6 +859,19 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.13
+--------------
+
+Released on September 30, 2026.
+
+ -  Upgraded Fedify to 2.1.25, which fixes a security vulnerability where the
+    remote document loaders followed unbounded chains of alternate document
+    links, which could exhaust resources during remote key and document
+    resolution.  Alternate links now share the 20-hop limit and loop detection
+    with HTTP redirects, and preserve the caller's cancellation signal.
+    [[GHSA-97w4-f4rq-mgqm]]
 
 
 Version 0.8.12
