@@ -15,7 +15,7 @@ import app from "../../index";
 import { accountOwners, accounts, follows, posts } from "../../schema";
 import { uuidv7 } from "../../uuid";
 
-describe.sequential("/api/v1/accounts/:id/following", () => {
+describe("/api/v1/accounts/:id/following", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let owner: Awaited<ReturnType<typeof createAccount>>;
   let followedAccount: Awaited<ReturnType<typeof createAccount>>;
@@ -98,7 +98,7 @@ describe.sequential("/api/v1/accounts/:id/following", () => {
   });
 });
 
-describe.sequential("POST /api/v1/accounts/:id/follow", () => {
+describe("POST /api/v1/accounts/:id/follow", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let owner: Awaited<ReturnType<typeof createAccount>>;
   let followedAccount: Awaited<ReturnType<typeof createAccount>>;
@@ -140,7 +140,7 @@ describe.sequential("POST /api/v1/accounts/:id/follow", () => {
   });
 });
 
-describe.sequential("/api/v1/accounts/verify_credentials", () => {
+describe("/api/v1/accounts/verify_credentials", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
 
@@ -245,7 +245,7 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
   });
 });
 
-describe.sequential("/api/v1/accounts/update_credentials", () => {
+describe("/api/v1/accounts/update_credentials", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
 
@@ -311,7 +311,7 @@ describe.sequential("/api/v1/accounts/update_credentials", () => {
   });
 });
 
-describe.sequential("/api/v1/accounts/:id/statuses", () => {
+describe("/api/v1/accounts/:id/statuses", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
 

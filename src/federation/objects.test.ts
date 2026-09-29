@@ -33,7 +33,7 @@ async function createRemoteAccount(username: string) {
   return { id, iri };
 }
 
-describe.sequential("object dispatchers", () => {
+describe("object dispatchers", { concurrent: false }, () => {
   beforeEach(async () => {
     await cleanDatabase();
   });

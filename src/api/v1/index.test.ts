@@ -14,7 +14,7 @@ import app from "../../index";
 import { accountOwners, accounts, mutes } from "../../schema";
 import { uuidv7 } from "../../uuid";
 
-describe.sequential("/api/v1/preferences", () => {
+describe("/api/v1/preferences", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
 
@@ -109,7 +109,7 @@ describe.sequential("/api/v1/preferences", () => {
   });
 });
 
-describe.sequential("/api/v1/mutes", () => {
+describe("/api/v1/mutes", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
   let mutedAccount: Awaited<ReturnType<typeof createAccount>>;

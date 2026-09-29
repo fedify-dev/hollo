@@ -28,7 +28,7 @@ function buildResponse(
   });
 }
 
-describe.sequential("proxy route", () => {
+describe("proxy route", { concurrent: false }, () => {
   let fetchMock: MockInstance<typeof fetch>;
 
   beforeEach(() => {

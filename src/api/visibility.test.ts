@@ -37,7 +37,7 @@ async function createRemoteAccount(username: string): Promise<Uuid> {
   return id;
 }
 
-describe.sequential("visibility helpers", () => {
+describe("visibility helpers", { concurrent: false }, () => {
   beforeEach(async () => {
     await cleanDatabase();
   });

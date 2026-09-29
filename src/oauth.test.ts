@@ -30,8 +30,8 @@ async function getPage(response: Response) {
   return document;
 }
 
-describe.sequential("OAuth", () => {
-  describe.sequential("GET /oauth/authorize", () => {
+describe("OAuth", { concurrent: false }, () => {
+  describe("GET /oauth/authorize", { concurrent: false }, () => {
     let application: Schema.Application;
     let client: Awaited<ReturnType<typeof createOAuthApplication>>;
     let account: Awaited<ReturnType<typeof createAccount>>;
@@ -591,7 +591,7 @@ describe.sequential("OAuth", () => {
     });
   });
 
-  describe.sequential("POST /oauth/authorize", () => {
+  describe("POST /oauth/authorize", { concurrent: false }, () => {
     let application: Schema.Application;
     let client: Awaited<ReturnType<typeof createOAuthApplication>>;
     let account: Awaited<ReturnType<typeof createAccount>>;
@@ -918,7 +918,7 @@ describe.sequential("OAuth", () => {
     });
   });
 
-  describe.sequential("POST /oauth/token PKCE", () => {
+  describe("POST /oauth/token PKCE", { concurrent: false }, () => {
     let account: Awaited<ReturnType<typeof createAccount>>;
     let application: Schema.Application;
     let client: Awaited<ReturnType<typeof createOAuthApplication>>;
@@ -1067,284 +1067,238 @@ describe.sequential("OAuth", () => {
     });
   });
 
-  describe.sequential("POST /oauth/token (Confidential Client)", () => {
-    let account: Awaited<ReturnType<typeof createAccount>>;
-    let application: Schema.Application;
-    let client: Awaited<ReturnType<typeof createOAuthApplication>>;
-    let wrongApplication: Schema.Application;
-    let wrongClient: Awaited<ReturnType<typeof createOAuthApplication>>;
+  describe(
+    "POST /oauth/token (Confidential Client)",
+    { concurrent: false },
+    () => {
+      let account: Awaited<ReturnType<typeof createAccount>>;
+      let application: Schema.Application;
+      let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+      let wrongApplication: Schema.Application;
+      let wrongClient: Awaited<ReturnType<typeof createOAuthApplication>>;
 
-    beforeEach(async () => {
-      await cleanDatabase();
+      beforeEach(async () => {
+        await cleanDatabase();
 
-      account = await createAccount();
-      client = await createOAuthApplication({
-        scopes: ["read:accounts"],
-        redirectUris: [OOB_REDIRECT_URI],
-        confidential: true,
-      });
-      application = await getApplication(client);
+        account = await createAccount();
+        client = await createOAuthApplication({
+          scopes: ["read:accounts"],
+          redirectUris: [OOB_REDIRECT_URI],
+          confidential: true,
+        });
+        application = await getApplication(client);
 
-      wrongClient = await createOAuthApplication({
-        scopes: ["write:accounts"],
-        redirectUris: [OOB_REDIRECT_URI],
-        confidential: true,
-      });
-      wrongApplication = await getApplication(wrongClient);
-    });
-
-    it("cannot request an access token without using a client authentication method", async () => {
-      expect.assertions(3);
-      // Here we are deliberately not using any client authentication method,
-      // which is not acceptable
-
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("scope", "read:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
+        wrongClient = await createOAuthApplication({
+          scopes: ["write:accounts"],
+          redirectUris: [OOB_REDIRECT_URI],
+          confidential: true,
+        });
+        wrongApplication = await getApplication(wrongClient);
       });
 
-      expect(response.status).toBe(401);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      expect(responseBody.error).toBe("invalid_client");
-    });
-
-    it("allows multiple client authentication methods with same credentials", async () => {
-      expect.assertions(5);
-      // Some clients (like tooot) send credentials via both Basic auth and POST body.
-      // This should be allowed if the credentials are the same.
-
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("client_id", application.clientId);
-      body.set("client_secret", application.clientSecret);
-      body.set("scope", "read:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      expect(responseBody.access_token).toBeDefined();
-      expect(responseBody.token_type).toBe("Bearer");
-      expect(responseBody.scope).toBe("read:accounts");
-    });
-
-    it("cannot request an access token using multiple client authentication methods with different credentials", async () => {
-      expect.assertions(3);
-      // Using different credentials for Basic auth and POST body should fail
-
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("client_id", wrongApplication.clientId);
-      body.set("client_secret", wrongApplication.clientSecret);
-      body.set("scope", "read:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      expect(response.status).toBe(400);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      expect(responseBody.error).toBe("invalid_request");
-    });
-
-    it("cannot request an access token using invalid client authentication", async () => {
-      expect.assertions(3);
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("client_id", application.clientId);
-      body.set("client_secret", "invalid");
-      body.set("scope", "read:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
-      });
-
-      expect(response.status).toBe(401);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      expect(responseBody.error).toBe("invalid_client");
-    });
-
-    // Client Credentials Grant Flow
-    it("can request an access token using the client credentials grant flow with client_secret_basic", async () => {
-      expect.assertions(7);
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("scope", "read:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      const lastAccessToken = await getLastAccessToken();
-
-      expect(lastAccessToken.grant_type).toBe("client_credentials");
-      expect(lastAccessToken.scopes).toEqual(["read:accounts"]);
-      expect(responseBody.access_token).toBe(lastAccessToken.code);
-      expect(responseBody.token_type).toBe("Bearer");
-      expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
-    });
-
-    it("can request an access token using the client credentials grant flow with client_secret_post", async () => {
-      expect.assertions(7);
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("client_id", application.clientId);
-      body.set("client_secret", application.clientSecret);
-      body.set("scope", "read:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      const lastAccessToken = await getLastAccessToken();
-
-      expect(lastAccessToken.grant_type).toBe("client_credentials");
-      expect(lastAccessToken.scopes).toEqual(["read:accounts"]);
-      expect(responseBody.access_token).toBe(lastAccessToken.code);
-      expect(responseBody.token_type).toBe("Bearer");
-      expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
-    });
-
-    it("can request an access token using the client credentials grant flow using JSON body", async () => {
-      expect.assertions(7);
-      const body = JSON.stringify({
-        grant_type: "client_credentials",
-        client_id: application.clientId,
-        client_secret: application.clientSecret,
-        scope: "read:accounts",
-      });
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const lastAccessToken = await getLastAccessToken();
-      const responseBody = await response.json();
-
-      expect(lastAccessToken.grant_type).toBe("client_credentials");
-      expect(lastAccessToken.scopes).toEqual(["read:accounts"]);
-      expect(responseBody.access_token).toBe(lastAccessToken.code);
-      expect(responseBody.token_type).toBe("Bearer");
-      expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
-    });
-
-    it("cannot request client credentials grant flow with scope not registered to the application", async () => {
-      expect.assertions(4);
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("scope", "write:accounts");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      expect(response.status).toBe(400);
-      expect(response.headers.get("content-type")).toBe("application/json");
-      expect(response.headers.get("access-control-allow-origin")).toBe("*");
-
-      const responseBody = await response.json();
-      expect(responseBody.error).toBe("invalid_scope");
-    });
-
-    // OAuth Authorization Code Grant Flow
-    it("can exchange an access grant for an access token", async () => {
-      expect.assertions(8);
-      const accessGrant = await createAccessGrant(
-        application.id,
-        account.id,
-        ["read:accounts"],
-        OOB_REDIRECT_URI,
-      );
-
-      const body = new FormData();
-      body.set("grant_type", "authorization_code");
-      body.set("client_id", application.clientId);
-      // client_secret is technically optional, but we don't support public clients yet:
-      body.set("client_secret", application.clientSecret);
-      body.set("redirect_uri", OOB_REDIRECT_URI);
-      body.set("code", accessGrant.code);
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-
-      const lastAccessToken = await getLastAccessToken();
-      const changedAccessGrant = await findAccessGrant(accessGrant.code);
-
-      expect(changedAccessGrant.revoked).not.toBeNull();
-      expect(lastAccessToken.grant_type).toBe("authorization_code");
-      expect(lastAccessToken.scopes).toEqual(changedAccessGrant.scopes);
-
-      expect(responseBody.access_token).toBe(lastAccessToken.code);
-      expect(responseBody.token_type).toBe("Bearer");
-      expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
-    });
-
-    describe.sequential("expired access grants", () => {
-      beforeEach(() => {
-        timekeeper.freeze();
-
-        return () => {
-          timekeeper.reset();
-        };
-      });
-
-      it("cannot exchange an access grant for an access token when the access grant has expired", async () => {
+      it("cannot request an access token without using a client authentication method", async () => {
         expect.assertions(3);
+        // Here we are deliberately not using any client authentication method,
+        // which is not acceptable
 
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("scope", "read:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          body,
+        });
+
+        expect(response.status).toBe(401);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+        expect(responseBody.error).toBe("invalid_client");
+      });
+
+      it("allows multiple client authentication methods with same credentials", async () => {
+        expect.assertions(5);
+        // Some clients (like tooot) send credentials via both Basic auth and POST body.
+        // This should be allowed if the credentials are the same.
+
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("client_id", application.clientId);
+        body.set("client_secret", application.clientSecret);
+        body.set("scope", "read:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+        expect(responseBody.access_token).toBeDefined();
+        expect(responseBody.token_type).toBe("Bearer");
+        expect(responseBody.scope).toBe("read:accounts");
+      });
+
+      it("cannot request an access token using multiple client authentication methods with different credentials", async () => {
+        expect.assertions(3);
+        // Using different credentials for Basic auth and POST body should fail
+
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("client_id", wrongApplication.clientId);
+        body.set("client_secret", wrongApplication.clientSecret);
+        body.set("scope", "read:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+        expect(responseBody.error).toBe("invalid_request");
+      });
+
+      it("cannot request an access token using invalid client authentication", async () => {
+        expect.assertions(3);
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("client_id", application.clientId);
+        body.set("client_secret", "invalid");
+        body.set("scope", "read:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          body,
+        });
+
+        expect(response.status).toBe(401);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+        expect(responseBody.error).toBe("invalid_client");
+      });
+
+      // Client Credentials Grant Flow
+      it("can request an access token using the client credentials grant flow with client_secret_basic", async () => {
+        expect.assertions(7);
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("scope", "read:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+        const lastAccessToken = await getLastAccessToken();
+
+        expect(lastAccessToken.grant_type).toBe("client_credentials");
+        expect(lastAccessToken.scopes).toEqual(["read:accounts"]);
+        expect(responseBody.access_token).toBe(lastAccessToken.code);
+        expect(responseBody.token_type).toBe("Bearer");
+        expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
+      });
+
+      it("can request an access token using the client credentials grant flow with client_secret_post", async () => {
+        expect.assertions(7);
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("client_id", application.clientId);
+        body.set("client_secret", application.clientSecret);
+        body.set("scope", "read:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          body,
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+        const lastAccessToken = await getLastAccessToken();
+
+        expect(lastAccessToken.grant_type).toBe("client_credentials");
+        expect(lastAccessToken.scopes).toEqual(["read:accounts"]);
+        expect(responseBody.access_token).toBe(lastAccessToken.code);
+        expect(responseBody.token_type).toBe("Bearer");
+        expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
+      });
+
+      it("can request an access token using the client credentials grant flow using JSON body", async () => {
+        expect.assertions(7);
+        const body = JSON.stringify({
+          grant_type: "client_credentials",
+          client_id: application.clientId,
+          client_secret: application.clientSecret,
+          scope: "read:accounts",
+        });
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body,
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const lastAccessToken = await getLastAccessToken();
+        const responseBody = await response.json();
+
+        expect(lastAccessToken.grant_type).toBe("client_credentials");
+        expect(lastAccessToken.scopes).toEqual(["read:accounts"]);
+        expect(responseBody.access_token).toBe(lastAccessToken.code);
+        expect(responseBody.token_type).toBe("Bearer");
+        expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
+      });
+
+      it("cannot request client credentials grant flow with scope not registered to the application", async () => {
+        expect.assertions(4);
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("scope", "write:accounts");
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("content-type")).toBe("application/json");
+        expect(response.headers.get("access-control-allow-origin")).toBe("*");
+
+        const responseBody = await response.json();
+        expect(responseBody.error).toBe("invalid_scope");
+      });
+
+      // OAuth Authorization Code Grant Flow
+      it("can exchange an access grant for an access token", async () => {
+        expect.assertions(8);
         const accessGrant = await createAccessGrant(
           application.id,
           account.id,
@@ -1352,7 +1306,149 @@ describe.sequential("OAuth", () => {
           OOB_REDIRECT_URI,
         );
 
-        timekeeper.travel(accessGrant.expiry.valueOf() + 1000);
+        const body = new FormData();
+        body.set("grant_type", "authorization_code");
+        body.set("client_id", application.clientId);
+        // client_secret is technically optional, but we don't support public clients yet:
+        body.set("client_secret", application.clientSecret);
+        body.set("redirect_uri", OOB_REDIRECT_URI);
+        body.set("code", accessGrant.code);
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          body,
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+
+        const lastAccessToken = await getLastAccessToken();
+        const changedAccessGrant = await findAccessGrant(accessGrant.code);
+
+        expect(changedAccessGrant.revoked).not.toBeNull();
+        expect(lastAccessToken.grant_type).toBe("authorization_code");
+        expect(lastAccessToken.scopes).toEqual(changedAccessGrant.scopes);
+
+        expect(responseBody.access_token).toBe(lastAccessToken.code);
+        expect(responseBody.token_type).toBe("Bearer");
+        expect(responseBody.scope).toBe(lastAccessToken.scopes.join(" "));
+      });
+
+      describe("expired access grants", { concurrent: false }, () => {
+        beforeEach(() => {
+          timekeeper.freeze();
+
+          return () => {
+            timekeeper.reset();
+          };
+        });
+
+        it("cannot exchange an access grant for an access token when the access grant has expired", async () => {
+          expect.assertions(3);
+
+          const accessGrant = await createAccessGrant(
+            application.id,
+            account.id,
+            ["read:accounts"],
+            OOB_REDIRECT_URI,
+          );
+
+          timekeeper.travel(accessGrant.expiry.valueOf() + 1000);
+
+          const body = new FormData();
+          body.set("grant_type", "authorization_code");
+          body.set("client_id", application.clientId);
+          // client_secret is technically optional, but we don't support public clients yet:
+          body.set("client_secret", application.clientSecret);
+          body.set("redirect_uri", OOB_REDIRECT_URI);
+          body.set("code", accessGrant.code);
+
+          const response = await app.request("/oauth/token", {
+            method: "POST",
+            body,
+          });
+
+          expect(response.status).toBe(400);
+          expect(response.headers.get("content-type")).toBe("application/json");
+
+          const responseBody = await response.json();
+
+          expect(responseBody.error).toBe("invalid_grant");
+        });
+      });
+
+      it("cannot exchange an access grant for an access token when the redirect URI does not match", async () => {
+        expect.assertions(3);
+        const accessGrant = await createAccessGrant(
+          application.id,
+          account.id,
+          ["read:accounts"],
+          OOB_REDIRECT_URI,
+        );
+
+        const body = new FormData();
+        body.set("grant_type", "authorization_code");
+        body.set("client_id", application.clientId);
+        // client_secret is technically optional, but we don't support public clients yet:
+        body.set("client_secret", application.clientSecret);
+        body.set("redirect_uri", "https://invalid.example/");
+        body.set("code", accessGrant.code);
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          body,
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+
+        expect(responseBody.error).toBe("invalid_grant");
+      });
+
+      it("cannot exchange an access grant for an access token when the client does not match", async () => {
+        expect.assertions(3);
+        const accessGrant = await createAccessGrant(
+          application.id,
+          account.id,
+          ["read:accounts"],
+          OOB_REDIRECT_URI,
+        );
+
+        const body = new FormData();
+        body.set("grant_type", "authorization_code");
+        body.set("client_id", wrongApplication.clientId);
+        // client_secret is technically optional, but we don't support public clients yet:
+        body.set("client_secret", wrongApplication.clientSecret);
+        body.set("redirect_uri", OOB_REDIRECT_URI);
+        body.set("code", accessGrant.code);
+
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          body,
+        });
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+
+        expect(responseBody.error).toBe("invalid_grant");
+      });
+
+      it("cannot exchange an access grant for an access token when the access grant is revoked", async () => {
+        expect.assertions(3);
+        const accessGrant = await createAccessGrant(
+          application.id,
+          account.id,
+          ["read:accounts"],
+          OOB_REDIRECT_URI,
+        );
+
+        await revokeAccessGrant(accessGrant);
 
         const body = new FormData();
         body.set("grant_type", "authorization_code");
@@ -1374,190 +1470,101 @@ describe.sequential("OAuth", () => {
 
         expect(responseBody.error).toBe("invalid_grant");
       });
-    });
 
-    it("cannot exchange an access grant for an access token when the redirect URI does not match", async () => {
-      expect.assertions(3);
-      const accessGrant = await createAccessGrant(
-        application.id,
-        account.id,
-        ["read:accounts"],
-        OOB_REDIRECT_URI,
-      );
+      // Unsupported authorization grant flow:
+      it("cannot use an unsupported grant_type", async () => {
+        expect.assertions(5);
+        const body = new FormData();
+        body.set("grant_type", "invalid");
 
-      const body = new FormData();
-      body.set("grant_type", "authorization_code");
-      body.set("client_id", application.clientId);
-      // client_secret is technically optional, but we don't support public clients yet:
-      body.set("client_secret", application.clientSecret);
-      body.set("redirect_uri", "https://invalid.example/");
-      body.set("code", accessGrant.code);
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
 
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
+        expect(response.status).toBe(400);
+        expect(response.headers.get("content-type")).toBe("application/json");
+
+        const responseBody = await response.json();
+
+        expect(typeof responseBody).toBe("object");
+        expect(Object.keys(responseBody)).toEqual([
+          "error",
+          "error_description",
+        ]);
+        expect(responseBody.error).toBe("unsupported_grant_type");
       });
 
-      expect(response.status).toBe(400);
-      expect(response.headers.get("content-type")).toBe("application/json");
+      it("can accept scope for authorization_code requests", async () => {
+        expect.assertions(7);
 
-      const responseBody = await response.json();
+        const accessGrant = await createAccessGrant(
+          application.id,
+          account.id,
+          ["read:accounts"],
+          OOB_REDIRECT_URI,
+        );
 
-      expect(responseBody.error).toBe("invalid_grant");
-    });
+        const body = new FormData();
+        body.set("grant_type", "authorization_code");
+        body.set("redirect_uri", OOB_REDIRECT_URI);
+        body.set("code", accessGrant.code);
+        body.set("scope", "follow");
 
-    it("cannot exchange an access grant for an access token when the client does not match", async () => {
-      expect.assertions(3);
-      const accessGrant = await createAccessGrant(
-        application.id,
-        account.id,
-        ["read:accounts"],
-        OOB_REDIRECT_URI,
-      );
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
 
-      const body = new FormData();
-      body.set("grant_type", "authorization_code");
-      body.set("client_id", wrongApplication.clientId);
-      // client_secret is technically optional, but we don't support public clients yet:
-      body.set("client_secret", wrongApplication.clientSecret);
-      body.set("redirect_uri", OOB_REDIRECT_URI);
-      body.set("code", accessGrant.code);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toBe("application/json");
 
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
+        const responseBody = await response.json();
+        expect(typeof responseBody).toBe("object");
+        expect(responseBody).toHaveProperty("access_token");
+        expect(responseBody).toHaveProperty("created_at");
+        expect(responseBody.scope).toBe("read:accounts");
+        expect(responseBody.token_type).toBe("Bearer");
       });
 
-      expect(response.status).toBe(400);
-      expect(response.headers.get("content-type")).toBe("application/json");
+      it("can accept redirect_uri for client_credentials requests", async () => {
+        expect.assertions(7);
 
-      const responseBody = await response.json();
+        const body = new FormData();
+        body.set("grant_type", "client_credentials");
+        body.set("scope", "read:accounts");
+        body.set("redirect_uri", OOB_REDIRECT_URI);
 
-      expect(responseBody.error).toBe("invalid_grant");
-    });
+        const response = await app.request("/oauth/token", {
+          method: "POST",
+          headers: {
+            authorization: basicAuthorization(application),
+          },
+          body,
+        });
 
-    it("cannot exchange an access grant for an access token when the access grant is revoked", async () => {
-      expect.assertions(3);
-      const accessGrant = await createAccessGrant(
-        application.id,
-        account.id,
-        ["read:accounts"],
-        OOB_REDIRECT_URI,
-      );
+        // No redirection happens here, since redirect_uri is not used in
+        // client_credentials flow, so we expect a 200 OK response:
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toBe("application/json");
 
-      await revokeAccessGrant(accessGrant);
-
-      const body = new FormData();
-      body.set("grant_type", "authorization_code");
-      body.set("client_id", application.clientId);
-      // client_secret is technically optional, but we don't support public clients yet:
-      body.set("client_secret", application.clientSecret);
-      body.set("redirect_uri", OOB_REDIRECT_URI);
-      body.set("code", accessGrant.code);
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        body,
+        const responseBody = await response.json();
+        expect(typeof responseBody).toBe("object");
+        expect(responseBody).toHaveProperty("access_token");
+        expect(responseBody).toHaveProperty("created_at");
+        expect(responseBody.scope).toBe("read:accounts");
+        expect(responseBody.token_type).toBe("Bearer");
       });
+    },
+  );
 
-      expect(response.status).toBe(400);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-
-      expect(responseBody.error).toBe("invalid_grant");
-    });
-
-    // Unsupported authorization grant flow:
-    it("cannot use an unsupported grant_type", async () => {
-      expect.assertions(5);
-      const body = new FormData();
-      body.set("grant_type", "invalid");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      expect(response.status).toBe(400);
-      expect(response.headers.get("content-type")).toBe("application/json");
-
-      const responseBody = await response.json();
-
-      expect(typeof responseBody).toBe("object");
-      expect(Object.keys(responseBody)).toEqual(["error", "error_description"]);
-      expect(responseBody.error).toBe("unsupported_grant_type");
-    });
-
-    it("can accept scope for authorization_code requests", async () => {
-      expect.assertions(7);
-
-      const accessGrant = await createAccessGrant(
-        application.id,
-        account.id,
-        ["read:accounts"],
-        OOB_REDIRECT_URI,
-      );
-
-      const body = new FormData();
-      body.set("grant_type", "authorization_code");
-      body.set("redirect_uri", OOB_REDIRECT_URI);
-      body.set("code", accessGrant.code);
-      body.set("scope", "follow");
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      expect(typeof responseBody).toBe("object");
-      expect(responseBody).toHaveProperty("access_token");
-      expect(responseBody).toHaveProperty("created_at");
-      expect(responseBody.scope).toBe("read:accounts");
-      expect(responseBody.token_type).toBe("Bearer");
-    });
-
-    it("can accept redirect_uri for client_credentials requests", async () => {
-      expect.assertions(7);
-
-      const body = new FormData();
-      body.set("grant_type", "client_credentials");
-      body.set("scope", "read:accounts");
-      body.set("redirect_uri", OOB_REDIRECT_URI);
-
-      const response = await app.request("/oauth/token", {
-        method: "POST",
-        headers: {
-          authorization: basicAuthorization(application),
-        },
-        body,
-      });
-
-      // No redirection happens here, since redirect_uri is not used in
-      // client_credentials flow, so we expect a 200 OK response:
-      expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toBe("application/json");
-
-      const responseBody = await response.json();
-      expect(typeof responseBody).toBe("object");
-      expect(responseBody).toHaveProperty("access_token");
-      expect(responseBody).toHaveProperty("created_at");
-      expect(responseBody.scope).toBe("read:accounts");
-      expect(responseBody.token_type).toBe("Bearer");
-    });
-  });
-
-  describe.sequential("POST /oauth/token (Public Client)", () => {
+  describe("POST /oauth/token (Public Client)", { concurrent: false }, () => {
     let application: Schema.Application;
     let client: Awaited<ReturnType<typeof createOAuthApplication>>;
     let account: Awaited<ReturnType<typeof createAccount>>;

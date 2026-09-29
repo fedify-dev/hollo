@@ -9,7 +9,7 @@ import app from "./index";
 
 const emojiFile = await getFixtureFile("emoji.png", "image/png");
 
-describe.sequential("emojis", () => {
+describe("emojis", { concurrent: false }, () => {
   beforeEach(async () => {
     await db.delete(customEmojis);
 

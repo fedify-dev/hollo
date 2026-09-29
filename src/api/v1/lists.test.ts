@@ -13,7 +13,7 @@ import app from "../../index";
 import { listMembers, lists } from "../../schema";
 import { uuidv7 } from "../../uuid";
 
-describe.sequential("/api/v1/lists/:id/accounts", () => {
+describe("/api/v1/lists/:id/accounts", { concurrent: false }, () => {
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;
   let listId: ReturnType<typeof uuidv7>;
   let member: Awaited<ReturnType<typeof createAccount>>;

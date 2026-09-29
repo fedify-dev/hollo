@@ -11,7 +11,7 @@ import {
 } from "../../../tests/helpers/oauth";
 import userInfoEndpoint from "./userinfo";
 
-describe.sequential("/oauth/userinfo", () => {
+describe("/oauth/userinfo", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;

@@ -78,7 +78,7 @@ async function createNotification(
   return notification;
 }
 
-describe.sequential("/api/v1/notifications", () => {
+describe("/api/v1/notifications", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
   let remoteAccount: Schema.Account;

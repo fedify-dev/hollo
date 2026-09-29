@@ -16,7 +16,7 @@ import app from "../../index";
 import { OOB_REDIRECT_URI } from "../../oauth/constants";
 import type * as Schema from "../../schema";
 
-describe.sequential("POST /api/v1/apps", () => {
+describe("POST /api/v1/apps", { concurrent: false }, () => {
   beforeEach(async () => {
     await cleanDatabase();
   });
@@ -314,7 +314,7 @@ describe.sequential("POST /api/v1/apps", () => {
  * Client Authentication (client_id, client_secret) without needing an access
  * token, but currently the Mastodon API requires an access token.
  */
-describe.sequential("GET /api/v1/apps/verify_credentials", () => {
+describe("GET /api/v1/apps/verify_credentials", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let application: Schema.Application;
   let account: Awaited<ReturnType<typeof createAccount>>;

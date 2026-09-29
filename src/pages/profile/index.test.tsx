@@ -18,7 +18,7 @@ import {
 import { uuidv7 } from "../../uuid";
 import app from "../index";
 
-describe.sequential("profile tagged page", () => {
+describe("profile tagged page", { concurrent: false }, () => {
   let account: Awaited<ReturnType<typeof createAccount>>;
 
   beforeEach(async () => {

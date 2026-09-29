@@ -101,7 +101,7 @@ async function createOtherAccount(username: string): Promise<Uuid> {
   return id;
 }
 
-describe.sequential("/api/v2/search", () => {
+describe("/api/v2/search", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;

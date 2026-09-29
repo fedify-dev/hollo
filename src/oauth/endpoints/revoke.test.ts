@@ -14,7 +14,7 @@ import type * as Schema from "../../schema";
 import { OOB_REDIRECT_URI } from "../constants";
 import revokeEndpoint from "./revoke";
 
-describe.sequential("POST /oauth/revoke", () => {
+describe("POST /oauth/revoke", { concurrent: false }, () => {
   let account: Awaited<ReturnType<typeof createAccount>>;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let application: Schema.Application;

@@ -23,7 +23,7 @@ function createMediaItems(count: number): DeletableMedia {
   })) as DeletableMedia;
 }
 
-describe.sequential("thumbnail cleanup", () => {
+describe("thumbnail cleanup", { concurrent: false }, () => {
   beforeEach(async () => {
     await cleanDatabase();
     vi.mocked(getMediaWithDeletableThumbnails).mockReset();

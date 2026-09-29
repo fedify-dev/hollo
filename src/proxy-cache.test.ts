@@ -41,7 +41,7 @@ function buildResponse(
   });
 }
 
-describe.sequential("proxy cache prefetch", () => {
+describe("proxy cache prefetch", { concurrent: false }, () => {
   let fetchMock: MockInstance<typeof fetch>;
 
   beforeEach(() => {

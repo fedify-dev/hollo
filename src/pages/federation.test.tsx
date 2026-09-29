@@ -17,7 +17,7 @@ function createRemoteActor(): Person {
   });
 }
 
-describe.sequential("federation force refresh", () => {
+describe("federation force refresh", { concurrent: false }, () => {
   beforeEach(async () => {
     await cleanDatabase();
     await createAccount();

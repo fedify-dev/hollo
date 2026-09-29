@@ -10,7 +10,7 @@ import {
 } from "../../tests/helpers/oauth";
 import app from "../index";
 
-describe.sequential("Mastodon compatibility stub endpoints", () => {
+describe("Mastodon compatibility stub endpoints", { concurrent: false }, () => {
   let readAccountsToken: Token;
   let readSearchToken: Token;
 

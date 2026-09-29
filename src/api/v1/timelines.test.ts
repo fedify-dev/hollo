@@ -36,7 +36,7 @@ describe("timelineQuerySchema", () => {
   });
 });
 
-describe.sequential("/api/v1/timelines/list/:list_id", () => {
+describe("/api/v1/timelines/list/:list_id", { concurrent: false }, () => {
   let owner: Awaited<ReturnType<typeof createAccount>>;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;
@@ -302,7 +302,7 @@ describe.sequential("/api/v1/timelines/list/:list_id", () => {
     expect(json[0].id).toBe(visiblePostId);
   });
 });
-describe.sequential("/api/v1/timelines/home", () => {
+describe("/api/v1/timelines/home", { concurrent: false }, () => {
   let owner: Awaited<ReturnType<typeof createAccount>>;
   let approvedAuthor: Awaited<ReturnType<typeof createAccount>>;
   let pendingAuthor: Awaited<ReturnType<typeof createAccount>>;
@@ -441,7 +441,7 @@ describe.sequential("/api/v1/timelines/home", () => {
   });
 });
 
-describe.sequential("/api/v1/timelines/home", () => {
+describe("/api/v1/timelines/home", { concurrent: false }, () => {
   let owner: Awaited<ReturnType<typeof createAccount>>;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;
@@ -707,7 +707,7 @@ describe.sequential("/api/v1/timelines/home", () => {
   });
 });
 
-describe.sequential("/api/v1/timelines/public (pagination)", () => {
+describe("/api/v1/timelines/public (pagination)", { concurrent: false }, () => {
   let owner: Awaited<ReturnType<typeof createAccount>>;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;

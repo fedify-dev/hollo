@@ -27,7 +27,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe.sequential("/api/v1/accounts/verify_credentials", () => {
+describe("/api/v1/accounts/verify_credentials", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
   let application: Awaited<ReturnType<typeof getApplication>>;
@@ -832,7 +832,7 @@ describe.sequential("/api/v1/accounts/verify_credentials", () => {
   });
 });
 
-describe.sequential("/api/v1/statuses quotes", () => {
+describe("/api/v1/statuses quotes", { concurrent: false }, () => {
   let author: Awaited<ReturnType<typeof createAccount>>;
   let quoter: Awaited<ReturnType<typeof createAccount>>;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
@@ -1806,7 +1806,7 @@ describe.sequential("/api/v1/statuses quotes", () => {
   });
 });
 
-describe.sequential("/api/v1/statuses/:id/reblog", () => {
+describe("/api/v1/statuses/:id/reblog", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
   let accessToken: Awaited<ReturnType<typeof getAccessToken>>;
@@ -1914,7 +1914,7 @@ describe.sequential("/api/v1/statuses/:id/reblog", () => {
   });
 });
 
-describe.sequential("/api/v1/statuses visibility", () => {
+describe("/api/v1/statuses visibility", { concurrent: false }, () => {
   let viewer: Awaited<ReturnType<typeof createAccount>>;
   let approvedAuthor: Awaited<ReturnType<typeof createAccount>>;
   let pendingAuthor: Awaited<ReturnType<typeof createAccount>>;

@@ -13,8 +13,8 @@ import type * as Schema from "../schema";
 import { createClientCredential } from "./helpers";
 import { scopeRequired, tokenRequired, type Variables } from "./middleware";
 
-describe.sequential("OAuth / Middleware", () => {
-  describe.sequential("tokenRequired", () => {
+describe("OAuth / Middleware", { concurrent: false }, () => {
+  describe("tokenRequired", { concurrent: false }, () => {
     const app = new Hono<{ Variables: Variables }>();
 
     app.get("/tokenRequired", tokenRequired, (c) => {
@@ -165,7 +165,7 @@ describe.sequential("OAuth / Middleware", () => {
     });
   });
 
-  describe.sequential("scopeRequired", () => {
+  describe("scopeRequired", { concurrent: false }, () => {
     const app = new Hono<{ Variables: Variables }>();
 
     app.get("/read", tokenRequired, scopeRequired(["read"]), (c) => {
