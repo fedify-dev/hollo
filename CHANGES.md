@@ -891,8 +891,6 @@ Released on October 1, 2026.
     one that gets queued, handed to listeners, and forwarded.
     [[GHSA-39gj-rchc-q5m3]]
 
-[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
-
 
 Version 0.8.13
 --------------
