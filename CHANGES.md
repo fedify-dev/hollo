@@ -6,10 +6,21 @@ Version 0.9.21
 
 To be released.
 
+ -  Upgraded Fedify to 2.2.15, which fixes a security vulnerability where
+    `Context.routeActivity()` authenticated the dereferenced activity but
+    routed the caller's unauthenticated copy, so an attacker who knew the `id`
+    of any dereferenceable activity could have the application's inbox
+    listeners process an activity with that `id` but with an actor, object,
+    and addressing of the attacker's choice, and the genuine activity could
+    then be dropped as a duplicate.  The verified fetched document is now the
+    one that gets queued, handed to listeners, and forwarded.
+    [[GHSA-39gj-rchc-q5m3]]
+
  -  Fixed slow home, public, and list timeline queries on large databases by
     checking the shared post directly when filtering muted or blocked authors.
     [[#633], [#634]]
 
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
 [#633]: https://github.com/fedify-dev/hollo/issues/633
 [#634]: https://github.com/fedify-dev/hollo/pull/634
 
@@ -773,6 +784,24 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.14
+--------------
+
+Released on October 1, 2026.
+
+ -  Upgraded Fedify to 2.1.26, which fixes a security vulnerability where
+    `Context.routeActivity()` authenticated the dereferenced activity but
+    routed the caller's unauthenticated copy, so an attacker who knew the `id`
+    of any dereferenceable activity could have the application's inbox
+    listeners process an activity with that `id` but with an actor, object,
+    and addressing of the attacker's choice, and the genuine activity could
+    then be dropped as a duplicate.  The verified fetched document is now the
+    one that gets queued, handed to listeners, and forwarded.
+    [[GHSA-39gj-rchc-q5m3]]
+
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
 
 
 Version 0.8.13
