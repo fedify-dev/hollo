@@ -6,6 +6,18 @@ Version 0.8.14
 
 To be released.
 
+ -  Upgraded Fedify to 2.1.26, which fixes a security vulnerability where
+    `Context.routeActivity()` authenticated the dereferenced activity but
+    routed the caller's unauthenticated copy, so an attacker who knew the `id`
+    of any dereferenceable activity could have the application's inbox
+    listeners process an activity with that `id` but with an actor, object,
+    and addressing of the attacker's choice, and the genuine activity could
+    then be dropped as a duplicate.  The verified fetched document is now the
+    one that gets queued, handed to listeners, and forwarded.
+    [[GHSA-39gj-rchc-q5m3]]
+
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
+
 
 Version 0.8.13
 --------------
