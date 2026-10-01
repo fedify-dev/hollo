@@ -19,7 +19,6 @@ import {
   lookupObject,
   Note,
   Question,
-  QuoteAuthorization,
   type Recipient,
   Source,
   Tombstone,
@@ -67,6 +66,8 @@ import {
 } from "./account";
 import { toDate, toTemporalInstant } from "./date";
 import { toEmoji } from "./emoji";
+import { federation } from "./federation";
+import { verifyQuoteAuthorization } from "./quote";
 import { persistRemoteEmojiReactions } from "./reactions";
 import { enqueueRemoteReplyScrape } from "./replies";
 import { appendPostToTimelines } from "./timeline";
@@ -169,6 +170,7 @@ function getQuoteApprovalPolicy(
 
 async function getVerifiedQuoteAuthorizationIri(
   object: ASPost,
+  baseUrl: URL | string,
   quoteTargetIri: string | null,
   quoteTargetAccountIri: string | null,
   options: PersistAccountOptions,
@@ -182,17 +184,19 @@ async function getVerifiedQuoteAuthorizationIri(
   ) {
     return null;
   }
-  const authorization = await object.getQuoteAuthorization({
-    ...options,
-    crossOrigin: "trust",
-    suppressError: true,
-  });
-  if (!(authorization instanceof QuoteAuthorization)) return null;
-  if (authorization.id?.href !== authorizationId.href) return null;
-  if (authorization.attributionId?.href !== quoteTargetAccountIri) return null;
-  if (authorization.interactingObjectId?.href !== object.id.href) return null;
-  if (authorization.interactionTargetId?.href !== quoteTargetIri) return null;
-  return authorizationId.href;
+  // Only the authorization IRI is used: an embedded body is never trusted,
+  // so the helper dereferences it and checks its origin against the author.
+  const verification = await verifyQuoteAuthorization(
+    federation.createContext(new URL(baseUrl), undefined),
+    {
+      authorizationId,
+      quoteIri: object.id.href,
+      targetIri: quoteTargetIri,
+      targetAuthorIri: quoteTargetAccountIri,
+      documentLoader: options.documentLoader,
+    },
+  );
+  return verification.verified ? verification.authorizationIri : null;
 }
 
 export async function persistPost(
@@ -383,6 +387,7 @@ export async function persistPost(
     previewLink == null ? null : await fetchPreviewCard(previewLink);
   const quoteAuthorizationIri = await getVerifiedQuoteAuthorizationIri(
     object,
+    baseUrl,
     quoteTargetIri,
     quoteTargetAccountIri,
     options,
@@ -1188,7 +1193,7 @@ export function toObject(
   });
 }
 
-function getCanQuoteRule(
+export function getCanQuoteRule(
   post: Post & { account: Account & { owner: AccountOwner | null } },
   ctx: Context<unknown>,
 ): InteractionRule {

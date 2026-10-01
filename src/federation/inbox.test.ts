@@ -2,6 +2,7 @@ import type { InboxContext } from "@fedify/fedify";
 import {
   Accept,
   Delete,
+  type DocumentLoader,
   Note,
   Person,
   QuoteAuthorization,
@@ -33,6 +34,7 @@ import {
   onQuoteRequestRejected,
   sendQuoteUpdate,
 } from "./inbox";
+import federation from "./index";
 
 type SeededFollow = {
   followerId: Uuid;
@@ -68,10 +70,53 @@ async function seedFollow(): Promise<SeededFollow> {
   };
 }
 
+const fedCtx = federation.createContext(
+  new URL("https://hollo.test"),
+  undefined,
+);
+
+// Documents served by the mock document loader, keyed by URL.  Other
+// *.test URLs answer 404; JSON-LD contexts come from Fedify's preloaded set.
+const remoteDocuments = new Map<string, unknown>();
+
+function notFound(url: string): Error {
+  return Object.assign(new Error(`HTTP 404: ${url}`), {
+    response: new Response(null, { status: 404 }),
+  });
+}
+
+const documentLoader: DocumentLoader = async (url, options) => {
+  const document = remoteDocuments.get(url);
+  if (document != null) return { contextUrl: null, document, documentUrl: url };
+  if (new URL(url).hostname.endsWith(".test")) throw notFound(url);
+  return await fedCtx.contextLoader(url, options);
+};
+
 const ctx = {
   origin: "https://hollo.test",
   recipient: "follower",
-} as InboxContext<void>;
+  documentLoader,
+  contextLoader: fedCtx.contextLoader,
+  getFollowersUri: (identifier: string) => fedCtx.getFollowersUri(identifier),
+} as unknown as InboxContext<void>;
+
+async function serveQuoteAuthorization(
+  authorizationIri: string,
+  targetAuthorIri: string,
+  quoteIri: string,
+  targetIri: string,
+): Promise<void> {
+  const authorization = new QuoteAuthorization({
+    id: new URL(authorizationIri),
+    attribution: new URL(targetAuthorIri),
+    interactingObject: new URL(quoteIri),
+    interactionTarget: new URL(targetIri),
+  });
+  remoteDocuments.set(
+    authorizationIri,
+    await authorization.toJsonLd({ contextLoader: fedCtx.contextLoader }),
+  );
+}
 
 describe("onFollowAccepted", () => {
   beforeEach(async () => {
@@ -200,6 +245,7 @@ describe("onFollowRejected", () => {
 describe("quote request lifecycle", () => {
   beforeEach(async () => {
     await cleanDatabase();
+    remoteDocuments.clear();
   });
 
   async function seedRemoteAccount(username: string): Promise<Uuid> {
@@ -269,6 +315,13 @@ describe("quote request lifecycle", () => {
         published: new Date(),
       },
     ]);
+
+    await serveQuoteAuthorization(
+      `${quotedPostIri}/quote_authorizations/${quotePostId}`,
+      "https://hollo.test/@quote-author",
+      quotePostIri,
+      quotedPostIri,
+    );
 
     return { quotedPostId, quotedPostIri, quotePostId, quotePostIri };
   }
@@ -927,6 +980,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -999,6 +1053,7 @@ describe("quote request lifecycle", () => {
     ]);
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@attacker"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1056,6 +1111,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1124,6 +1180,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1198,6 +1255,7 @@ describe("quote request lifecycle", () => {
     ]);
 
     const oldRequest = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(oldPostIri),
       instrument: new Note({
@@ -1214,6 +1272,7 @@ describe("quote request lifecycle", () => {
       }),
     });
     const newRequest = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(newPostIri),
       instrument: new Note({
@@ -1278,6 +1337,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1361,6 +1421,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL(quoterIri),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1438,6 +1499,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL(blockedAccountIri),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1494,6 +1556,7 @@ describe("quote request lifecycle", () => {
     });
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@attacker"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1524,7 +1587,7 @@ describe("quote request lifecycle", () => {
   });
 
   it("ignores a QuoteRequest whose quote targets another object", async () => {
-    expect.assertions(4);
+    expect.assertions(3);
 
     const author = await createAccount({ username: "quote-author" });
     const quotedPostId = crypto.randomUUID() as Uuid;
@@ -1564,6 +1627,7 @@ describe("quote request lifecycle", () => {
     ]);
 
     const request = new QuoteRequest({
+      id: new URL(`https://remote.test/quote-requests/${crypto.randomUUID()}`),
       actor: new URL("https://remote.test/@quoter"),
       object: new URL(quotedPostIri),
       instrument: new Note({
@@ -1588,9 +1652,628 @@ describe("quote request lifecycle", () => {
     const quoted = await db.query.posts.findFirst({
       where: { id: { eq: quotedPostId } },
     });
-    expect(quote?.quoteTargetIri).toBe(otherPostIri);
-    expect(quote?.quoteState).toBe("unauthorized");
+    // The helper rejects the mismatched request before Hollo persists the
+    // instrument, so an invalid request leaves no side effects behind.
+    expect(quote).toBeUndefined();
     expect(quoted?.quotesCount).toBe(0);
     expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  async function seedLocalQuoteTarget(
+    quoteApprovalPolicy: "public" | "followers" | "nobody" = "public",
+  ) {
+    const author = await createAccount({ username: "quote-author" });
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://hollo.test/@quote-author/${quotedPostId}`;
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id as Uuid,
+      visibility: "public",
+      quoteApprovalPolicy,
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+    return { authorId: author.id as Uuid, quotedPostId, quotedPostIri };
+  }
+
+  const quoterIri = "https://remote.test/@quoter";
+
+  // Modeled on Mastodon 4.5's QuoteRequest and Note serializers, which emit
+  // the FEP-044f `quote` together with the `_misskey_quote` and `quoteUri`
+  // aliases.  Not captured from live traffic.
+  function quoteRequestJson(
+    quotedPostIri: string,
+    overrides: Record<string, unknown> = {},
+    instrumentOverrides: Record<string, unknown> = {},
+  ): Record<string, unknown> {
+    const quotePostIri = `${quoterIri}/statuses/1`;
+    const json = {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+          QuoteRequest: "https://w3id.org/fep/044f#QuoteRequest",
+          quote: { "@id": "https://w3id.org/fep/044f#quote", "@type": "@id" },
+          quoteUri: "http://fedibird.com/ns#quoteUri",
+          _misskey_quote: "https://misskey-hub.net/ns#_misskey_quote",
+        },
+      ],
+      id: `${quotePostIri}/quote_requests/1`,
+      type: "QuoteRequest",
+      actor: quoterIri,
+      object: quotedPostIri,
+      instrument: {
+        id: quotePostIri,
+        type: "Note",
+        attributedTo: {
+          id: quoterIri,
+          type: "Person",
+          preferredUsername: "quoter",
+          inbox: `${quoterIri}/inbox`,
+        },
+        to: "https://www.w3.org/ns/activitystreams#Public",
+        content: "<p>Remote quote</p>",
+        quote: quotedPostIri,
+        quoteUri: quotedPostIri,
+        _misskey_quote: quotedPostIri,
+        ...instrumentOverrides,
+      },
+      ...overrides,
+    };
+    // Drop properties overridden with `undefined`.
+    return JSON.parse(JSON.stringify(json));
+  }
+
+  function createRequestCtx(loader: DocumentLoader = documentLoader) {
+    const sendActivity = vi.fn(async () => undefined);
+    const requestCtx = {
+      ...ctx,
+      documentLoader: loader,
+      sendActivity,
+    } as unknown as InboxContext<void>;
+    return { requestCtx, sendActivity };
+  }
+
+  it("accepts a Mastodon-shaped QuoteRequest with a helper-built Accept", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const { requestCtx, sendActivity } = createRequestCtx();
+    const json = quoteRequestJson(quotedPostIri);
+    const request = await QuoteRequest.fromJsonLd(json);
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: `${quoterIri}/statuses/1` } },
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(sendActivity).toHaveBeenCalledOnce();
+    const [, , response] = sendActivity.mock.calls[0] as unknown as [
+      unknown,
+      unknown,
+      Accept,
+    ];
+    expect(response).toBeInstanceOf(Accept);
+    expect(response.id?.href).toMatch(/^https:\/\/hollo\.test\/#Accept\//);
+    expect(response.toIds.map((id) => id.href)).toEqual([quoterIri]);
+    const authorization = await response.getResult();
+    expect(authorization).toBeInstanceOf(QuoteAuthorization);
+    expect((authorization as QuoteAuthorization).id?.href).toBe(
+      quote?.quoteAuthorizationIri,
+    );
+    expect(
+      (authorization as QuoteAuthorization).interactingObjectId?.href,
+    ).toBe(quote?.iri);
+    expect(
+      (authorization as QuoteAuthorization).interactionTargetId?.href,
+    ).toBe(quotedPostIri);
+    // The echoed request keeps the sender's representation.
+    const echoed = (await response.toJsonLd()) as {
+      object: { id: string; instrument: { content: string } };
+    };
+    expect(echoed.object.id).toBe(json.id);
+    expect(echoed.object.instrument.content).toBe("<p>Remote quote</p>");
+  });
+
+  it.each([
+    ["without an id", { id: undefined }, {}],
+    ["without an actor", { actor: undefined }, {}],
+    [
+      "whose quote and quoteUrl disagree",
+      {},
+      {
+        quoteUri: "https://hollo.test/@quote-author/other",
+        _misskey_quote: "https://hollo.test/@quote-author/other",
+      },
+    ],
+  ])("ignores a QuoteRequest %s", async (_, overrides, instrumentOverrides) => {
+    const { quotedPostId, quotedPostIri } = await seedLocalQuoteTarget();
+    const { requestCtx, sendActivity } = createRequestCtx();
+    const request = await QuoteRequest.fromJsonLd(
+      quoteRequestJson(quotedPostIri, overrides, instrumentOverrides),
+    );
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: `${quoterIri}/statuses/1` } },
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: { id: { eq: quotedPostId } },
+    });
+    expect(quote).toBeUndefined();
+    expect(quoted?.quotesCount).toBe(0);
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it("refetches a cross-origin embedded instrument", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const instrumentIri = "https://other.test/notes/1";
+    remoteDocuments.set(instrumentIri, {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: instrumentIri,
+      type: "Note",
+      attributedTo: "https://other.test/@victim",
+      content: "<p>The real note</p>",
+    });
+    const loader = vi.fn(documentLoader);
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+    const request = await QuoteRequest.fromJsonLd(
+      // The embedded copy claims the requester wrote it.
+      quoteRequestJson(quotedPostIri, {}, { id: instrumentIri }),
+    );
+
+    await onQuoteRequested(requestCtx, request);
+
+    expect(loader.mock.calls.map(([url]) => url)).toContain(instrumentIri);
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: instrumentIri } },
+    });
+    expect(quote).toBeUndefined();
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it("echoes the sender's request after refetching a cross-origin instrument", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const instrumentIri = `${quoterIri}/statuses/1`;
+    // The request comes from another origin than its embedded instrument.
+    const json = quoteRequestJson(
+      quotedPostIri,
+      { id: "https://relay.test/quote-requests/1" },
+      { content: "<p>Embedded copy</p>" },
+    );
+    const instrument = json.instrument as Record<string, unknown>;
+    remoteDocuments.set(instrumentIri, {
+      ...instrument,
+      "@context": json["@context"],
+      content: "<p>Fetched copy</p>",
+    });
+    const { requestCtx, sendActivity } = createRequestCtx();
+    const request = await QuoteRequest.fromJsonLd(json);
+
+    await onQuoteRequested(requestCtx, request);
+
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: instrumentIri } },
+    });
+    expect(quote?.contentHtml).toBe("<p>Fetched copy</p>");
+    expect(quote?.quoteState).toBe("accepted");
+    expect(sendActivity).toHaveBeenCalledOnce();
+    const [, , response] = sendActivity.mock.calls[0] as unknown as [
+      unknown,
+      unknown,
+      Accept,
+    ];
+    const echoed = (await response.toJsonLd()) as {
+      object: { instrument: { content: string } };
+    };
+    expect(echoed.object.instrument.content).toBe("<p>Embedded copy</p>");
+  });
+
+  it("retries a QuoteRequest whose instrument fetch fails transiently", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const instrumentIri = `${quoterIri}/statuses/1`;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === instrumentIri) throw new TypeError("fetch failed");
+      return await documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+    const request = await QuoteRequest.fromJsonLd(
+      quoteRequestJson(quotedPostIri, { instrument: instrumentIri }),
+    );
+
+    await expect(onQuoteRequested(requestCtx, request)).rejects.toThrow(
+      "fetch failed",
+    );
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it("does not retry a QuoteRequest whose instrument URL is refused", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const instrumentIri = `${quoterIri}/statuses/1`;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === instrumentIri) {
+        // Fedify's SSRF protection rejects private addresses this way.
+        throw Object.assign(new Error("Invalid or private address"), {
+          name: "UrlError",
+        });
+      }
+      return await documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+    const request = await QuoteRequest.fromJsonLd(
+      quoteRequestJson(quotedPostIri, { instrument: instrumentIri }),
+    );
+
+    await expect(onQuoteRequested(requestCtx, request)).resolves.toBe(
+      undefined,
+    );
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it("retries a QuoteRequest whose instrument host fails DNS lookup", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const instrumentIri = `${quoterIri}/statuses/1`;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === instrumentIri) {
+        throw Object.assign(new Error("DNS lookup failed"), {
+          name: "UrlError",
+          reason: "dns",
+        });
+      }
+      return await documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+    const request = await QuoteRequest.fromJsonLd(
+      quoteRequestJson(quotedPostIri, { instrument: instrumentIri }),
+    );
+
+    await expect(onQuoteRequested(requestCtx, request)).rejects.toThrow(
+      "DNS lookup failed",
+    );
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it("ignores a QuoteRequest whose instrument is gone", async () => {
+    const { quotedPostIri } = await seedLocalQuoteTarget();
+    const { requestCtx, sendActivity } = createRequestCtx();
+    const request = await QuoteRequest.fromJsonLd(
+      quoteRequestJson(quotedPostIri, {
+        instrument: `${quoterIri}/statuses/1`,
+      }),
+    );
+
+    await onQuoteRequested(requestCtx, request);
+
+    expect(sendActivity).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["followers", true, Accept],
+    ["followers", false, Reject],
+    ["nobody", true, Reject],
+  ] as const)(
+    "evaluates the %s policy (approved follower: %s)",
+    async (policy, approvedFollower, responseClass) => {
+      const { authorId, quotedPostIri } = await seedLocalQuoteTarget(policy);
+      const quoterId = await seedRemoteAccount("quoter");
+      if (approvedFollower) {
+        await db.insert(follows).values({
+          iri: `${quoterIri}#follows/1`,
+          followerId: quoterId,
+          followingId: authorId,
+          approved: new Date(),
+        });
+      }
+      const { requestCtx, sendActivity } = createRequestCtx();
+      const request = await QuoteRequest.fromJsonLd(
+        quoteRequestJson(quotedPostIri),
+      );
+
+      await onQuoteRequested(requestCtx, request);
+
+      const quote = await db.query.posts.findFirst({
+        where: { iri: { eq: `${quoterIri}/statuses/1` } },
+      });
+      expect(quote?.quoteState).toBe(
+        responseClass === Accept ? "accepted" : "rejected",
+      );
+      expect(sendActivity).toHaveBeenCalledOnce();
+      const [, , response] = sendActivity.mock.calls[0] as unknown as [
+        unknown,
+        unknown,
+        Accept | Reject,
+      ];
+      expect(response).toBeInstanceOf(responseClass);
+      expect(response.id?.href).toMatch(
+        new RegExp(`^https://hollo\\.test/#${responseClass.name}/`),
+      );
+    },
+  );
+
+  function getAuthorizationIri(seeded: {
+    quotedPostIri: string;
+    quotePostId: string;
+  }): string {
+    return `${seeded.quotedPostIri}/quote_authorizations/${seeded.quotePostId}`;
+  }
+
+  function createAccept(
+    seeded: { quotePostIri: string; quotedPostIri: string },
+    result: URL | QuoteAuthorization,
+  ): Accept {
+    return new Accept({
+      actor: new URL("https://hollo.test/@quote-author"),
+      object: new URL(`${seeded.quotePostIri}#quote-request`),
+      result,
+    });
+  }
+
+  async function expectStillPending(seeded: {
+    quotePostId: Uuid;
+    quotedPostId: Uuid;
+  }): Promise<void> {
+    const quote = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotePostId } },
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotedPostId } },
+    });
+    expect(quote?.quoteState).toBe("pending");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
+  }
+
+  it.each<
+    [
+      string,
+      {
+        attribution?: string;
+        interactingObject?: string;
+        interactionTarget?: string;
+      },
+    ]
+  >([
+    [
+      "a wrong attribution",
+      { attribution: "https://hollo.test/@quote-quoter" },
+    ],
+    ["a wrong quote", { interactingObject: "https://hollo.test/@x/1" }],
+    ["a wrong target", { interactionTarget: "https://hollo.test/@x/2" }],
+  ])(
+    "does not accept a quote whose authorization has %s",
+    async (_, override) => {
+      const seeded = await seedPendingQuote();
+      const authorizationIri = getAuthorizationIri(seeded);
+      await serveQuoteAuthorization(
+        authorizationIri,
+        override.attribution ?? "https://hollo.test/@quote-author",
+        override.interactingObject ?? seeded.quotePostIri,
+        override.interactionTarget ?? seeded.quotedPostIri,
+      );
+      const { requestCtx, sendActivity } = createRequestCtx();
+
+      const accepted = await onQuoteRequestAccepted(
+        requestCtx,
+        createAccept(seeded, new URL(authorizationIri)),
+      );
+
+      expect(accepted).toBe(false);
+      expect(sendActivity).not.toHaveBeenCalled();
+      await expectStillPending(seeded);
+    },
+  );
+
+  it("does not accept an authorization hosted on another origin", async () => {
+    const seeded = await seedPendingQuote();
+    const authorizationIri = "https://remote.test/quote_authorizations/1";
+    await serveQuoteAuthorization(
+      authorizationIri,
+      "https://hollo.test/@quote-author",
+      seeded.quotePostIri,
+      seeded.quotedPostIri,
+    );
+    const loader = vi.fn(documentLoader);
+    const { requestCtx } = createRequestCtx(loader);
+
+    const accepted = await onQuoteRequestAccepted(
+      requestCtx,
+      createAccept(seeded, new URL(authorizationIri)),
+    );
+
+    expect(accepted).toBe(false);
+    expect(loader).not.toHaveBeenCalled();
+    await expectStillPending(seeded);
+  });
+
+  it("does not accept an authorization that is gone or of the wrong type", async () => {
+    const seeded = await seedPendingQuote();
+    const { requestCtx } = createRequestCtx();
+    const goneIri = `${seeded.quotedPostIri}/quote_authorizations/gone`;
+    const noteIri = `${seeded.quotedPostIri}/quote_authorizations/note`;
+    remoteDocuments.set(noteIri, {
+      "@context": "https://www.w3.org/ns/activitystreams",
+      id: noteIri,
+      type: "Note",
+      attributedTo: "https://hollo.test/@quote-author",
+    });
+
+    for (const iri of [goneIri, noteIri]) {
+      expect(
+        await onQuoteRequestAccepted(
+          requestCtx,
+          createAccept(seeded, new URL(iri)),
+        ),
+      ).toBe(false);
+    }
+    await expectStillPending(seeded);
+  });
+
+  it("does not trust an embedded authorization contradicted by its source", async () => {
+    const seeded = await seedPendingQuote();
+    const authorizationIri = getAuthorizationIri(seeded);
+    await serveQuoteAuthorization(
+      authorizationIri,
+      "https://hollo.test/@quote-author",
+      "https://hollo.test/@quote-quoter/another-quote",
+      seeded.quotedPostIri,
+    );
+    const { requestCtx } = createRequestCtx();
+
+    const accepted = await onQuoteRequestAccepted(
+      requestCtx,
+      createAccept(
+        seeded,
+        new QuoteAuthorization({
+          id: new URL(authorizationIri),
+          attribution: new URL("https://hollo.test/@quote-author"),
+          interactingObject: new URL(seeded.quotePostIri),
+          interactionTarget: new URL(seeded.quotedPostIri),
+        }),
+      ),
+    );
+
+    expect(accepted).toBe(false);
+    await expectStillPending(seeded);
+  });
+
+  it("retries an Accept whose authorization fetch fails transiently", async () => {
+    const seeded = await seedPendingQuote();
+    let failures = 1;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === getAuthorizationIri(seeded) && failures-- > 0) {
+        throw new TypeError("fetch failed");
+      }
+      return await documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+    const accept = createAccept(seeded, new URL(getAuthorizationIri(seeded)));
+
+    await expect(onQuoteRequestAccepted(requestCtx, accept)).rejects.toThrow(
+      "Failed to dereference the quote authorization",
+    );
+    await expectStillPending(seeded);
+    expect(await onQuoteRequestAccepted(requestCtx, accept)).toBe(true);
+
+    const quoted = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotedPostId } },
+    });
+    expect(quoted?.quotesCount).toBe(1);
+    expect(sendActivity).toHaveBeenCalledOnce();
+  });
+
+  it("retries an Accept whose authorization host fails DNS lookup", async () => {
+    const seeded = await seedPendingQuote();
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === getAuthorizationIri(seeded)) {
+        throw Object.assign(new Error("DNS lookup failed"), {
+          name: "UrlError",
+          reason: "dns",
+        });
+      }
+      return await documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+
+    await expect(
+      onQuoteRequestAccepted(
+        requestCtx,
+        createAccept(seeded, new URL(getAuthorizationIri(seeded))),
+      ),
+    ).rejects.toThrow("Failed to dereference the quote authorization");
+    expect(sendActivity).not.toHaveBeenCalled();
+    await expectStillPending(seeded);
+  });
+
+  it("retries an Accept whose JSON-LD context fails to load transiently", async () => {
+    const seeded = await seedPendingQuote();
+    const contextUrl = "https://flaky-context.example/ns";
+    const authorizationIri = getAuthorizationIri(seeded);
+    const document = remoteDocuments.get(authorizationIri) as {
+      "@context": unknown[];
+    };
+    remoteDocuments.set(authorizationIri, {
+      ...document,
+      "@context": [...document["@context"], contextUrl],
+    });
+    let failures = 1;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === contextUrl) {
+        if (failures-- > 0) throw new TypeError("fetch failed");
+        return {
+          contextUrl: null,
+          document: { "@context": {} },
+          documentUrl: url,
+        };
+      }
+      return await documentLoader(url, options);
+    };
+    const { requestCtx } = createRequestCtx(loader);
+    const accept = createAccept(seeded, new URL(authorizationIri));
+
+    await expect(onQuoteRequestAccepted(requestCtx, accept)).rejects.toThrow(
+      "Failed to dereference the quote authorization",
+    );
+    expect(await onQuoteRequestAccepted(requestCtx, accept)).toBe(true);
+
+    const quoted = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotedPostId } },
+    });
+    expect(quoted?.quotesCount).toBe(1);
+  });
+
+  it("counts concurrent Accepts for the same quote once", async () => {
+    const seeded = await seedPendingQuote();
+    const { requestCtx, sendActivity } = createRequestCtx();
+    const accept = createAccept(seeded, new URL(getAuthorizationIri(seeded)));
+
+    const results = await Promise.all([
+      onQuoteRequestAccepted(requestCtx, accept),
+      onQuoteRequestAccepted(requestCtx, accept),
+    ]);
+
+    expect(results.filter((accepted) => accepted)).toHaveLength(1);
+    const quoted = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotedPostId } },
+    });
+    expect(quoted?.quotesCount).toBe(1);
+    expect(sendActivity).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a rejection that lands while an Accept is being verified", async () => {
+    const seeded = await seedPendingQuote();
+    const authorizationIri = getAuthorizationIri(seeded);
+    const { requestCtx: rejectCtx } = createRequestCtx();
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === authorizationIri) {
+        await onQuoteRequestRejected(
+          rejectCtx,
+          new Reject({
+            actor: new URL("https://hollo.test/@quote-author"),
+            object: new URL(`${seeded.quotePostIri}#quote-request`),
+          }),
+        );
+      }
+      return await documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+
+    const accepted = await onQuoteRequestAccepted(
+      requestCtx,
+      createAccept(seeded, new URL(authorizationIri)),
+    );
+
+    expect(accepted).toBe(false);
+    expect(sendActivity).not.toHaveBeenCalled();
+    const quote = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotePostId } },
+    });
+    const quoted = await db.query.posts.findFirst({
+      where: { id: { eq: seeded.quotedPostId } },
+    });
+    expect(quote?.quoteState).toBe("rejected");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+    expect(quoted?.quotesCount).toBe(0);
   });
 });

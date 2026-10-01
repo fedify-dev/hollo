@@ -28,6 +28,7 @@ import { toTemporalInstant } from "./date";
 import { toEmoji } from "./emoji";
 import { federation } from "./federation";
 import { toObject } from "./post";
+import { createQuoteAuthorization } from "./quote";
 import { createRepliesQueryCache } from "./replies-cache";
 
 const EMOJI_REACTIONS_COLLECTION = "emojiReactions";
@@ -448,12 +449,7 @@ federation.setObjectDispatcher(
       },
     });
     if (quotePost == null) return null;
-    return new QuoteAuthorization({
-      id: new URL(`${targetPost.iri}/quote_authorizations/${quotePost.id}`),
-      attribution: new URL(targetPost.account.iri),
-      interactingObject: new URL(quotePost.iri),
-      interactionTarget: new URL(targetPost.iri),
-    });
+    return createQuoteAuthorization(targetPost, quotePost);
   },
 );
 

@@ -1,4 +1,5 @@
 import type { Context, InboxContext } from "@fedify/fedify";
+import { quoteInteraction } from "@fedify/interaction-controls";
 import {
   Accept,
   type Add,
@@ -12,6 +13,7 @@ import {
   Follow,
   isActor,
   Like,
+  type Object as ActivityObject,
   type Move,
   Note,
   Question,
@@ -62,6 +64,7 @@ import {
   updateAccountStats,
 } from "./account";
 import {
+  getCanQuoteRule,
   getRecipients,
   isPost,
   persistPollVote,
@@ -70,6 +73,13 @@ import {
   toUpdate,
   updatePostStats,
 } from "./post";
+import {
+  createQuoteAuthorization,
+  createQuoteTargetSubject,
+  getQuoteAuthorizationIri,
+  isTransientLoaderError,
+  verifyQuoteAuthorization,
+} from "./quote";
 import { getEmojiReactionCustomEmoji } from "./reactions";
 
 const inboxLogger = getLogger(["hollo", "inbox"]);
@@ -447,20 +457,25 @@ async function getQuoteRequestReferenceFromActivity(
   };
 }
 
-async function updateQuoteRequestState(
+type ResolvedQuoteRequestResponse = {
+  quote: Post & { quoteTargetIri: string };
+  target: Post & { account: Account };
+  repeatedRejection: boolean;
+};
+
+async function resolveQuoteRequestResponse(
   request: QuoteRequestReference,
   responderIri: string | null,
   state: "accepted" | "rejected",
-  quoteAuthorizationIri: string | null,
-): Promise<boolean> {
+): Promise<ResolvedQuoteRequestResponse | null> {
   const quote = await db.query.posts.findFirst({
     where: { iri: { eq: request.quoteIri } },
     with: { quoteTarget: { with: { account: true } } },
   });
-  if (quote == null) return false;
+  if (quote == null) return null;
   const repeatedRejection =
     state === "rejected" && quote.quoteState === "rejected";
-  if (quote.quoteState !== "pending" && !repeatedRejection) return false;
+  if (quote.quoteState !== "pending" && !repeatedRejection) return null;
   const target =
     request.targetIri == null
       ? quote.quoteTarget
@@ -468,40 +483,51 @@ async function updateQuoteRequestState(
           where: { iri: { eq: request.targetIri } },
           with: { account: true },
         });
-  if (target == null) return false;
+  if (target == null) return null;
   if (responderIri == null || responderIri !== target.account.iri) {
-    return false;
+    return null;
   }
-  if (quote.quoteTargetIri == null) return false;
-  if (request.targetIri != null && quote.quoteTargetIri !== request.targetIri) {
-    return false;
+  const quoteTargetIri = quote.quoteTargetIri;
+  if (quoteTargetIri == null) return null;
+  if (request.targetIri != null && quoteTargetIri !== request.targetIri) {
+    return null;
   }
-  // Enqueue may have failed after the first rejection was committed. A
-  // validated retry can resend the clearing Update without changing its ID.
-  if (repeatedRejection) return true;
-  await db.transaction(async (tx) => {
-    await tx
+  return { quote: { ...quote, quoteTargetIri }, target, repeatedRejection };
+}
+
+async function commitQuoteRequestState(
+  { quote, target }: ResolvedQuoteRequestResponse,
+  state: "accepted" | "rejected",
+  quoteAuthorizationIri: string | null,
+): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    // Authorization verification may wait on the network, so only move the
+    // quote out of the pending state if no other response has done so.
+    const updated = await tx
       .update(posts)
       .set({
         quoteState: state,
         quoteAuthorizationIri,
         quoteTargetId: target.id,
-        quoteTargetIri: request.targetIri ?? quote.quoteTargetIri ?? target.iri,
         updated: new Date(),
       })
-      .where(eq(posts.id, quote.id));
-    if (
-      state === "accepted" &&
-      target != null &&
-      quote.quoteState !== "accepted"
-    ) {
+      .where(
+        and(
+          eq(posts.id, quote.id),
+          eq(posts.quoteState, "pending"),
+          eq(posts.quoteTargetIri, quote.quoteTargetIri),
+        ),
+      )
+      .returning({ id: posts.id });
+    if (updated.length < 1) return false;
+    if (state === "accepted") {
       await tx
         .update(posts)
         .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
         .where(eq(posts.id, target.id));
     }
+    return true;
   });
-  return true;
 }
 
 export async function sendQuoteUpdate(
@@ -554,13 +580,38 @@ export async function onQuoteRequestAccepted(
 ): Promise<boolean> {
   const request = await getQuoteRequestReferenceFromActivity(accept);
   if (request == null) return false;
-  const quoteAuthorizationIri = accept.resultId?.href;
-  if (quoteAuthorizationIri == null) return false;
-  const accepted = await updateQuoteRequestState(
+  const authorizationId = accept.resultId;
+  if (authorizationId == null) return false;
+  const resolved = await resolveQuoteRequestResponse(
     request,
     accept.actorId?.href ?? null,
     "accepted",
-    quoteAuthorizationIri,
+  );
+  if (resolved == null) return false;
+  const verification = await verifyQuoteAuthorization(ctx, {
+    authorizationId,
+    quoteIri: resolved.quote.iri,
+    targetIri: resolved.quote.quoteTargetIri,
+    targetAuthorIri: resolved.target.account.iri,
+  });
+  if (!verification.verified) {
+    if (verification.retryable) {
+      throw new Error(
+        `Failed to dereference the quote authorization ` +
+          `${authorizationId.href}; retrying later.`,
+      );
+    }
+    inboxLogger.debug(
+      "Ignoring Accept<QuoteRequest> with an unverified authorization: " +
+        "{failure}",
+      { failure: verification.failure },
+    );
+    return false;
+  }
+  const accepted = await commitQuoteRequestState(
+    resolved,
+    "accepted",
+    verification.authorizationIri,
   );
   if (accepted) await sendQuoteUpdate(ctx, request.quoteIri);
   return accepted;
@@ -572,12 +623,17 @@ export async function onQuoteRequestRejected(
 ): Promise<boolean> {
   const request = await getQuoteRequestReferenceFromActivity(reject);
   if (request == null) return false;
-  const rejected = await updateQuoteRequestState(
+  const resolved = await resolveQuoteRequestResponse(
     request,
     reject.actorId?.href ?? null,
     "rejected",
-    null,
   );
+  if (resolved == null) return false;
+  // Enqueue may have failed after the first rejection was committed. A
+  // validated retry can resend the clearing Update without changing its ID.
+  const rejected =
+    resolved.repeatedRejection ||
+    (await commitQuoteRequestState(resolved, "rejected", null));
   if (rejected) await sendQuoteUpdate(ctx, request.quoteIri);
   return rejected;
 }
@@ -634,18 +690,14 @@ export async function onQuoteAuthorizationDeleted(
   await sendQuoteUpdate(ctx, quote.iri);
 }
 
-export function getQuoteAuthorizationIri(
-  target: Pick<Post, "iri">,
-  quote: Pick<Post, "id">,
-): string {
-  return `${target.iri}/quote_authorizations/${quote.id}`;
-}
-
 async function canAutomaticallyAcceptQuoteRequest(
-  target: Post,
-  quote: Post,
+  ctx: InboxContext<void>,
+  target: Post & { account: Account & { owner: AccountOwner | null } },
+  quote: Post & { account: Account },
+  subject: Note,
 ): Promise<boolean> {
   if (target.accountId === quote.accountId) return true;
+  // A policy match alone must not bypass visibility and block checks.
   if (target.visibility === "direct" || target.visibility === "private") {
     return false;
   }
@@ -665,20 +717,44 @@ async function canAutomaticallyAcceptQuoteRequest(
     },
   });
   if (block != null) return false;
-  const policy = target.quoteApprovalPolicy ?? "public";
-  if (policy === "public") return true;
-  if (policy === "nobody") return false;
-  const follow = await db.query.follows.findFirst({
-    where: {
-      RAW: (follows, { and, eq, isNotNull }) =>
-        and(
-          eq(follows.followerId, quote.accountId),
-          eq(follows.followingId, target.accountId),
-          isNotNull(follows.approved),
-        )!,
+  const followersUri =
+    target.account.owner == null
+      ? null
+      : ctx.getFollowersUri(target.account.owner.handle);
+  const decision = await quoteInteraction.evaluatePolicy(ctx, {
+    subject,
+    requester: new URL(quote.account.iri),
+    async matchesApprovalCollection(collection, actor) {
+      if (followersUri == null || collection.href !== followersUri.href) {
+        return false;
+      }
+      if (actor.href !== quote.account.iri) return false;
+      const follow = await db.query.follows.findFirst({
+        where: {
+          RAW: (follows, { and, eq, isNotNull }) =>
+            and(
+              eq(follows.followerId, quote.accountId),
+              eq(follows.followingId, target.accountId),
+              isNotNull(follows.approved),
+            )!,
+        },
+      });
+      return follow != null;
     },
   });
-  return follow != null;
+  if (
+    decision.result === "denied" &&
+    decision.reason.type === "unverifiableCollection"
+  ) {
+    // The helper swallows errors from the follower lookup; rethrow so the
+    // inbox retries instead of sending a permanent Reject.
+    throw new Error(
+      `Failed to check the quote approval collection ` +
+        `${decision.reason.collection.href}; retrying later.`,
+    );
+  }
+  // Hollo has no manual approval queue, so only automatic approval counts.
+  return decision.result === "automatic";
 }
 
 export async function onQuoteRequested(
@@ -691,23 +767,53 @@ export async function onQuoteRequested(
     with: { account: { with: { owner: true } } },
   });
   if (target?.account.owner == null) return;
-  const instrument = await request.getInstrument({ crossOrigin: "trust" });
-  if (!isPost(instrument)) return;
-  const quoteActorIri = instrument.attributionId?.href;
-  if (quoteActorIri == null) return;
-  if (request.actorId != null && request.actorId.href !== quoteActorIri) {
+  // Resolve the instrument on an independent copy so the request echoed
+  // back in the response keeps the sender's representation (`clone()`
+  // would share the instrument storage).  Unlike the helper, this lookup
+  // does not suppress errors, so transient failures are retried.
+  const resolving = await QuoteRequest.fromJsonLd(
+    await request.toJsonLd({ contextLoader: ctx.contextLoader }),
+    { documentLoader: ctx.documentLoader, contextLoader: ctx.contextLoader },
+  );
+  let instrument: ActivityObject | null;
+  try {
+    instrument = await resolving.getInstrument({
+      documentLoader: ctx.documentLoader,
+      contextLoader: ctx.contextLoader,
+    });
+  } catch (error) {
+    if (isTransientLoaderError(error)) throw error;
+    inboxLogger.debug(
+      "Failed to resolve the QuoteRequest instrument: {error}",
+      {
+        error,
+      },
+    );
     return;
   }
-  const existingQuote =
-    instrument.id == null
-      ? null
-      : await db.query.posts.findFirst({
-          where: { iri: { eq: instrument.id.href } },
-        });
+  if (instrument == null) return;
+  const subject = createQuoteTargetSubject(
+    target,
+    getCanQuoteRule(target, ctx),
+  );
+  const verification = await quoteInteraction.verifyRequest(ctx, {
+    request: resolving.clone({ object: subject, instrument }),
+    documentLoader: ctx.documentLoader,
+  });
+  if (!verification.verified) {
+    inboxLogger.debug("Ignoring an unverified QuoteRequest: {failure}", {
+      failure: verification.failure,
+    });
+    return;
+  }
+  const quoteActorIri = verification.requester.href;
+  const existingQuote = await db.query.posts.findFirst({
+    where: { iri: { eq: verification.interactingObjectId.href } },
+  });
   if (existingQuote?.quoteState === "revoked") return;
   const persistedQuote = await persistPost(
     db,
-    instrument,
+    verification.interactingObject,
     ctx.origin,
     getPersistOptions(ctx),
   );
@@ -726,7 +832,12 @@ export async function onQuoteRequested(
       : null;
   const accepted =
     wasAccepted ||
-    (await canAutomaticallyAcceptQuoteRequest(target, persistedQuote));
+    (await canAutomaticallyAcceptQuoteRequest(
+      ctx,
+      target,
+      persistedQuote,
+      subject,
+    ));
   const authorizationIri = getQuoteAuthorizationIri(target, persistedQuote);
   await db.transaction(async (tx) => {
     await tx
@@ -772,20 +883,31 @@ export async function onQuoteRequested(
             sharedInbox: new URL(persistedQuote.account.sharedInboxUrl),
           },
   };
+  // Same ID shape Fedify assigns to activities sent without one.
+  const responseType = accepted ? "Accept" : "Reject";
+  const responseId = new URL(
+    `/#${responseType}/${crypto.randomUUID()}`,
+    ctx.origin,
+  );
   const response = accepted
-    ? new Accept({
+    ? quoteInteraction.createAccept({
+        mode: "polite",
+        id: responseId,
         actor: new URL(target.account.iri),
-        object: request,
-        result: new QuoteAuthorization({
-          id: new URL(authorizationIri),
-          attribution: new URL(target.account.iri),
-          interactingObject: new URL(persistedQuote.iri),
-          interactionTarget: new URL(target.iri),
-        }),
+        request,
+        authorization: createQuoteAuthorization(
+          target,
+          persistedQuote,
+          authorizationIri,
+        ),
+        to: recipient.id,
       })
-    : new Reject({
+    : quoteInteraction.createReject({
+        mode: "polite",
+        id: responseId,
         actor: new URL(target.account.iri),
-        object: request,
+        request,
+        to: recipient.id,
       });
   await ctx.sendActivity(
     { username: target.account.owner.handle },

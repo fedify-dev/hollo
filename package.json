@@ -35,6 +35,7 @@
     "@fedify/debugger": "~2.4.0",
     "@fedify/fedify": "~2.4.0",
     "@fedify/hono": "~2.4.0",
+    "@fedify/interaction-controls": "~2.4.0",
     "@fedify/markdown-it-hashtag": "~0.3.0",
     "@fedify/markdown-it-mention": "~0.3.0",
     "@fedify/postgres": "~2.4.0",

@@ -24,6 +24,9 @@ importers:
       '@fedify/hono':
         specifier: ~2.4.0
         version: 2.4.0(@fedify/fedify@2.4.0)(hono@4.13.5)
+      '@fedify/interaction-controls':
+        specifier: ~2.4.0
+        version: 2.4.0(@fedify/fedify@2.4.0)
       '@fedify/markdown-it-hashtag':
         specifier: ~0.3.0
         version: 0.3.0
@@ -1205,6 +1208,11 @@ packages:
     peerDependencies:
       '@fedify/fedify': ^2.4.0
       hono: ^4.0.0
+
+  '@fedify/interaction-controls@2.4.0':
+    resolution: {integrity: sha512-lUZS1eOlFer33p1dgK7kH+cjxDFZLz1FP2JYXJr7/CRUw4h9fB4zk1/yBI0ws2xt2sPNwZh/dAFbtt4z1YPrug==}
+    peerDependencies:
+      '@fedify/fedify': ^2.4.0
 
   '@fedify/lint@2.4.0':
     resolution: {integrity: sha512-BYAWNuWDXpIX/TYrnqz+UZKuotaH+XqyF4hPCEv30u4wDDw3r3IeGgJlYZiREVWZtuHOdu4rcqex4gFfIXLQ6w==}
@@ -7543,6 +7551,13 @@ snapshots:
     dependencies:
       '@fedify/fedify': 2.4.0
       hono: 4.13.5
+
+  '@fedify/interaction-controls@2.4.0(@fedify/fedify@2.4.0)':
+    dependencies:
+      '@fedify/fedify': 2.4.0
+      '@fedify/vocab': 2.4.0
+      '@fedify/vocab-runtime': 2.4.0
+      temporal-polyfill: 1.0.5
 
   '@fedify/lint@2.4.0(@fedify/fedify@2.4.0)(@typescript/typescript6@6.0.2)(eslint@10.2.1(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
