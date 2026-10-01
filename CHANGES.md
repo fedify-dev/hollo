@@ -6,6 +6,13 @@ Version 0.9.21
 
 To be released.
 
+ -  Fixed slow home, public, and list timeline queries on large databases by
+    checking the shared post directly when filtering muted or blocked authors.
+    [[#633], [#634]]
+
+[#633]: https://github.com/fedify-dev/hollo/issues/633
+[#634]: https://github.com/fedify-dev/hollo/pull/634
+
 
 Version 0.9.20
 --------------
