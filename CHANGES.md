@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.21
 --------------
 
-To be released.
+Released on October 1, 2026.
 
  -  Upgraded Fedify to 2.2.15, which fixes a security vulnerability where
     `Context.routeActivity()` authenticated the dereferenced activity but
