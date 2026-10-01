@@ -771,7 +771,9 @@ describe("persistPost", () => {
     const rows = await db.query.reactions.findMany({
       where: { postId: { eq: result.id } },
     });
-    expect(documentLoader).toHaveBeenCalledWith(iconIri);
+    expect(documentLoader).toHaveBeenCalledWith(iconIri, {
+      suppressError: true,
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.emoji).toBe(":missing:");
     expect(rows[0]?.customEmoji).toBeNull();
@@ -846,8 +848,12 @@ describe("persistPost", () => {
       where: { postId: { eq: result.id } },
       orderBy: (reactions, { asc }) => [asc(reactions.emoji)],
     });
-    expect(documentLoader).toHaveBeenCalledWith(firstPageIri);
-    expect(documentLoader).toHaveBeenCalledWith(secondPageIri);
+    expect(documentLoader).toHaveBeenCalledWith(firstPageIri, {
+      suppressError: true,
+    });
+    expect(documentLoader).toHaveBeenCalledWith(secondPageIri, {
+      suppressError: true,
+    });
     expect(rows.map((row) => row.emoji)).toEqual(["🍕", "🍜"]);
   });
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
 import {
@@ -11,6 +11,7 @@ import db from "../../db";
 import app from "../../index";
 import {
   accounts,
+  blocks,
   follows,
   instances,
   listMembers,
@@ -25,6 +26,21 @@ import {
 import type { Uuid } from "../../uuid";
 import { uuidv7 } from "../../uuid";
 import { timelineQuerySchema } from "./timelines";
+
+const timelineInboxMode = vi.hoisted(() => ({
+  override: undefined as boolean | undefined,
+}));
+
+vi.mock("../../federation/timeline", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("../../federation/timeline")>();
+  return {
+    ...original,
+    get TIMELINE_INBOXES() {
+      return timelineInboxMode.override ?? original.TIMELINE_INBOXES;
+    },
+  };
+});
 
 describe("timelineQuerySchema", () => {
   it("caps large limits and keeps the lower bound at one", () => {
@@ -860,4 +876,130 @@ describe("/api/v1/timelines/public (pagination)", { concurrent: false }, () => {
     const matches = link.match(/(max_id|min_id|since_id)=/g) ?? [];
     expect(matches).toHaveLength(2);
   });
+});
+
+describe.each([true, false])("shared post filters (inboxes=%s)", (inboxes) => {
+  describe.each(["home", "public", "list"] as const)(
+    "/api/v1/timelines/%s (shared post filters)",
+    (timeline) => {
+      beforeEach(async () => {
+        timelineInboxMode.override = inboxes;
+        await cleanDatabase();
+      });
+
+      afterEach(() => {
+        timelineInboxMode.override = undefined;
+      });
+
+      it("preserves ordinary posts and only shares of unfiltered authors", async () => {
+        const owner = await createAccount({ username: "share-owner" });
+        const client = await createOAuthApplication({ scopes: ["read"] });
+        const accessToken = await getAccessToken(client, owner, ["read"]);
+        const listId = uuidv7();
+        await db.insert(lists).values({
+          id: listId,
+          accountOwnerId: owner.id,
+          title: "Shared posts",
+          repliesPolicy: "list",
+          exclusive: false,
+        });
+        await db.insert(listMembers).values({ listId, accountId: owner.id });
+
+        const lowerBound = uuidv7();
+        const visibleIds: Uuid[] = [];
+        const candidateIds: Uuid[] = [];
+        const ordinaryPostId = uuidv7();
+        await db.insert(posts).values({
+          id: ordinaryPostId,
+          iri: `https://hollo.test/posts/${ordinaryPostId}`,
+          type: "Note",
+          accountId: owner.id,
+          visibility: "public",
+          published: new Date(),
+        });
+        visibleIds.push(ordinaryPostId);
+        candidateIds.push(ordinaryPostId);
+
+        for (const filter of [
+          "none",
+          "indefinite-mute",
+          "active-mute",
+          "expired-mute",
+          "blocked",
+          "blocked-by",
+        ] as const) {
+          const author = await createAccount({ username: `share-${filter}` });
+          if (filter.endsWith("mute")) {
+            await db.insert(mutes).values({
+              id: uuidv7(),
+              accountId: owner.id,
+              mutedAccountId: author.id,
+              duration: filter === "indefinite-mute" ? null : "1 hour",
+              created: new Date(
+                Date.now() - (filter === "expired-mute" ? 7200000 : 60000),
+              ),
+            });
+          } else if (filter === "blocked" || filter === "blocked-by") {
+            await db.insert(blocks).values({
+              accountId: filter === "blocked" ? owner.id : author.id,
+              blockedAccountId: filter === "blocked" ? author.id : owner.id,
+            });
+          }
+          const originalId = uuidv7();
+          const shareId = uuidv7();
+          await db.insert(posts).values([
+            {
+              id: originalId,
+              iri: `https://hollo.test/posts/${originalId}`,
+              type: "Note",
+              accountId: author.id,
+              visibility: "unlisted",
+              published: new Date(),
+            },
+            {
+              id: shareId,
+              iri: `https://hollo.test/posts/${shareId}`,
+              type: "Note",
+              accountId: owner.id,
+              sharingId: originalId,
+              visibility: "public",
+              published: new Date(),
+            },
+          ]);
+          candidateIds.push(shareId);
+          if (filter === "none" || filter === "expired-mute") {
+            visibleIds.push(shareId);
+          }
+        }
+        const upperBound = uuidv7();
+        await db
+          .insert(timelinePosts)
+          .values(
+            candidateIds.map((postId) => ({ accountId: owner.id, postId })),
+          );
+        await db
+          .insert(listPosts)
+          .values(candidateIds.map((postId) => ({ listId, postId })));
+
+        const path = timeline === "list" ? `list/${listId}` : timeline;
+        for (const query of [
+          "",
+          `?min_id=${lowerBound}`,
+          `?max_id=${upperBound}`,
+        ]) {
+          const response = await app.request(
+            `/api/v1/timelines/${path}${query}`,
+            {
+              headers: { authorization: bearerAuthorization(accessToken) },
+            },
+          );
+          expect(response.status).toBe(200);
+          const json: { id: string }[] = await response.json();
+          expect(json.map((post) => post.id)).toEqual(
+            [...visibleIds].reverse(),
+          );
+        }
+      });
+    },
+  );
 });

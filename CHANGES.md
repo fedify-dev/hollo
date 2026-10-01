@@ -6,17 +6,7 @@ Version 0.10.0
 
 To be released.
 
- -  Upgraded Fedify to 2.3.9.  Fedify 2.3 adds an outbound delivery circuit
-    breaker (enabled by default for queued outbox delivery),
-    `MessageQueue.getDepth()` support, OpenTelemetry metrics for
-    federation operations, `mapActorAlias()` for fixed-path actor
-    dispatchers, and significantly faster TypeScript type-checking of
-    dispatcher paths.  It also fixes a security vulnerability where the
-    remote document loaders followed unbounded chains of alternate document
-    links, which could exhaust resources during remote key and document
-    resolution.  Alternate links now share the 20-hop limit and loop
-    detection with HTTP redirects, and preserve the caller's cancellation
-    signal.  [[GHSA-97w4-f4rq-mgqm]]
+ -  Upgraded Fedify to 2.4.0.
 
  -  Quotes awaiting FEP-044f approval now expose `quoteUrl` for compatibility
     with older software when the original public or unlisted post explicitly
@@ -89,6 +79,7 @@ To be released.
     algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
 [GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
@@ -99,6 +90,30 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 [#602]: https://github.com/fedify-dev/hollo/issues/602
 [#609]: https://github.com/fedify-dev/hollo/issues/609
+
+
+Version 0.9.21
+--------------
+
+Released on October 1, 2026.
+
+ -  Upgraded Fedify to 2.2.15, which fixes a security vulnerability where
+    `Context.routeActivity()` authenticated the dereferenced activity but
+    routed the caller's unauthenticated copy, so an attacker who knew the `id`
+    of any dereferenceable activity could have the application's inbox
+    listeners process an activity with that `id` but with an actor, object,
+    and addressing of the attacker's choice, and the genuine activity could
+    then be dropped as a duplicate.  The verified fetched document is now the
+    one that gets queued, handed to listeners, and forwarded.
+    [[GHSA-39gj-rchc-q5m3]]
+
+ -  Fixed slow home, public, and list timeline queries on large databases by
+    checking the shared post directly when filtering muted or blocked authors.
+    [[#633], [#634]]
+
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
+[#633]: https://github.com/fedify-dev/hollo/issues/633
+[#634]: https://github.com/fedify-dev/hollo/pull/634
 
 
 Version 0.9.20
@@ -859,6 +874,24 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.14
+--------------
+
+Released on October 1, 2026.
+
+ -  Upgraded Fedify to 2.1.26, which fixes a security vulnerability where
+    `Context.routeActivity()` authenticated the dereferenced activity but
+    routed the caller's unauthenticated copy, so an attacker who knew the `id`
+    of any dereferenceable activity could have the application's inbox
+    listeners process an activity with that `id` but with an actor, object,
+    and addressing of the attacker's choice, and the genuine activity could
+    then be dropped as a duplicate.  The verified fetched document is now the
+    one that gets queued, handed to listeners, and forwarded.
+    [[GHSA-39gj-rchc-q5m3]]
+
+[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
 
 
 Version 0.8.13
