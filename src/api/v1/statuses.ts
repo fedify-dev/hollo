@@ -23,10 +23,7 @@ import {
 import { getPostRelations, serializePost } from "../../entities/status";
 import federation from "../../federation";
 import { updateAccountStats } from "../../federation/account";
-import {
-  getQuoteAuthorizationIri,
-  sendQuoteUpdate,
-} from "../../federation/inbox";
+import { sendQuoteUpdate } from "../../federation/inbox";
 import {
   getRecipients,
   persistPost,
@@ -37,6 +34,11 @@ import {
   toUpdate,
   updatePostStats,
 } from "../../federation/post";
+import {
+  createQuoteAuthorization,
+  createQuoteRequest,
+  getQuoteAuthorizationIri,
+} from "../../federation/quote";
 import { appendPostToTimelines } from "../../federation/timeline";
 import { requestBody } from "../../helpers";
 import { isLocalHost } from "../../instance-host";
@@ -632,14 +634,12 @@ app.post(
                   sharedInbox: new URL(post.quoteTarget.account.sharedInboxUrl),
                 },
         },
-        new vocab.QuoteRequest({
-          id: new URL("#quote-request", post.iri),
-          actor: new URL(owner.account.iri),
-          object: new URL(post.quoteTarget.iri),
-          instrument: toObject(post, fedCtx, {
-            includeInactiveQuoteTarget: true,
-          }),
-        }),
+        createQuoteRequest(
+          post,
+          owner.account.iri,
+          post.quoteTarget.iri,
+          toObject(post, fedCtx, { includeInactiveQuoteTarget: true }),
+        ),
         {
           orderingKey,
           preferSharedInbox: true,
@@ -1976,12 +1976,13 @@ app.post(
         new vocab.Delete({
           id: new URL("#delete", quoteAuthorizationIri),
           actor: new URL(owner.account.iri),
-          object: new vocab.QuoteAuthorization({
-            id: new URL(quoteAuthorizationIri),
-            attribution: new URL(owner.account.iri),
-            interactingObject: new URL(quotingPost.iri),
-            interactionTarget: new URL(targetPost.iri),
-          }),
+          // Keep the embedded authorization instead of the helper's
+          // IRI-only revocation so the wire format stays unchanged.
+          object: createQuoteAuthorization(
+            { iri: targetPost.iri, account: owner.account },
+            quotingPost,
+            quoteAuthorizationIri,
+          ),
         }),
         {
           orderingKey: getPostOrderingKey(quotingPost.iri),

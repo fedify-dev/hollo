@@ -3,6 +3,7 @@ import {
   Announce,
   Article,
   Collection,
+  type DocumentLoader,
   Emoji,
   EmojiReact,
   Image,
@@ -1820,5 +1821,188 @@ describe("persistPost quotes", () => {
     );
 
     expect(persisted?.quoteApprovalPolicy).toBe("followers");
+  });
+  it("keeps the legacy path for policies without a canQuote rule", async () => {
+    const author = await seedRemoteAccount("quote-author");
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL("https://remote.test/objects/partial-policy"),
+        attribution: createPerson(author),
+        // GoToSocial may advertise only some sub-policies.
+        interactionPolicy: new InteractionPolicy({
+          canLike: new InteractionRule({
+            automaticApproval: PUBLIC_COLLECTION,
+          }),
+        }),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Partial interaction policy</p>",
+      }),
+      "https://hollo.test",
+    );
+
+    expect(persisted?.quoteApprovalPolicy).toBeNull();
+  });
+});
+
+describe("persistPost quote authorization verification", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+
+  const { contextLoader } = federation.createContext(
+    new URL("https://hollo.test"),
+    undefined,
+  );
+
+  function createLoader(documents: Record<string, unknown>): DocumentLoader {
+    return async (url, options) => {
+      const document = documents[url];
+      if (document != null) {
+        return { contextUrl: null, document, documentUrl: url };
+      }
+      if (new URL(url).hostname.endsWith(".test")) {
+        throw Object.assign(new Error(`HTTP 404: ${url}`), {
+          response: new Response(null, { status: 404 }),
+        });
+      }
+      return await contextLoader(url, options);
+    };
+  }
+
+  async function seedQuote(slug: string) {
+    const author = await seedRemoteAccount("quote-author");
+    const quoter = await seedRemoteAccount("quote-quoter");
+    const quotedPostId = crypto.randomUUID() as Uuid;
+    const quotedPostIri = `https://remote.test/objects/quoted-${slug}`;
+    const quotePostIri = `https://remote.test/objects/quote-${slug}`;
+    await db.insert(posts).values({
+      id: quotedPostId,
+      iri: quotedPostIri,
+      type: "Note",
+      accountId: author.id,
+      visibility: "public",
+      contentHtml: "<p>Quoted post</p>",
+      content: "Quoted post",
+      published: new Date(),
+    });
+    return { author, quoter, quotedPostId, quotedPostIri, quotePostIri };
+  }
+
+  async function authorizationDocument(values: {
+    id: string;
+    attribution: string;
+    interactingObject: string;
+    interactionTarget: string;
+  }): Promise<unknown> {
+    return await new QuoteAuthorization({
+      id: new URL(values.id),
+      attribution: new URL(values.attribution),
+      interactingObject: new URL(values.interactingObject),
+      interactionTarget: new URL(values.interactionTarget),
+    }).toJsonLd({ contextLoader });
+  }
+
+  it("accepts a quote whose dereferenced authorization matches", async () => {
+    const { author, quoter, quotedPostId, quotedPostIri, quotePostIri } =
+      await seedQuote("valid-auth");
+    const authorizationIri = `${quotedPostIri}/quote_authorizations/1`;
+    const documentLoader = vi.fn(
+      createLoader({
+        [authorizationIri]: await authorizationDocument({
+          id: authorizationIri,
+          attribution: author.iri,
+          interactingObject: quotePostIri,
+          interactionTarget: quotedPostIri,
+        }),
+      }),
+    );
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL(quotePostIri),
+        attribution: createPerson(quoter),
+        quote: new URL(quotedPostIri),
+        quoteAuthorization: new URL(authorizationIri),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Quote post</p>",
+      }),
+      "https://hollo.test",
+      { documentLoader },
+    );
+
+    expect(documentLoader.mock.calls.map(([url]) => url)).toContain(
+      authorizationIri,
+    );
+    expect(persisted?.quoteTargetId).toBe(quotedPostId);
+    expect(persisted?.quoteState).toBe("accepted");
+    expect(persisted?.quoteAuthorizationIri).toBe(authorizationIri);
+  });
+
+  it("does not trust an embedded authorization that cannot be dereferenced", async () => {
+    const { author, quoter, quotedPostIri, quotePostIri } =
+      await seedQuote("embedded-auth");
+    const authorizationIri = `${quotedPostIri}/quote_authorizations/1`;
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL(quotePostIri),
+        attribution: createPerson(quoter),
+        quote: new URL(quotedPostIri),
+        // Every field matches, but nothing proves the target author made it.
+        quoteAuthorization: new QuoteAuthorization({
+          id: new URL(authorizationIri),
+          attribution: new URL(author.iri),
+          interactingObject: new URL(quotePostIri),
+          interactionTarget: new URL(quotedPostIri),
+        }),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Quote post</p>",
+      }),
+      "https://hollo.test",
+      { documentLoader: createLoader({}) },
+    );
+
+    expect(persisted?.quoteState).toBe("unauthorized");
+    expect(persisted?.quoteAuthorizationIri).toBeNull();
+  });
+
+  it("rejects an authorization hosted on another origin", async () => {
+    const { author, quoter, quotedPostIri, quotePostIri } =
+      await seedQuote("cross-origin-auth");
+    const authorizationIri = "https://attacker.test/quote_authorizations/1";
+    const documentLoader = vi.fn(
+      createLoader({
+        [authorizationIri]: await authorizationDocument({
+          id: authorizationIri,
+          attribution: author.iri,
+          interactingObject: quotePostIri,
+          interactionTarget: quotedPostIri,
+        }),
+      }),
+    );
+
+    const persisted = await persistPost(
+      db,
+      new Note({
+        id: new URL(quotePostIri),
+        attribution: createPerson(quoter),
+        quote: new URL(quotedPostIri),
+        quoteAuthorization: new URL(authorizationIri),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Quote post</p>",
+      }),
+      "https://hollo.test",
+      { documentLoader },
+    );
+
+    expect(documentLoader.mock.calls.map(([url]) => url)).not.toContain(
+      authorizationIri,
+    );
+    expect(persisted?.quoteState).toBe("unauthorized");
+    expect(persisted?.quoteAuthorizationIri).toBeNull();
   });
 });

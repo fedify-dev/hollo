@@ -15,6 +15,24 @@ To be released.
     reference through an `Update`; failed rejection updates can be retried
     without changing the quote state or counts.  [[#602]]
 
+ -  FEP-044f quote authorization now uses Fedify's
+    *@fedify/interaction-controls* package to build and verify quote
+    requests and authorizations and to evaluate local quote policies.
+    Verification is stricter in a few cases:  [[#635], [#641]]
+
+     -  Incoming `QuoteRequest` activities must have an `id` and an `actor`,
+        and their quote post's `quote` and `quoteUrl` must point to the same
+        post.  Invalid requests are ignored before the quote post is stored.
+     -  An embedded quote post from another origin is fetched from its own
+        server instead of being trusted.
+     -  A `QuoteAuthorization` from an `Accept` or from a remote quote post is
+        always fetched from its IRI.  Embedded authorization contents are not
+        trusted.  The authorization must be hosted on the same origin as the
+        quoted post's author.  If the authorization can't be fetched because
+        of a temporary failure, the `Accept` is retried later.
+     -  Outgoing `Accept` and `Reject` responses to quote requests now have
+        explicit IDs and address the requester in `to`.
+
  -  Added WebP (`image/webp`) as an accepted format for profile avatar and
     banner image uploads.  Previously only JPEG, PNG, and GIF were accepted
     by both the Mastodon-compatible
@@ -78,8 +96,6 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
-[GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
-[GHSA-39gj-rchc-q5m3]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-39gj-rchc-q5m3
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
@@ -90,6 +106,8 @@ To be released.
 [#549]: https://github.com/fedify-dev/hollo/issues/549
 [#602]: https://github.com/fedify-dev/hollo/issues/602
 [#609]: https://github.com/fedify-dev/hollo/issues/609
+[#635]: https://github.com/fedify-dev/hollo/issues/635
+[#641]: https://github.com/fedify-dev/hollo/pull/641
 
 
 Version 0.9.21
@@ -157,6 +175,7 @@ Released on September 30, 2026.
     definition also causes the migration to fail; inspect it before replacing
     it.  [[#624], [#626]]
 
+[GHSA-97w4-f4rq-mgqm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-97w4-f4rq-mgqm
 [#624]: https://github.com/fedify-dev/hollo/issues/624
 [#626]: https://github.com/fedify-dev/hollo/pull/626
 
