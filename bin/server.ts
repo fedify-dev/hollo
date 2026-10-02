@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 
+import type { ServerType } from "@hono/node-server";
 import { serve } from "@hono/node-server";
 import { behindProxy } from "x-forwarded-fetch";
 
@@ -44,10 +45,12 @@ if (!["all", "web", "worker"].includes(NODE_TYPE)) {
 // Warn if the configured HANDLE_HOST disagrees with an existing account.
 await checkHandleHostConsistency();
 
+let webServer: ServerType | undefined;
+
 // Start web server if running as web or all node
 if (NODE_TYPE === "web" || NODE_TYPE === "all") {
   const { default: app } = await import("../src/index");
-  serve(
+  webServer = serve(
     {
       fetch: BEHIND_PROXY
         ? behindProxy(app.fetch.bind(app))
@@ -70,31 +73,26 @@ if (NODE_TYPE === "web" || NODE_TYPE === "all") {
 }
 
 // Start workers if running as worker or all node
-let stopWorkers: (() => void) | undefined;
+let stopWorkers: (() => Promise<void>) | undefined;
 if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
   const [
     { federation },
-    { startImportWorker, stopImportWorker },
-    { startCleanupWorker, stopCleanupWorker },
+    { backgroundJobs },
+    { itemLeases },
     { startRemoteReplyScrapeWorker, stopRemoteReplyScrapeWorker },
     { startPollNotificationWorker, stopPollNotificationWorker },
   ] = await Promise.all([
     import("../src/federation"),
-    import("../src/import/worker"),
-    import("../src/cleanup/worker"),
+    import("../src/federation/federation"),
+    import("../src/background/lease"),
     import("../src/federation/replies-worker"),
     import("../src/poll-notification-worker"),
   ]);
-  stopWorkers = () => {
-    stopImportWorker();
-    stopCleanupWorker();
-    stopRemoteReplyScrapeWorker();
-    stopPollNotificationWorker();
-  };
 
   // Start the Fedify message queue
   const controller = new AbortController();
-  federation
+  backgroundJobs.setSignal(controller.signal);
+  const queue = federation
     .startQueue(undefined, { signal: controller.signal })
     .catch((error) => {
       console.error("Error starting Fedify queue:", error);
@@ -102,22 +100,43 @@ if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
     });
 
   // Start the workers for background job processing
-  startImportWorker();
-  startCleanupWorker();
+  const { WEB_ORIGIN } = await import("../src/env");
+  const stopRecovery = backgroundJobs.startRecovery(
+    federation.createContext(
+      new URL(WEB_ORIGIN ?? "http://localhost"),
+      undefined,
+    ),
+    controller.signal,
+  );
   startRemoteReplyScrapeWorker();
   startPollNotificationWorker();
 
+  stopWorkers = async () => {
+    controller.abort();
+    stopRemoteReplyScrapeWorker();
+    stopPollNotificationWorker();
+    await stopRecovery();
+    await queue;
+    await itemLeases.close();
+  };
   console.log(
-    "Worker started (Fedify queue + Import worker + Cleanup worker + Remote reply scrape worker + Poll notification worker)",
+    "Worker started (Fedify activity/task queues + Job recovery + Remote reply scrape worker + Poll notification worker)",
   );
 }
 
 // Graceful shutdown handling
-const shutdown = () => {
-  if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
-    console.log("Stopping workers...");
-    stopWorkers?.();
-  }
+let shuttingDown = false;
+const shutdown = async () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // Forced termination releases DB locks; durable unfinished items recover on
+  // restart. Do not reuse a slot while its external operation is still alive.
+  const deadline = setTimeout(() => process.exit(0), 30_000);
+  deadline.unref();
+  webServer?.close();
+  await stopWorkers?.();
+  // The legacy federation queue does not drain its handlers. Keep the main
+  // client available until process exit rather than rejecting their queries.
   process.exit(0);
 };
 

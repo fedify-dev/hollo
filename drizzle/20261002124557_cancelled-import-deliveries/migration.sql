@@ -1,0 +1,1 @@
+CREATE INDEX "import_job_effects_item_id_index" ON "import_job_effects" ("item_id") WHERE "delivered" < jsonb_array_length("deliveries");

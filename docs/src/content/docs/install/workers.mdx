@@ -47,6 +47,34 @@ separate them using the `NODE_TYPE` environment variable:
 | `web` | ✓ | ✗ | ✗ | ✗ | ✗ |
 | `worker` | ✗ | ✓ | ✓ | ✓ | ✓ |
 
+### Import and cleanup tasks
+
+Import and cleanup run as Fedify tasks on a separate PostgreSQL queue,
+with at most four item attempts per worker process.  Web nodes register and
+enqueue these tasks but never consume queues.  Worker and combined nodes also
+run a recovery pass once a minute, examining at most 100 active jobs per kind.
+This pass restores missed dispatches and interrupted work; it does not execute
+items itself.  Progress counts terminal results, rather than claimed items.
+
+Before upgrading from the polling workers, stop all older web and worker
+nodes, apply the database migrations, and deploy the same version to every
+node.  Do not mix task definitions across deployments.  Existing pending and
+processing items are recovered; incomplete legacy upload batches are marked
+failed and must be submitted again.  The existing federation queue and its
+messages retain their identity.
+
+A worker can use up to 24 database connections: the main pool of 20 and four
+isolated item-lock connections.  Queue separation does not isolate CPU or
+storage load.  Shutdown stops new attempts and waits up to 30 seconds for
+running work.  Forced termination leaves unfinished items recoverable.
+Transient failures retry at five-second intervals, failing after five recorded
+failures; process termination does not consume that budget.  External activity
+delivery may repeat after interruption, using the saved activity IDs.  Job
+cancellation prevents new work and does not undo actions already performed.
+Already committed import relationships still deliver their saved activities,
+including after cancellation during a retry.
+
+
 All nodes share the same PostgreSQL database, which acts as the message queue
 backend using `LISTEN`/`NOTIFY` for real-time message delivery.
 

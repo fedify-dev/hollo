@@ -1,12 +1,10 @@
 import type { Context } from "@fedify/fedify";
-import {
-  type DocumentLoader,
-  type Object as FedifyObject,
-  isActor,
-  type Link,
-} from "@fedify/vocab";
+import { type DocumentLoader, isActor } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
+import { sql } from "drizzle-orm";
+import { z } from "zod";
 
+import { TerminalJobItemError } from "../background/errors";
 import db from "../db";
 import {
   blockAccount,
@@ -16,37 +14,14 @@ import {
 import { isPost, persistPost } from "../federation/post";
 import * as schema from "../schema";
 import type { Uuid } from "../uuid";
+import { prepareImportEffect } from "./delivery";
 
 const logger = getLogger(["hollo", "import-processors"]);
 
-// Type for follow item data
-interface FollowItemData {
-  handle: string;
-  shares: boolean;
-  notify: boolean;
-  languages?: string[];
-}
-
-// Type for mute item data
-interface MuteItemData {
-  handle: string;
-  notifications: boolean;
-}
-
-// Type for block item data
-interface BlockItemData {
-  handle: string;
-}
-
-// Type for bookmark item data
-interface BookmarkItemData {
-  iri: string;
-}
-
-// Type for list item data
-interface ListItemData {
-  listName: string;
-  handle: string;
+function validate<T>(validator: z.ZodType<T>, data: unknown): T {
+  const result = validator.safeParse(data);
+  if (!result.success) throw new TerminalJobItemError(result.error.message);
+  return result.data;
 }
 
 export async function processFollowItem(
@@ -54,8 +29,17 @@ export async function processFollowItem(
   accountOwner: schema.AccountOwner & { account: schema.Account },
   fedCtx: Context<void>,
   documentLoader: DocumentLoader,
+  check: () => Promise<void>,
 ): Promise<void> {
-  const data = item.data as unknown as FollowItemData;
+  const data = validate(
+    z.object({
+      handle: z.string(),
+      shares: z.boolean(),
+      notify: z.boolean(),
+      languages: z.array(z.string()).optional(),
+    }),
+    item.data,
+  );
 
   const actor = await fedCtx.lookupObject(data.handle, { documentLoader });
   if (!isActor(actor)) {
@@ -72,16 +56,25 @@ export async function processFollowItem(
     throw new Error(`Could not persist account: ${data.handle}`);
   }
 
-  await followAccount(
-    db,
+  await prepareImportEffect(
+    item.id,
     fedCtx,
-    { ...accountOwner.account, owner: accountOwner },
-    target,
-    {
-      shares: data.shares,
-      notify: data.notify,
-      languages: data.languages,
+    async (tx, capture) => {
+      const follow = await followAccount(
+        tx,
+        capture,
+        { ...accountOwner.account, owner: accountOwner },
+        target,
+        {
+          iri: new URL(`#import-follow/${item.id}`, accountOwner.account.iri),
+          shares: data.shares,
+          notify: data.notify,
+          languages: data.languages,
+        },
+      );
+      if (follow) return { kind: "follow", iri: follow.iri };
     },
+    check,
   );
 
   logger.debug("Followed account {handle}", { handle: data.handle });
@@ -92,8 +85,12 @@ export async function processMuteItem(
   accountOwner: schema.AccountOwner & { account: schema.Account },
   fedCtx: Context<void>,
   documentLoader: DocumentLoader,
+  check: () => Promise<void>,
 ): Promise<void> {
-  const data = item.data as unknown as MuteItemData;
+  const data = validate(
+    z.object({ handle: z.string(), notifications: z.boolean() }),
+    item.data,
+  );
 
   const actor = await fedCtx.lookupObject(data.handle, { documentLoader });
   if (!isActor(actor)) {
@@ -110,15 +107,22 @@ export async function processMuteItem(
     throw new Error(`Could not persist account: ${data.handle}`);
   }
 
-  await db
-    .insert(schema.mutes)
-    .values({
-      id: crypto.randomUUID() as Uuid,
-      accountId: accountOwner.id,
-      mutedAccountId: target.id,
-      notifications: data.notifications,
-    })
-    .onConflictDoNothing();
+  await prepareImportEffect(
+    item.id,
+    fedCtx,
+    async (tx) => {
+      await tx
+        .insert(schema.mutes)
+        .values({
+          id: crypto.randomUUID() as Uuid,
+          accountId: accountOwner.id,
+          mutedAccountId: target.id,
+          notifications: data.notifications,
+        })
+        .onConflictDoNothing();
+    },
+    check,
+  );
 
   logger.debug("Muted account {handle}", { handle: data.handle });
 }
@@ -128,8 +132,9 @@ export async function processBlockItem(
   accountOwner: schema.AccountOwner & { account: schema.Account },
   fedCtx: Context<void>,
   documentLoader: DocumentLoader,
+  check: () => Promise<void>,
 ): Promise<void> {
-  const data = item.data as unknown as BlockItemData;
+  const data = validate(z.object({ handle: z.string() }), item.data);
 
   const actor = await fedCtx.lookupObject(data.handle, { documentLoader });
   if (!isActor(actor)) {
@@ -146,7 +151,15 @@ export async function processBlockItem(
     throw new Error(`Could not persist account: ${data.handle}`);
   }
 
-  await blockAccount(db, fedCtx, accountOwner, target);
+  await prepareImportEffect(
+    item.id,
+    fedCtx,
+    async (tx, capture) => {
+      const block = await blockAccount(tx, capture, accountOwner, target);
+      if (block) return { kind: "block", ...block };
+    },
+    check,
+  );
 
   logger.debug("Blocked account {handle}", { handle: data.handle });
 }
@@ -156,19 +169,11 @@ export async function processBookmarkItem(
   accountOwner: schema.AccountOwner & { account: schema.Account },
   fedCtx: Context<void>,
   documentLoader: DocumentLoader,
+  check: () => Promise<void>,
 ): Promise<void> {
-  const data = item.data as unknown as BookmarkItemData;
+  const data = validate(z.object({ iri: z.url() }), item.data);
 
-  let obj: FedifyObject | Link | null;
-  try {
-    obj = await fedCtx.lookupObject(data.iri, { documentLoader });
-  } catch (error) {
-    logger.error("Failed to lookup object {iri}: {error}", {
-      iri: data.iri,
-      error,
-    });
-    throw new Error(`Could not lookup object: ${data.iri}`);
-  }
+  const obj = await fedCtx.lookupObject(data.iri, { documentLoader });
 
   if (!isPost(obj)) {
     throw new Error(`Object is not a post: ${data.iri}`);
@@ -184,13 +189,20 @@ export async function processBookmarkItem(
     throw new Error(`Could not persist post: ${data.iri}`);
   }
 
-  await db
-    .insert(schema.bookmarks)
-    .values({
-      postId: post.id,
-      accountOwnerId: accountOwner.id,
-    })
-    .onConflictDoNothing();
+  await prepareImportEffect(
+    item.id,
+    fedCtx,
+    async (tx) => {
+      await tx
+        .insert(schema.bookmarks)
+        .values({
+          postId: post.id,
+          accountOwnerId: accountOwner.id,
+        })
+        .onConflictDoNothing();
+    },
+    check,
+  );
 
   logger.debug("Bookmarked post {iri}", { iri: data.iri });
 }
@@ -200,8 +212,12 @@ export async function processListItem(
   accountOwner: schema.AccountOwner & { account: schema.Account },
   fedCtx: Context<void>,
   documentLoader: DocumentLoader,
+  check: () => Promise<void>,
 ): Promise<void> {
-  const data = item.data as unknown as ListItemData;
+  const data = validate(
+    z.object({ listName: z.string(), handle: z.string() }),
+    item.data,
+  );
 
   // First, lookup the actor
   const actor = await fedCtx.lookupObject(data.handle, { documentLoader });
@@ -219,31 +235,15 @@ export async function processListItem(
     throw new Error(`Could not persist account: ${data.handle}`);
   }
 
-  // Find or create the list
-  let list = await db.query.lists.findFirst({
-    where: {
-      RAW: (lists, { and, eq }) =>
-        and(
-          eq(lists.accountOwnerId, accountOwner.id),
-          eq(lists.title, data.listName),
-        )!,
-    },
-  });
-
-  if (!list) {
-    const result = await db
-      .insert(schema.lists)
-      .values({
-        id: crypto.randomUUID() as Uuid,
-        title: data.listName,
-        accountOwnerId: accountOwner.id,
-      })
-      .onConflictDoNothing()
-      .returning();
-
-    if (result.length < 1) {
-      // List was created concurrently, try to find it again
-      list = await db.query.lists.findFirst({
+  await prepareImportEffect(
+    item.id,
+    fedCtx,
+    async (tx, capture) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${accountOwner.id}), hashtext(${data.listName}))`,
+      );
+      // Find or create the list
+      let list = await tx.query.lists.findFirst({
         where: {
           RAW: (lists, { and, eq }) =>
             and(
@@ -252,39 +252,60 @@ export async function processListItem(
             )!,
         },
       });
-    } else {
-      list = result[0];
-    }
-  }
 
-  if (!list) {
-    throw new Error(`Could not create or find list: ${data.listName}`);
-  }
+      if (!list) {
+        const result = await tx
+          .insert(schema.lists)
+          .values({
+            id: crypto.randomUUID() as Uuid,
+            title: data.listName,
+            accountOwnerId: accountOwner.id,
+          })
+          .onConflictDoNothing()
+          .returning();
 
-  // Follow the account (lists require follows)
-  try {
-    await followAccount(
-      db,
-      fedCtx,
-      { ...accountOwner.account, owner: accountOwner },
-      account,
-    );
-  } catch (error) {
-    // Ignore if already following
-    logger.debug("Follow may already exist for {handle}: {error}", {
-      handle: data.handle,
-      error,
-    });
-  }
+        if (result.length < 1) {
+          // List was created concurrently, try to find it again
+          list = await tx.query.lists.findFirst({
+            where: {
+              RAW: (lists, { and, eq }) =>
+                and(
+                  eq(lists.accountOwnerId, accountOwner.id),
+                  eq(lists.title, data.listName),
+                )!,
+            },
+          });
+        } else {
+          list = result[0];
+        }
+      }
 
-  // Add to list
-  await db
-    .insert(schema.listMembers)
-    .values({
-      listId: list.id,
-      accountId: account.id,
-    })
-    .onConflictDoNothing();
+      if (!list) {
+        throw new Error(`Could not create or find list: ${data.listName}`);
+      }
+
+      const follow = await followAccount(
+        tx,
+        capture,
+        { ...accountOwner.account, owner: accountOwner },
+        account,
+        {
+          iri: new URL(`#import-follow/${item.id}`, accountOwner.account.iri),
+        },
+      );
+
+      // Add to list
+      await tx
+        .insert(schema.listMembers)
+        .values({
+          listId: list.id,
+          accountId: account.id,
+        })
+        .onConflictDoNothing();
+      if (follow) return { kind: "follow", iri: follow.iri };
+    },
+    check,
+  );
 
   logger.debug("Added {handle} to list {listName}", {
     handle: data.handle,

@@ -458,9 +458,20 @@ export const relations = defineRelations(schema, (r) => ({
     }),
   },
   importJobItems: {
+    effect: r.one.importJobEffects({
+      from: r.importJobItems.id,
+      to: r.importJobEffects.itemId,
+    }),
     job: r.one.importJobs({
       from: r.importJobItems.jobId,
       to: r.importJobs.id,
+      optional: false,
+    }),
+  },
+  importJobEffects: {
+    item: r.one.importJobItems({
+      from: r.importJobEffects.itemId,
+      to: r.importJobItems.id,
       optional: false,
     }),
   },

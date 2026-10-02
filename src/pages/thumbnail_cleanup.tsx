@@ -1,11 +1,13 @@
 import { getLogger } from "@logtape/logtape";
-import { and, count, eq, ilike, not, notExists } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, not, notExists } from "drizzle-orm";
 import { Hono } from "hono";
 
 import { countProxyCacheBinKeys } from "../cleanup/processors";
 import { DashboardLayout } from "../components/DashboardLayout";
 import db from "../db";
 import { getMediaWithDeletableThumbnails } from "../entities/medium";
+import federation from "../federation/federation";
+import { backgroundJobs } from "../federation/federation";
 import { loginRequired } from "../login";
 import {
   accountOwners,
@@ -500,6 +502,11 @@ data.post("/proxy_cache/clear", async (c) => {
       )}#cleanup-proxy-cache`,
     );
   }
+  await backgroundJobs.enqueueJob(
+    federation.createContext(c.req.raw, undefined),
+    "cleanup",
+    jobId,
+  );
   logger.info(
     "Scheduled proxy cache cleanup job {jobId}; enumeration deferred to worker",
     { jobId },
@@ -587,23 +594,30 @@ data.post("/clean", async (c) => {
 
   // Create the cleanup job
   const jobId = uuidv7();
-  await db.insert(cleanupJobs).values({
-    id: jobId,
-    category: category,
-    totalItems: mediaWithThumbnailToClean.length,
+  await db.transaction(async (tx) => {
+    await tx.insert(cleanupJobs).values({
+      id: jobId,
+      category: category,
+      totalItems: mediaWithThumbnailToClean.length,
+    });
+
+    // Create cleanup job items in batches
+    const itemValues = mediaWithThumbnailToClean.map((data) => ({
+      id: uuidv7(),
+      jobId,
+      data: { id: data.id },
+    }));
+
+    // Insert in batches of 1000 to avoid hitting query size limits
+    for (let i = 0; i < itemValues.length; i += 1000) {
+      await tx.insert(cleanupJobItems).values(itemValues.slice(i, i + 1000));
+    }
   });
-
-  // Create cleanup job items in batches
-  const itemValues = mediaWithThumbnailToClean.map((data) => ({
-    id: uuidv7(),
+  await backgroundJobs.enqueueJob(
+    federation.createContext(c.req.raw, undefined),
+    "cleanup",
     jobId,
-    data: { id: data.id },
-  }));
-
-  // Insert in batches of 1000 to avoid hitting query size limits
-  for (let i = 0; i < itemValues.length; i += 1000) {
-    await db.insert(cleanupJobItems).values(itemValues.slice(i, i + 1000));
-  }
+  );
 
   logger.info(
     "Created cleanup job {jobId} with {count} items for category {category}",
@@ -640,7 +654,12 @@ data.post("/clean/:jobId/cancel", async (c) => {
   await db
     .update(cleanupJobs)
     .set({ status: "cancelled", completedAt: new Date() })
-    .where(eq(cleanupJobs.id, jobId));
+    .where(
+      and(
+        eq(cleanupJobs.id, jobId),
+        inArray(cleanupJobs.status, ["pending", "processing"]),
+      ),
+    );
 
   logger.info("Cleanup job {jobId} cancelled by user", { jobId });
 

@@ -1,5 +1,14 @@
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { cleanDatabase } from "../../../tests/helpers";
 import {
@@ -10,6 +19,7 @@ import {
   getApplication,
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
+import { federation } from "../../federation";
 import app from "../../index";
 import {
   accountOwners,
@@ -833,6 +843,18 @@ describe("/api/v1/accounts/verify_credentials", { concurrent: false }, () => {
 });
 
 describe("/api/v1/statuses quotes", { concurrent: false }, () => {
+  const queueController = new AbortController();
+  let queue: Promise<void>;
+  beforeAll(() => {
+    // Server startup now owns queue consumption; requests only enqueue.
+    queue = federation.startQueue(undefined, {
+      signal: queueController.signal,
+    });
+  });
+  afterAll(async () => {
+    queueController.abort();
+    await queue;
+  });
   let author: Awaited<ReturnType<typeof createAccount>>;
   let quoter: Awaited<ReturnType<typeof createAccount>>;
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
