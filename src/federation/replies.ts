@@ -1,6 +1,7 @@
+import { getLogger } from "@logtape/logtape";
 import { and, count, eq, inArray } from "drizzle-orm";
 
-import type { DatabaseLike } from "../db";
+import database, { type DatabaseLike } from "../db";
 import {
   remoteReplyScrapeJobs,
   remoteReplyScrapeOrigins,
@@ -57,7 +58,7 @@ export async function enqueueRemoteReplyScrape(
     now.getTime() - REMOTE_REPLIES_SCRAPE_COOLDOWN_SECONDS * 1000,
   );
 
-  await db.transaction(async (tx) => {
+  const jobId = await db.transaction(async (tx) => {
     await tx
       .insert(remoteReplyScrapeOrigins)
       .values({
@@ -65,9 +66,12 @@ export async function enqueueRemoteReplyScrape(
       })
       .onConflictDoNothing();
 
-    const existingJob = await tx.query.remoteReplyScrapeJobs.findFirst({
-      where: { repliesIri: { eq: repliesIri.href } },
-    });
+    // Lock an existing generation before resetting an expired cooldown.
+    const [existingJob] = await tx
+      .select()
+      .from(remoteReplyScrapeJobs)
+      .where(eq(remoteReplyScrapeJobs.repliesIri, repliesIri.href))
+      .for("update");
 
     if (
       existingJob != null &&
@@ -87,51 +91,45 @@ export async function enqueueRemoteReplyScrape(
       attempts: 0,
       fetchedItems: 0,
       nextAttemptAt: now,
+      nextDispatchAt: now,
       errorMessage: null,
       startedAt: null,
       completedAt: null,
       updated: now,
     };
 
-    const targetJob =
-      existingJob ??
-      (
-        await tx
-          .insert(remoteReplyScrapeJobs)
-          .values({
-            ...values,
-            id: uuidv7(),
-            created: now,
-          })
-          .onConflictDoNothing({
-            target: remoteReplyScrapeJobs.repliesIri,
-          })
-          .returning()
-      )[0];
-
-    if (targetJob == null) {
-      const conflictingJob = await tx.query.remoteReplyScrapeJobs.findFirst({
-        where: { repliesIri: { eq: repliesIri.href } },
-      });
-
-      if (
-        conflictingJob == null ||
-        isActiveOrCoolingDown(conflictingJob, cooldownStartedAt)
-      ) {
-        return;
-      }
-
+    if (existingJob != null) {
       await tx
         .update(remoteReplyScrapeJobs)
         .set(values)
-        .where(eq(remoteReplyScrapeJobs.id, conflictingJob.id));
-    } else if (existingJob != null) {
-      await tx
-        .update(remoteReplyScrapeJobs)
-        .set(values)
-        .where(eq(remoteReplyScrapeJobs.id, targetJob.id));
+        .where(eq(remoteReplyScrapeJobs.id, existingJob.id));
+      return existingJob.id;
     }
+    const [created] = await tx
+      .insert(remoteReplyScrapeJobs)
+      .values({ ...values, id: uuidv7(), created: now })
+      .onConflictDoNothing({ target: remoteReplyScrapeJobs.repliesIri })
+      .returning({ id: remoteReplyScrapeJobs.id });
+    return created?.id;
   });
+
+  // A nested transaction is only a savepoint.  Its caller may still roll
+  // back, so only the application's root handle may dispatch immediately.
+  // Committed rows created through other handles are picked up by recovery.
+  if (jobId != null && db === database) {
+    try {
+      const { federation, replyScrapes } = await import("./federation");
+      await replyScrapes.enqueue(
+        federation.createContext(new URL(baseUrlString), undefined),
+        jobId,
+      );
+    } catch (error) {
+      getLogger(["hollo", "federation", "replies-worker"]).error(
+        "Scrape {jobId} committed but dispatch failed; recovery will retry: {error}",
+        { jobId, error },
+      );
+    }
+  }
 }
 
 export async function countActiveRemoteReplyScrapeJobs(

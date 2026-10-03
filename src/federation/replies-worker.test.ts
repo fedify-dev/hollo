@@ -1,5 +1,12 @@
+import {
+  createFederation,
+  MemoryKvStore,
+  type Message,
+  type MessageQueue,
+  type MessageQueueEnqueueOptions,
+} from "@fedify/fedify";
 import type { RemoteDocument } from "@fedify/vocab";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../tests/helpers";
@@ -14,11 +21,104 @@ import {
 } from "../schema";
 import type { Uuid } from "../uuid";
 import { uuidv7 } from "../uuid";
+import { registerRemoteReplyScrapes } from "./replies-tasks";
 import {
-  claimRemoteReplyScrapeJob,
-  processDueRemoteReplyScrapeJobs,
-  runRemoteReplyScrapeWorkerPoll,
+  claimRemoteReplyScrapeJob as claimById,
+  type ProcessRemoteReplyScrapeJobsOptions,
 } from "./replies-worker";
+
+class TestQueue implements MessageQueue {
+  messages: Message[] = [];
+  delays: number[] = [];
+  fail = false;
+  async enqueue(message: Message, options?: MessageQueueEnqueueOptions) {
+    if (this.fail) throw new Error("queue offline");
+    this.messages.push(message);
+    this.delays.push(options?.delay?.total("milliseconds") ?? 0);
+  }
+  async listen() {}
+}
+function fixture(
+  options: ProcessRemoteReplyScrapeJobsOptions = {},
+  depth?: () => Promise<number>,
+) {
+  const queue = new TestQueue();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue: { task: queue },
+    taskQueueResolution: "strict",
+    manuallyStartQueue: true,
+  });
+  const tasks = registerRemoteReplyScrapes(
+    federation,
+    depth ?? (async () => 0),
+    options,
+  );
+  const ctx = federation.createContext(
+    new URL("https://enqueuer.test"),
+    undefined,
+  );
+  return {
+    queue,
+    federation,
+    tasks,
+    ctx,
+    run: (message = queue.messages.shift()!) =>
+      federation.processQueuedTask(undefined, message),
+  };
+}
+async function candidates(now = new Date()) {
+  return await db
+    .select({ job: remoteReplyScrapeJobs })
+    .from(remoteReplyScrapeJobs)
+    .innerJoin(
+      remoteReplyScrapeOrigins,
+      eq(remoteReplyScrapeOrigins.originHost, remoteReplyScrapeJobs.originHost),
+    )
+    .where(
+      and(
+        eq(remoteReplyScrapeJobs.status, "pending"),
+        lte(remoteReplyScrapeJobs.nextAttemptAt, now),
+        isNull(remoteReplyScrapeOrigins.processingJobId),
+        lte(remoteReplyScrapeOrigins.nextRequestAt, now),
+      ),
+    )
+    .orderBy(remoteReplyScrapeJobs.created);
+}
+async function claimRemoteReplyScrapeJob(
+  now = new Date(),
+  staleProcessingSeconds = 900,
+) {
+  const f = fixture({ now, staleProcessingSeconds });
+  await f.tasks.reclaim();
+  for (const { job } of await candidates(now)) {
+    const claimed = await claimById(job.id, now);
+    if (claimed) return claimed;
+  }
+  return null;
+}
+// Every baseline scrape now crosses Fedify's payload validation/codec and
+// task dispatcher.  This helper only chooses fixtures, never executes work.
+async function processDueRemoteReplyScrapeJobs(
+  options: ProcessRemoteReplyScrapeJobsOptions = {},
+) {
+  if (options.maxDepth === 0) return 0;
+  const f = fixture(options);
+  await f.tasks.reclaim();
+  let fetched = 0;
+  for (const { job } of (await candidates(options.now)).slice(
+    0,
+    options.maxJobs ?? 1,
+  )) {
+    await f.ctx.enqueueTask(f.tasks.task, { jobId: job.id });
+    await f.run();
+    const state = await db.query.remoteReplyScrapeJobs.findFirst({
+      where: { id: { eq: job.id } },
+    });
+    if (state?.status === "completed") fetched += state.fetchedItems;
+  }
+  return fetched;
+}
 
 const PUBLIC_COLLECTION = "https://www.w3.org/ns/activitystreams#Public";
 
@@ -102,6 +202,7 @@ async function seedPostWithScrapeJob({
     baseUrl: "https://hollo.test",
     originHost: new URL(repliesIri).host,
     nextAttemptAt: new Date(0),
+    nextDispatchAt: new Date(0),
   });
   return { jobId, postId, postIri, repliesIri };
 }
@@ -188,7 +289,8 @@ describe("remote replies scrape worker", () => {
     });
     const anonymousLoader = vi.fn();
     const getDocumentLoader = vi.fn(async () => authenticatedLoader);
-    const { federation } = await import("./index");
+    const f = fixture({ maxItems: 1, sleep: async () => undefined });
+    const { federation } = f;
     const createContext = vi
       .spyOn(federation, "createContext")
       .mockReturnValue({
@@ -197,17 +299,21 @@ describe("remote replies scrape worker", () => {
       } as never);
 
     try {
-      const processed = await processDueRemoteReplyScrapeJobs({
-        maxItems: 1,
-        sleep: async () => undefined,
-      });
+      const job = await db.query.remoteReplyScrapeJobs.findFirst();
+      await f.ctx.enqueueTask(f.tasks.task, { jobId: job!.id });
+      await f.run();
+      const processed = (await db.query.remoteReplyScrapeJobs.findFirst())
+        ?.fetchedItems;
 
       const persistedReply = await db.query.posts.findFirst({
         where: { iri: { eq: replyIri } },
       });
       expect(processed).toBe(1);
       expect(persistedReply?.iri).toBe(replyIri);
-      expect(createContext.mock.calls[0]?.[0].url).toBe("https://hollo.test/");
+      expect(createContext).toHaveBeenCalledWith(
+        new URL("https://hollo.test"),
+        undefined,
+      );
       expect(getDocumentLoader).toHaveBeenCalledWith({ username: "hollo" });
       expect(anonymousLoader).not.toHaveBeenCalled();
     } finally {
@@ -1006,7 +1112,7 @@ describe("remote replies scrape worker", () => {
       where: { id: { eq: jobId } },
     });
     const origin = await db.query.remoteReplyScrapeOrigins.findFirst();
-    expect(staleJob?.status).toBe("completed");
+    expect(staleJob?.status).toBe("processing");
     expect(origin?.processingJobId).toBe(replacement.jobId);
     expect(origin?.processingStartedAt?.toISOString()).toBe(
       replacementStartedAt.toISOString(),
@@ -1146,30 +1252,426 @@ describe("remote replies scrape worker", () => {
     );
     expect(origin?.updated.toISOString()).toBe("2026-04-25T00:00:08.000Z");
   });
+});
 
-  it("skips overlapping worker polls in the same process", async () => {
-    expect.assertions(2);
-    let releasePoll: (() => void) | undefined;
-    let calls = 0;
+describe("remote replies task delivery", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+    vi.restoreAllMocks();
+  });
 
-    const firstPoll = runRemoteReplyScrapeWorkerPoll(async () => {
-      calls++;
-      await new Promise<void>((resolve) => {
-        releasePoll = resolve;
+  it("round-trips IDs and ignores duplicate completed messages", async () => {
+    const j = await seedPostWithScrapeJob();
+    const loader = vi.fn(
+      makeLoader({ [j.repliesIri]: collection(j.repliesIri, []) }),
+    );
+    const f = fixture({ documentLoader: loader });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    const message = f.queue.messages.shift()!;
+    await f.run(message);
+    await f.run(message);
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(await db.query.remoteReplyScrapeJobs.findFirst()).toMatchObject({
+      status: "completed",
+      attempts: 1,
+    });
+    expect(f.queue.messages).toHaveLength(0);
+  });
+
+  it("rearms an early message even with a live reservation", async () => {
+    const j = await seedPostWithScrapeJob();
+    const now = new Date();
+    const due = new Date(now.getTime() + 120_000);
+    await db.update(remoteReplyScrapeJobs).set({
+      nextAttemptAt: due,
+      nextDispatchAt: new Date(due.getTime() + 60_000),
+    });
+    const loader = vi.fn();
+    const f = fixture({ now, documentLoader: loader });
+    await f.ctx.enqueueTask(f.tasks.task, { jobId: j.jobId });
+    await f.run();
+    expect(loader).not.toHaveBeenCalled();
+    expect(f.queue.messages).toHaveLength(1);
+    expect(f.queue.delays.at(-1)).toBe(120_000);
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.attempts).toBe(
+      0,
+    );
+  });
+
+  it("keeps application 429 rescheduling separate from Fedify retries", async () => {
+    const j = await seedPostWithScrapeJob();
+    const error = Object.assign(new Error("limited"), {
+      response: new Response(null, {
+        status: 429,
+        headers: { "Retry-After": "300" },
+      }),
+    });
+    const f = fixture({
+      now: new Date(),
+      documentLoader: async () => {
+        throw error;
+      },
+    });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    await f.run();
+    expect(f.queue.messages).toHaveLength(1);
+    expect(f.queue.messages[0]).toMatchObject({ type: "task", attempt: 0 });
+    expect(f.queue.delays.at(-1)).toBe(300_000);
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+      "pending",
+    );
+  });
+
+  it("recovers a committed job after enqueue failure", async () => {
+    const j = await seedPostWithScrapeJob();
+    let now = new Date();
+    const f = fixture({
+      clock: () => now,
+      documentLoader: makeLoader({
+        [j.repliesIri]: collection(j.repliesIri, []),
+      }),
+    });
+    f.queue.fail = true;
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    expect(f.queue.messages).toHaveLength(0);
+    f.queue.fail = false;
+    now = new Date(now.getTime() + 60_001);
+    await f.tasks.recover(f.ctx);
+    expect(f.queue.messages).toHaveLength(1);
+    await f.run();
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+      "completed",
+    );
+  });
+
+  it("does not dispatch work from an uncommitted transaction", async () => {
+    const j = await seedPostWithScrapeJob();
+    const post = (await db.query.posts.findFirst({
+      where: { id: { eq: j.postId } },
+    }))!;
+    const { enqueueRemoteReplyScrape } = await import("./replies");
+    const { replyScrapes } = await import("./federation");
+    const dispatch = vi.spyOn(replyScrapes, "enqueue");
+    const iri = new URL(j.repliesIri + "/rolled-back");
+    await expect(
+      db.transaction(async (tx) => {
+        await enqueueRemoteReplyScrape(tx, {
+          baseUrl: "https://hollo.test",
+          post,
+          repliesIri: iri,
+        });
+        throw new Error("rollback");
+      }),
+    ).rejects.toThrow("rollback");
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(
+      await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { repliesIri: { eq: iri.href } },
+      }),
+    ).toBeUndefined();
+    await db.transaction(async (tx) => {
+      await enqueueRemoteReplyScrape(tx, {
+        baseUrl: "https://hollo.test",
+        post,
+        repliesIri: iri,
       });
     });
-    await Promise.resolve();
-
-    await runRemoteReplyScrapeWorkerPoll(async () => {
-      calls++;
-    });
-    expect(calls).toBe(1);
-
-    releasePoll?.();
-    await firstPoll;
-    await runRemoteReplyScrapeWorkerPoll(async () => {
-      calls++;
-    });
-    expect(calls).toBe(2);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(
+      await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { repliesIri: { eq: iri.href } },
+      }),
+    ).toMatchObject({ status: "pending" });
+    dispatch.mockRestore();
   });
+
+  it("coalesces future wakeups per origin without blocking a healthy host", async () => {
+    const now = new Date();
+    const f = fixture({ now }, async () => 100); // Two busy import windows.
+    for (let i = 0; i < 10; i++) {
+      const j = await seedPostWithScrapeJob({
+        postIri: `https://remote.test/posts/${i}`,
+        repliesIri: `https://remote.test/posts/${i}/replies`,
+      });
+      await db
+        .update(remoteReplyScrapeOrigins)
+        .set({ nextRequestAt: new Date(now.getTime() + 86_400_000) });
+      await f.tasks.enqueue(f.ctx, j.jobId);
+    }
+    expect(f.queue.messages).toHaveLength(1);
+    const healthy = await seedPostWithScrapeJob({ host: "healthy.test" });
+    await f.tasks.enqueue(f.ctx, healthy.jobId);
+    expect(f.queue.messages).toHaveLength(2);
+    expect(f.queue.delays.at(-1)).toBe(0);
+  });
+
+  it("bounded recovery rotates through more than one hundred origins", async () => {
+    const now = new Date();
+    const f = fixture({ now });
+    for (let i = 0; i < 105; i++)
+      await seedPostWithScrapeJob({ host: `host-${i}.test` });
+    const seen = new Set<string>();
+    for (let pass = 0; pass < 3; pass++) {
+      await f.tasks.recover(f.ctx);
+      expect(f.queue.messages.length).toBeLessThanOrEqual(50);
+      for (const message of f.queue.messages)
+        seen.add(message.type === "task" ? message.data : "unexpected");
+      // Delivery at capacity releases reservations without claiming work.
+      const ids = await db.query.remoteReplyScrapeJobs.findMany({
+        where: { nextDispatchAt: { gt: now } },
+      });
+      await db
+        .update(remoteReplyScrapeJobs)
+        .set({ nextDispatchAt: now })
+        .where(
+          inArray(
+            remoteReplyScrapeJobs.id,
+            ids.map((row) => row.id),
+          ),
+        );
+      expect(ids.length).toBeLessThanOrEqual(50);
+      f.queue.messages.length = 0;
+    }
+    expect(seen.size).toBe(105);
+  });
+
+  it("leaves an aborted first fetch pending and releases its own lease", async () => {
+    const j = await seedPostWithScrapeJob();
+    const controller = new AbortController();
+    const f = fixture({
+      signal: controller.signal,
+      documentLoader: async () => {
+        controller.abort(new Error("shutdown"));
+        throw controller.signal.reason;
+      },
+    });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    await f.run();
+    expect(await db.query.remoteReplyScrapeJobs.findFirst()).toMatchObject({
+      status: "pending",
+      attempts: 1,
+    });
+    expect(
+      (await db.query.remoteReplyScrapeOrigins.findFirst())?.processingJobId,
+    ).toBeNull();
+    expect(f.queue.messages).toHaveLength(0);
+  });
+
+  it("refreshes the lease while a fetch is still awaiting", async () => {
+    const j = await seedPostWithScrapeJob();
+    let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const f = fixture({
+      staleProcessingSeconds: 0.1,
+      documentLoader: async (url) => {
+        started();
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: collection(url, []),
+        };
+      },
+    });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    const running = f.run();
+    await entered;
+    const initial = (await db.query.remoteReplyScrapeJobs.findFirst())!.updated;
+    try {
+      await vi.waitFor(async () => {
+        expect(
+          (await db.query.remoteReplyScrapeJobs.findFirst())!.updated.getTime(),
+        ).toBeGreaterThan(initial.getTime());
+      });
+    } finally {
+      release();
+      await running;
+    }
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+      "completed",
+    );
+  });
+
+  it("continues after a transient timer heartbeat failure", async () => {
+    const j = await seedPostWithScrapeJob();
+    let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const f = fixture({
+      staleProcessingSeconds: 0.1,
+      documentLoader: async (url) => {
+        started();
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return {
+          contextUrl: null,
+          documentUrl: url,
+          document: collection(url, []),
+        };
+      },
+    });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    const running = f.run();
+    await entered;
+    const transaction = vi
+      .spyOn(db, "transaction")
+      .mockRejectedValueOnce(new Error("connection reset"));
+    try {
+      await vi.waitFor(() => {
+        expect(transaction).toHaveBeenCalled();
+      });
+    } finally {
+      transaction.mockRestore();
+      release();
+      await running;
+    }
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+      "completed",
+    );
+    expect(
+      (await db.query.remoteReplyScrapeOrigins.findFirst())?.processingJobId,
+    ).toBeNull();
+  });
+
+  it("stops dispatch and execution when scraping is disabled", async () => {
+    const j = await seedPostWithScrapeJob();
+    const loader = vi.fn();
+    const f = fixture({ maxDepth: 0, documentLoader: loader });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    await f.tasks.recover(f.ctx);
+    expect(f.queue.messages).toHaveLength(0);
+    await f.ctx.enqueueTask(f.tasks.task, { jobId: j.jobId });
+    await f.run();
+    expect(loader).not.toHaveBeenCalled();
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.attempts).toBe(
+      0,
+    );
+  });
+});
+
+it("duplicate tasks on independent workers cannot acquire the same origin", async () => {
+  await cleanDatabase();
+  const j = await seedPostWithScrapeJob();
+  let release!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const loader = vi.fn(async (url: string): Promise<RemoteDocument> => {
+    entered();
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return {
+      contextUrl: null,
+      documentUrl: url,
+      document: collection(url, []),
+    };
+  });
+  const first = fixture({ documentLoader: loader });
+  const second = fixture({ documentLoader: loader });
+  await first.tasks.enqueue(first.ctx, j.jobId);
+  const message = first.queue.messages.shift()!;
+  const running = first.run(message);
+  await started;
+  try {
+    await second.run(message);
+    await second.tasks.recover(second.ctx);
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.attempts).toBe(
+      1,
+    );
+    expect(second.queue.messages).toHaveLength(0);
+  } finally {
+    release();
+    await running;
+  }
+  expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+    "completed",
+  );
+});
+
+it("a capacity drop is picked up by the next finished attempt", async () => {
+  await cleanDatabase();
+  const roots = await Promise.all(
+    ["one.test", "two.test", "three.test"].map((host) =>
+      seedPostWithScrapeJob({ host }),
+    ),
+  );
+  const releases: Array<() => void> = [];
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const f = fixture({
+    documentLoader: async (url) => {
+      if (releases.length < 2 && !url.includes("three.test")) {
+        await new Promise<void>((resolve) => {
+          releases.push(resolve);
+          if (releases.length === 2) entered();
+        });
+      }
+      return {
+        contextUrl: null,
+        documentUrl: url,
+        document: collection(url, []),
+      };
+    },
+  });
+  for (const root of roots) await f.tasks.enqueue(f.ctx, root.jobId);
+  const first = f.run();
+  const second = f.run();
+  await started;
+  try {
+    await f.run();
+    expect(
+      await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { id: { eq: roots[2].jobId } },
+      }),
+    ).toMatchObject({ status: "pending", attempts: 0 });
+  } finally {
+    for (const release of releases) release();
+    await Promise.all([first, second]);
+  }
+  expect(f.queue.messages).toHaveLength(1);
+  await f.run();
+  expect(
+    await db.query.remoteReplyScrapeJobs.findFirst({
+      where: { id: { eq: roots[2].jobId } },
+    }),
+  ).toMatchObject({ status: "completed", attempts: 1 });
+});
+
+it("a terminal scrape failure schedules its same-host sibling with spacing", async () => {
+  await cleanDatabase();
+  const first = await seedPostWithScrapeJob();
+  const sibling = await seedPostWithScrapeJob({
+    postIri: "https://remote.test/posts/sibling",
+    repliesIri: "https://remote.test/posts/sibling/replies",
+  });
+  const now = new Date();
+  const f = fixture({
+    now,
+    intervalSeconds: 5,
+    documentLoader: async () => {
+      throw new Error("not found");
+    },
+  });
+  await f.tasks.enqueue(f.ctx, first.jobId);
+  await f.run();
+  expect(f.queue.messages).toHaveLength(1);
+  expect(f.queue.delays.at(-1)).toBe(5000);
+  expect(
+    await db.query.remoteReplyScrapeJobs.findFirst({
+      where: { id: { eq: sibling.jobId } },
+    }),
+  ).toMatchObject({ status: "pending", attempts: 0 });
 });

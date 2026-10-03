@@ -600,3 +600,35 @@ it("recovers prepared deliveries cancelled during retry even after their queued 
     "cancelled",
   );
 });
+
+it("rotates registered recovery workloads and invokes them even at queue capacity", async () => {
+  await cleanDatabase();
+  const queue = new TestQueue();
+  const federation = createFederation<void>({
+    kv: new MemoryKvStore(),
+    queue: { task: queue },
+    manuallyStartQueue: true,
+  });
+  let full = false;
+  const jobs = registerBackgroundJobs(federation, async () => (full ? 200 : 0));
+  const ctx = federation.createContext(
+    new URL("https://hollo.test"),
+    undefined,
+  );
+  const j = await job();
+  const seen: number[] = [];
+  jobs.addRecovery(async () => {
+    seen.push(queue.messages.length);
+  });
+  await jobs.recoverAll(ctx);
+  queue.messages.length = 0;
+  await db
+    .update(schema.cleanupJobs)
+    .set({ nextDispatchAt: new Date(0) })
+    .where(eq(schema.cleanupJobs.id, j.jobId));
+  await jobs.recoverAll(ctx);
+  expect(seen).toEqual([1, 0]);
+  full = true;
+  await jobs.recoverAll(ctx);
+  expect(seen).toHaveLength(3);
+});

@@ -96,6 +96,13 @@ To be released.
     Stop older nodes before migrating, then deploy matching web and worker
     versions.  [[#636], [#637], [#645]]
 
+ -  Remote replies scraping now runs through the shared Fedify task queue,
+    including delayed retry wakeups.  Durable job and host records retain
+    cooldown, request spacing, HTTP 429 backoff, and stale-attempt protection.
+    Bounded recovery repairs missed enqueues and interrupted jobs.  Stop older
+    nodes before upgrading and deploy compatible task definitions on all nodes.
+    [[#636], [#638], [#648]]
+
  -  Upgraded *@simplewebauthn/server* to 14.0.3 and
     *@simplewebauthn/browser* to 14.0.0, refreshing the vendored browser
     bundle to match.  The server release fixes two moderate-severity
@@ -116,8 +123,10 @@ To be released.
 [#635]: https://github.com/fedify-dev/hollo/issues/635
 [#636]: https://github.com/fedify-dev/hollo/issues/636
 [#637]: https://github.com/fedify-dev/hollo/issues/637
+[#638]: https://github.com/fedify-dev/hollo/issues/638
 [#641]: https://github.com/fedify-dev/hollo/pull/641
 [#645]: https://github.com/fedify-dev/hollo/pull/645
+[#648]: https://github.com/fedify-dev/hollo/pull/648
 
 
 Version 0.9.21

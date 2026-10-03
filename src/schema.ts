@@ -1367,6 +1367,9 @@ export const remoteReplyScrapeJobs = pgTable(
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
       .notNull()
       .default(currentTimestamp),
+    nextDispatchAt: timestamp("next_dispatch_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
     errorMessage: text("error_message"),
     created: timestamp("created", { withTimezone: true })
       .notNull()
@@ -1379,6 +1382,9 @@ export const remoteReplyScrapeJobs = pgTable(
   },
   (table) => [
     index().on(table.postId),
+    index("remote_reply_scrape_jobs_dispatch_index")
+      .on(table.status, table.nextDispatchAt, table.id)
+      .where(sql`${table.status} IN ('pending', 'processing')`),
     index("remote_reply_scrape_jobs_claim_index").on(
       table.status,
       table.nextAttemptAt,

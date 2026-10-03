@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../tests/helpers";
 import db from "../db";
@@ -197,4 +197,66 @@ describe("enqueueRemoteReplyScrape", () => {
     expect(job?.status).toBe("completed");
     expect(job?.attempts).toBe(2);
   });
+});
+
+it("commits creation even if post-commit dispatch fails", async () => {
+  await cleanDatabase();
+  const post = await seedRemotePost();
+  const { replyScrapes } = await import("./federation");
+  const enqueue = vi
+    .spyOn(replyScrapes, "enqueue")
+    .mockRejectedValue(new Error("queue offline"));
+  try {
+    await enqueueRemoteReplyScrape(db, {
+      baseUrl: "https://hollo.test",
+      post,
+      repliesIri: new URL(post.iri + "/replies"),
+    });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(await db.query.remoteReplyScrapeJobs.findFirst()).toMatchObject({
+      status: "pending",
+      attempts: 0,
+    });
+  } finally {
+    enqueue.mockRestore();
+  }
+});
+
+it("concurrent cooldown refreshes cannot reset an active generation", async () => {
+  await cleanDatabase();
+  const post = await seedRemotePost();
+  const iri = new URL(post.iri + "/replies");
+  await db.insert(remoteReplyScrapeJobs).values({
+    id: uuidv7(),
+    postId: post.id,
+    postIri: post.iri,
+    repliesIri: iri.href,
+    baseUrl: "https://hollo.test",
+    originHost: iri.host,
+    status: "completed",
+    completedAt: new Date(0),
+    attempts: 7,
+  });
+  const { replyScrapes } = await import("./federation");
+  const enqueue = vi
+    .spyOn(replyScrapes, "enqueue")
+    .mockResolvedValue(undefined);
+  try {
+    await Promise.all(
+      Array.from({ length: 20 }, () =>
+        enqueueRemoteReplyScrape(db, {
+          baseUrl: "https://hollo.test",
+          post,
+          repliesIri: iri,
+        }),
+      ),
+    );
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(await db.query.remoteReplyScrapeJobs.findFirst()).toMatchObject({
+      status: "pending",
+      attempts: 0,
+    });
+  } finally {
+    enqueue.mockRestore();
+  }
 });

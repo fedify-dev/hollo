@@ -20,6 +20,7 @@ import { registerBackgroundJobs } from "../background/jobs";
 import { TaskMessageQueue } from "../background/queue";
 import { postgres } from "../db";
 import { FEDIFY_ORIGIN } from "../env";
+import { registerRemoteReplyScrapes } from "./replies-tasks";
 
 // oxlint-disable-next-line typescript/dot-notation
 const fedifyDebug = process.env["FEDIFY_DEBUG"] === "true";
@@ -77,8 +78,16 @@ let federation: Federation<void> & { sink?: Sink } = createFederation<void>({
 
 export const backgroundJobs = registerBackgroundJobs(
   federation,
-  async () => (await taskQueue.getDepth()).queued,
+  async () =>
+    (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
 );
+
+export const replyScrapes = registerRemoteReplyScrapes(
+  federation,
+  async () =>
+    (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
+);
+backgroundJobs.addRecovery(replyScrapes.recover);
 
 if (fedifyDebug && exporter != null) {
   federation = createFederationDebugger(federation, { exporter, kv });
