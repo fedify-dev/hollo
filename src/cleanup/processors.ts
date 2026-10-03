@@ -187,7 +187,6 @@ async function processProxyCacheEnumeration(
     await dispatch();
   };
   for await (const key of iterateProxyCacheBinKeys()) {
-    await check();
     batch.add(key);
     if (batch.size >= 1000) await flush();
   }

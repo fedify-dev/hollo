@@ -76,6 +76,47 @@ it("streams multiple listing pages, deduplicates legacy keys, and resumes failed
   });
 });
 
+it.each([false, true])(
+  "bounds enumeration status queries while preserving cancellation between batches (cancel: %s)",
+  async (cancel) => {
+    const item = await enumeration();
+    const disk = drive.use();
+    vi.spyOn(disk, "listAll").mockResolvedValue({
+      objects: Array.from({ length: 2500 }, (_, index) => ({
+        key: key(index),
+        isFile: true,
+      })),
+    } as Awaited<ReturnType<typeof disk.listAll>>);
+    const guard = vi.fn(async () => {
+      const [job] = await db
+        .select({ status: schema.cleanupJobs.status })
+        .from(schema.cleanupJobs)
+        .where(eq(schema.cleanupJobs.id, item.jobId));
+      if (job.status === "cancelled") throw new Error("Cleanup cancelled");
+    });
+    const dispatch = vi.fn(async () => {
+      if (cancel)
+        await db
+          .update(schema.cleanupJobs)
+          .set({ status: "cancelled" })
+          .where(eq(schema.cleanupJobs.id, item.jobId));
+    });
+    const error = await processCleanupItem(item, guard, dispatch).then(
+      () => undefined,
+      (error: Error) => error.message,
+    );
+    expect(error).toBe(cancel ? "Cleanup cancelled" : undefined);
+    expect(guard.mock.calls.length).toBeLessThan(20);
+    expect(await db.select().from(schema.cleanupJobItems)).toHaveLength(
+      cancel ? 1001 : 2501,
+    );
+    expect((await db.select().from(schema.cleanupJobs))[0].totalItems).toBe(
+      cancel ? 1001 : 2501,
+    );
+    expect(dispatch).toHaveBeenCalledTimes(cancel ? 1 : 3);
+  },
+);
+
 it("deletes actual filesystem proxy bodies and sidecars idempotently", async () => {
   const item = await enumeration();
   const disk = drive.use();
