@@ -50,6 +50,7 @@ import {
   withAccountOwner,
 } from "../../oauth/middleware";
 import { normalizeHandle } from "../../patterns";
+import { enqueuePollNotification } from "../../poll-notification-tasks";
 import { fetchPreviewCard, type PreviewCard } from "../../previewcard";
 import {
   type AccountOwner,
@@ -603,6 +604,9 @@ app.post(
       where: { id: { eq: id } },
       with: getPostRelations(owner.id),
     }))!;
+    if (post.pollId != null) {
+      await enqueuePollNotification(db, post.pollId, fedCtx.url);
+    }
     const activity = toCreate(post, fedCtx);
     const orderingKey = getPostOrderingKey(post.iri);
     await fedCtx.sendActivity(

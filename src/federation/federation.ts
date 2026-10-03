@@ -20,6 +20,7 @@ import { registerBackgroundJobs } from "../background/jobs";
 import { TaskMessageQueue } from "../background/queue";
 import { postgres } from "../db";
 import { FEDIFY_ORIGIN } from "../env";
+import { registerPollNotifications } from "../poll-notification-tasks";
 import { registerRemoteReplyScrapes } from "./replies-tasks";
 
 // oxlint-disable-next-line typescript/dot-notation
@@ -88,6 +89,13 @@ export const replyScrapes = registerRemoteReplyScrapes(
     (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
 );
 backgroundJobs.addRecovery(replyScrapes.recover);
+
+export const pollNotifications = registerPollNotifications(
+  federation,
+  async () =>
+    (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
+);
+backgroundJobs.addRecovery(pollNotifications.recover);
 
 if (fedifyDebug && exporter != null) {
   federation = createFederationDebugger(federation, { exporter, kv });

@@ -36,6 +36,7 @@ import { extractPreviewLink } from "../html";
 import { makeVideoScreenshot, type Thumbnail, uploadThumbnail } from "../media";
 import { orderMedia } from "../media-order";
 import { REMOTE_MEDIA_THUMBNAILS } from "../media-proxy";
+import { enqueuePollNotification } from "../poll-notification-tasks";
 import { fetchPreviewCard } from "../previewcard";
 import {
   type Account,
@@ -491,6 +492,7 @@ export async function persistPost(
       );
     }
   }
+  let rescheduledPollId: Uuid | undefined;
   if (object instanceof Question) {
     const options: [string, number][] = [];
     let multiple = false;
@@ -533,6 +535,9 @@ export async function persistPost(
           .set({ pollId: poll.id })
           .where(eq(posts.id, post.id));
       } else {
+        const previousPoll = await db.query.polls.findFirst({
+          where: { id: { eq: post.pollId } },
+        });
         const [poll] = await db
           .update(polls)
           .set({
@@ -542,6 +547,9 @@ export async function persistPost(
           })
           .where(eq(polls.id, post.pollId))
           .returning();
+        if (previousPoll == null || +previousPoll.expires !== +poll.expires) {
+          rescheduledPollId = poll.id;
+        }
         for (let index = 0; index < options.length; index++) {
           const [title, votesCount] = options[index];
           await db
@@ -718,6 +726,9 @@ export async function persistPost(
     mentions: mentionRows,
     replyTarget: replyTargetObj,
   });
+  if (rescheduledPollId != null) {
+    await enqueuePollNotification(db, rescheduledPollId, baseUrl);
+  }
   return { ...post, account, mentions: mentionRows };
 }
 

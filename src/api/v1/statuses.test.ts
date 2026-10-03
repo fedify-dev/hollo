@@ -54,6 +54,43 @@ describe("/api/v1/accounts/verify_credentials", { concurrent: false }, () => {
     accessToken = await getAccessToken(client, account, ["write"]);
   });
 
+  it("schedules a poll only after its creation commits, even if enqueue fails", async () => {
+    const { pollNotifications } = await import("../../federation/federation");
+    const enqueue = vi
+      .spyOn(pollNotifications, "enqueue")
+      .mockImplementation(async (_ctx, pollId) => {
+        const committed = await db.query.posts.findFirst({
+          where: { pollId: { eq: pollId } },
+        });
+        expect(committed?.accountId).toBe(account.id);
+        throw new Error("queue offline");
+      });
+    try {
+      const response = await app.request("/api/v1/statuses", {
+        method: "POST",
+        headers: {
+          authorization: bearerAuthorization(accessToken),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "Pick one",
+          poll: { options: ["A", "B"], expires_in: 60 },
+        }),
+      });
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(enqueue).toHaveBeenCalledTimes(1);
+      expect(enqueue.mock.calls[0][1]).toBe(result.poll.id);
+      expect(
+        await db.query.polls.findFirst({
+          where: { id: { eq: result.poll.id } },
+        }),
+      ).toBeDefined();
+    } finally {
+      enqueue.mockRestore();
+    }
+  });
+
   it("Successfully creates a new status with a valid access token using JSON", async () => {
     expect.assertions(7);
 

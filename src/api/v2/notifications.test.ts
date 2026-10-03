@@ -10,7 +10,7 @@ import {
 import { createExpiredPollPost } from "../../../tests/helpers/poll";
 import db from "../../db";
 import app from "../../index";
-import { materializeExpiredPollNotifications } from "../../notification";
+import { notifyExpiredPoll } from "../../notification";
 import * as Schema from "../../schema";
 import type { Uuid } from "../../uuid";
 
@@ -304,10 +304,8 @@ describe("/api/v2/notifications", { concurrent: false }, () => {
       );
 
       expect(
-        await materializeExpiredPollNotifications({
-          now: new Date("2026-01-01T00:00:01.000Z"),
-        }),
-      ).toBe(1);
+        await notifyExpiredPoll(pollId, new Date("2026-01-01T00:00:01.000Z")),
+      ).toBeUndefined();
 
       const notification = await db.query.notifications.findFirst({
         where: {

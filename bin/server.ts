@@ -77,20 +77,19 @@ let stopWorkers: (() => Promise<void>) | undefined;
 if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
   const [
     { federation },
-    { backgroundJobs, replyScrapes },
+    { backgroundJobs, replyScrapes, pollNotifications },
     { itemLeases },
-    { startPollNotificationWorker, stopPollNotificationWorker },
   ] = await Promise.all([
     import("../src/federation"),
     import("../src/federation/federation"),
     import("../src/background/lease"),
-    import("../src/poll-notification-worker"),
   ]);
 
   // Start the Fedify message queue
   const controller = new AbortController();
   backgroundJobs.setSignal(controller.signal);
   replyScrapes.setSignal(controller.signal);
+  pollNotifications.setSignal(controller.signal);
   const queue = federation
     .startQueue(undefined, { signal: controller.signal })
     .catch((error) => {
@@ -107,18 +106,14 @@ if (NODE_TYPE === "worker" || NODE_TYPE === "all") {
     ),
     controller.signal,
   );
-  startPollNotificationWorker();
 
   stopWorkers = async () => {
     controller.abort();
-    stopPollNotificationWorker();
     await stopRecovery();
     await queue;
     await itemLeases.close();
   };
-  console.log(
-    "Worker started (Fedify activity/task queues + Job recovery + Poll notification worker)",
-  );
+  console.log("Worker started (Fedify activity/task queues + Job recovery)");
 }
 
 // Graceful shutdown handling

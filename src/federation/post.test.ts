@@ -26,7 +26,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanDatabase } from "../../tests/helpers";
 import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
-import { accounts, follows, instances, polls, posts } from "../schema";
+import {
+  accounts,
+  follows,
+  instances,
+  polls,
+  pollVotes,
+  posts,
+} from "../schema";
 import type { Uuid } from "../uuid";
 import { toTemporalInstant } from "./date";
 import { onPostShared } from "./inbox";
@@ -2004,5 +2011,69 @@ describe("persistPost quote authorization verification", () => {
     );
     expect(persisted?.quoteState).toBe("unauthorized");
     expect(persisted?.quoteAuthorizationIri).toBeNull();
+  });
+});
+
+describe("Remote poll expiry task dispatch", () => {
+  beforeEach(cleanDatabase);
+  it("schedules only actual expiry changes and retains committed updates on enqueue failure", async () => {
+    const author = await seedRemoteAccount("poll-author");
+    const voter = await createAccount();
+    const { createExpiredPollPost } = await import("../../tests/helpers/poll");
+    const p = await createExpiredPollPost(
+      author.id,
+      new Date("2026-01-01T00:01:00Z"),
+    );
+    const row = await db.query.posts.findFirst({
+      where: { id: { eq: p.postId } },
+    });
+    await db.insert(pollVotes).values({
+      pollId: p.pollId,
+      accountId: voter.id as Uuid,
+      optionIndex: 0,
+    });
+    const { pollNotifications } = await import("./federation");
+    const enqueue = vi
+      .spyOn(pollNotifications, "enqueue")
+      .mockRejectedValue(new Error("queue offline"));
+    try {
+      const question = (expires: Date) =>
+        new Question({
+          id: new URL(row!.iri),
+          attribution: createPerson(author),
+          content: "Pick one",
+          exclusiveOptions: [
+            new Note({ name: "First option" }),
+            new Note({ name: "Second option" }),
+          ],
+          endTime: toTemporalInstant(expires),
+          to: PUBLIC_COLLECTION,
+        });
+      await persistPost(
+        db,
+        question(new Date("2026-01-01T00:01:00Z")),
+        "https://hollo.test",
+        {
+          account: author,
+        },
+      );
+      expect(enqueue).not.toHaveBeenCalled();
+      const expires = new Date("2026-01-01T00:02:00Z");
+      await persistPost(db, question(expires), "https://hollo.test", {
+        account: author,
+      });
+      expect(enqueue).toHaveBeenCalledTimes(1);
+      expect(enqueue.mock.calls[0][1]).toBe(p.pollId);
+      expect(
+        (await db.query.polls.findFirst({ where: { id: { eq: p.pollId } } }))
+          ?.expires,
+      ).toEqual(expires);
+      await persistPost(db, question(expires), "https://hollo.test", {
+        account: author,
+      });
+      expect(enqueue).toHaveBeenCalledTimes(1);
+    } finally {
+      enqueue.mockRestore();
+    }
   });
 });

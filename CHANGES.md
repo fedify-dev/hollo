@@ -103,6 +103,13 @@ To be released.
     nodes before upgrading and deploy compatible task definitions on all nodes.
     [[#636], [#638], [#648]]
 
+ -  Poll expiry notifications now run as delayed Fedify tasks on the shared
+    task queue.  Handlers reload the current expiry and recipients, preserving
+    owner/poll deduplication and notification group counts.  Bounded recovery
+    repairs missed schedules and advances through backlogs after downtime.
+    Stop older nodes before upgrading and deploy compatible task definitions
+    on all nodes.  [[#636], [#639], [#649]]
+
  -  Upgraded *@simplewebauthn/server* to 14.0.3 and
     *@simplewebauthn/browser* to 14.0.0, refreshing the vendored browser
     bundle to match.  The server release fixes two moderate-severity
@@ -124,9 +131,11 @@ To be released.
 [#636]: https://github.com/fedify-dev/hollo/issues/636
 [#637]: https://github.com/fedify-dev/hollo/issues/637
 [#638]: https://github.com/fedify-dev/hollo/issues/638
+[#639]: https://github.com/fedify-dev/hollo/issues/639
 [#641]: https://github.com/fedify-dev/hollo/pull/641
 [#645]: https://github.com/fedify-dev/hollo/pull/645
 [#648]: https://github.com/fedify-dev/hollo/pull/648
+[#649]: https://github.com/fedify-dev/hollo/pull/649
 
 
 Version 0.9.21

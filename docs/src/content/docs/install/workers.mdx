@@ -30,22 +30,23 @@ Worker separation is beneficial when:
 How it works
 ------------
 
-Hollo has five main components:
+Hollo has six main components:
 
  1. *Web server*: Handles HTTP requests (API, web UI)
  2. *Fedify message queue*: Processes ActivityPub inbox/outbox messages
  3. *Import worker*: Handles background data import jobs
  4. *Cleanup worker*: Handles background cleanup jobs
  5. *Remote replies scrape worker*: Fetches remote replies collections slowly
+ 6. *Poll notification tasks*: Notify local authors and voters after expiry
 
-By default (`NODE_TYPE=all`), all five run in a single process. You can
+By default (`NODE_TYPE=all`), all six run in a single process. You can
 separate them using the `NODE_TYPE` environment variable:
 
-| `NODE_TYPE` | Web server | Fedify queue | Import worker | Cleanup worker | Remote replies scrape worker |
-| ----------- | ---------- | ------------ | ------------- | -------------- | ---------------------------- |
-| `all` (default) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `web` | ✓ | ✗ | ✗ | ✗ | ✗ |
-| `worker` | ✗ | ✓ | ✓ | ✓ | ✓ |
+| `NODE_TYPE` | Web server | Fedify queue | Import worker | Cleanup worker | Remote replies scrape worker | Poll notifications |
+| ----------- | ---------- | ------------ | ------------- | -------------- | ---------------------------- | ------------------ |
+| `all` (default) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `web` | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `worker` | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ### Import and cleanup tasks
 
@@ -99,6 +100,25 @@ throttling waits and returns settled attempts to pending. A forced termination
 leaves the lease to expire. HTTP 429 retries use the recorded due time; other
 scrape errors remain terminal failures. The existing scrape environment
 variables and authenticated local-actor fetching retain their meaning.
+
+### Poll notification tasks
+
+Poll expiry notifications share the dedicated Fedify task queue. Web nodes
+schedule tasks; worker and combined nodes execute them, reloading the current
+expiry and local recipients. Changed expiries and duplicate messages cannot
+notify early or duplicate owner/poll notifications. Very distant expiries use
+wakeups of at most seven days. Delivery may occur after the recorded expiry.
+
+Startup and once-a-minute recovery enqueue at most 100 expired polls with
+missing notifications per pass. The scan advances through the backlog even
+while earlier tasks are pending or failed. It covers existing polls, downtime,
+missed post-commit dispatches, and exhausted task retries; recovery itself does
+not create notifications. Delayed messages do not count toward ready-queue
+backpressure. Transient task errors use exponential backoff for up to three
+attempts, then recovery can try again. Shutdown lets running transactions finish;
+interrupted work remains recoverable. Stop older nodes before upgrading and
+run compatible task definitions on every node.
+
 
 Docker Compose setup
 --------------------
@@ -303,7 +323,7 @@ sudo journalctl -u hollo-worker -f
 When a worker node starts, you should see:
 
 ```
-Worker started (Fedify activity/task queues + Job recovery + Poll notification worker)
+Worker started (Fedify activity/task queues + Job recovery)
 ```
 
 Watch for messages about processing activities, imports, cleanups, and remote
