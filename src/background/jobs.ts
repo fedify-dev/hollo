@@ -464,12 +464,24 @@ export function registerBackgroundJobs(
     }
   }
 
+  const recoveries = [recover];
+  let recoveryStart = 0;
+  async function recoverAll(ctx: Context<void>) {
+    const start = recoveryStart++ % recoveries.length;
+    for (let i = 0; i < recoveries.length; i++) {
+      if (signal?.aborted) return;
+      // Invoke each workload even at capacity: some callbacks reclaim stale
+      // state before checking whether they may enqueue more ready messages.
+      await recoveries[(start + i) % recoveries.length](ctx);
+    }
+  }
+
   function startRecovery(ctx: Context<void>, abortSignal: AbortSignal) {
     signal = abortSignal;
     let running: Promise<void> | undefined;
     const pass = () => {
       if (running || signal?.aborted) return;
-      running = recover(ctx)
+      running = recoverAll(ctx)
         .catch((error: unknown) => {
           logger.error("Job recovery failed: {error}", { error });
         })
@@ -488,6 +500,10 @@ export function registerBackgroundJobs(
   return {
     enqueueJob,
     recover,
+    recoverAll,
+    addRecovery(callback: (ctx: Context<void>) => Promise<void>) {
+      recoveries.push(callback);
+    },
     startRecovery,
     setSignal(value: AbortSignal) {
       signal = value;

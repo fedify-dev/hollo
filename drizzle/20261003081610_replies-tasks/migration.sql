@@ -1,0 +1,2 @@
+ALTER TABLE "remote_reply_scrape_jobs" ADD COLUMN "next_dispatch_at" timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL;--> statement-breakpoint
+CREATE INDEX "remote_reply_scrape_jobs_dispatch_index" ON "remote_reply_scrape_jobs" ("status","next_dispatch_at","id") WHERE "status" IN ('pending', 'processing');

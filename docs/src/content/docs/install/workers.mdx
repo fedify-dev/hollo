@@ -79,6 +79,27 @@ All nodes share the same PostgreSQL database, which acts as the message queue
 backend using `LISTEN`/`NOTIFY` for real-time message delivery.
 
 
+### Remote replies scrape tasks
+
+Remote replies scraping shares the dedicated task queue with import and cleanup.
+Each worker runs at most four application tasks, including at most two scrapes.
+Backpressure counts ready messages, so delayed wakeups do not block other work.
+PostgreSQL job and origin records still enforce collection cooldown, host request
+spacing, and HTTP 429 backoff across workers. Normal execution and retry wakeups
+use tasks; a startup and once-a-minute recovery pass examines at most 100 stale
+jobs and 100 stale orphan origin leases, and dispatches at most 50 runnable
+scrapes. It repairs missed enqueues and interrupted attempts without fetching
+remote collections itself. Jobs created within a transaction are dispatched by
+recovery after commit.
+
+Stop all older nodes before upgrading and deploy compatible task definitions
+on every node. Existing pending jobs are recovered, and processing jobs are
+reclaimed after their 15-minute heartbeat lease expires. Shutdown interrupts
+throttling waits and returns settled attempts to pending. A forced termination
+leaves the lease to expire. HTTP 429 retries use the recorded due time; other
+scrape errors remain terminal failures. The existing scrape environment
+variables and authenticated local-actor fetching retain their meaning.
+
 Docker Compose setup
 --------------------
 
@@ -282,7 +303,7 @@ sudo journalctl -u hollo-worker -f
 When a worker node starts, you should see:
 
 ```
-Worker started (Fedify queue + Import worker + Cleanup worker + Remote reply scrape worker)
+Worker started (Fedify activity/task queues + Job recovery + Poll notification worker)
 ```
 
 Watch for messages about processing activities, imports, cleanups, and remote

@@ -1,6 +1,6 @@
+import type { Context } from "@fedify/fedify";
 import { Collection, type DocumentLoader, lookupObject } from "@fedify/vocab";
-import { getLogger } from "@logtape/logtape";
-import { and, asc, eq, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, isNull, lte, sql } from "drizzle-orm";
 
 import db from "../db";
 import {
@@ -9,6 +9,7 @@ import {
   remoteReplyScrapeJobs,
   remoteReplyScrapeOrigins,
 } from "../schema";
+import type { Uuid } from "../uuid";
 import { iterateCollection } from "./collection";
 import { isPost, persistPost } from "./post";
 import {
@@ -20,16 +21,12 @@ import {
   REMOTE_REPLIES_SCRAPE_MAX_ITEMS,
 } from "./replies";
 
-const logger = getLogger(["hollo", "federation", "replies-worker"]);
+export const STALE_PROCESSING_TIMEOUT_SECONDS = 15 * 60;
 
-const POLL_INTERVAL_MS = 5000;
-const STALE_PROCESSING_TIMEOUT_SECONDS = 15 * 60;
-
-let isRunning = false;
-let isPolling = false;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+class LostScrapeAttempt extends Error {}
 
 export interface ProcessRemoteReplyScrapeJobsOptions {
+  signal?: AbortSignal;
   backoffSeconds?: number;
   clock?: () => Date;
   documentLoader?: DocumentLoader;
@@ -42,98 +39,11 @@ export interface ProcessRemoteReplyScrapeJobsOptions {
   staleProcessingSeconds?: number;
 }
 
-export function startRemoteReplyScrapeWorker(): void {
-  if (isRunning) {
-    logger.warn("Remote reply scrape worker is already running");
-    return;
-  }
-
-  isRunning = true;
-  logger.info("Starting remote reply scrape worker");
-
-  runRemoteReplyScrapeWorkerPoll().catch((error) => {
-    logger.error("Error in initial remote reply scrape worker poll: {error}", {
-      error,
-    });
-  });
-
-  pollTimer = setInterval(() => {
-    runRemoteReplyScrapeWorkerPoll().catch((error) => {
-      logger.error("Error in remote reply scrape worker poll: {error}", {
-        error,
-      });
-    });
-  }, POLL_INTERVAL_MS);
-}
-
-export function stopRemoteReplyScrapeWorker(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-  isRunning = false;
-  logger.info("Remote reply scrape worker stopped");
-}
-
-export async function processDueRemoteReplyScrapeJobs(
-  options: ProcessRemoteReplyScrapeJobsOptions = {},
-): Promise<number> {
-  if ((options.maxDepth ?? REMOTE_REPLIES_SCRAPE_DEPTH) < 1) return 0;
-
-  const maxJobs = options.maxJobs ?? 1;
-  let processedItems = 0;
-
-  for (let i = 0; i < maxJobs; i++) {
-    const job = await claimRemoteReplyScrapeJob(
-      options.now,
-      options.staleProcessingSeconds,
-    );
-    if (job == null) break;
-    processedItems += await processRemoteReplyScrapeJob(job, options);
-  }
-
-  return processedItems;
-}
-
 export async function claimRemoteReplyScrapeJob(
+  jobId: Uuid,
   now = new Date(),
-  staleProcessingSeconds = STALE_PROCESSING_TIMEOUT_SECONDS,
 ): Promise<RemoteReplyScrapeJob | null> {
   return await db.transaction(async (tx) => {
-    const staleStartedBefore = new Date(
-      now.getTime() - staleProcessingSeconds * 1000,
-    );
-
-    await tx
-      .update(remoteReplyScrapeJobs)
-      .set({
-        status: "pending",
-        nextAttemptAt: now,
-        errorMessage: "Reclaimed stale processing job",
-        startedAt: null,
-        updated: now,
-      })
-      .where(
-        and(
-          eq(remoteReplyScrapeJobs.status, "processing"),
-          lte(remoteReplyScrapeJobs.updated, staleStartedBefore),
-        ),
-      );
-
-    await tx
-      .update(remoteReplyScrapeOrigins)
-      .set({
-        processingJobId: null,
-        processingStartedAt: null,
-        updated: now,
-      })
-      .where(
-        and(
-          isNotNull(remoteReplyScrapeOrigins.processingStartedAt),
-          lte(remoteReplyScrapeOrigins.processingStartedAt, staleStartedBefore),
-        ),
-      );
-
     const [claimableJob] = await tx
       .select({ job: remoteReplyScrapeJobs })
       .from(remoteReplyScrapeJobs)
@@ -146,13 +56,13 @@ export async function claimRemoteReplyScrapeJob(
       )
       .where(
         and(
+          eq(remoteReplyScrapeJobs.id, jobId),
           eq(remoteReplyScrapeJobs.status, "pending"),
           lte(remoteReplyScrapeJobs.nextAttemptAt, now),
           isNull(remoteReplyScrapeOrigins.processingJobId),
           lte(remoteReplyScrapeOrigins.nextRequestAt, now),
         ),
       )
-      .orderBy(asc(remoteReplyScrapeJobs.created))
       .limit(1)
       .for("update", { skipLocked: true });
 
@@ -188,142 +98,186 @@ export async function claimRemoteReplyScrapeJob(
   });
 }
 
-async function pollAndProcess(): Promise<void> {
-  await processDueRemoteReplyScrapeJobs();
-}
-
-export async function runRemoteReplyScrapeWorkerPoll(
-  processJobs: () => Promise<void> = pollAndProcess,
-): Promise<void> {
-  if (isPolling) return;
-
-  isPolling = true;
-  try {
-    await processJobs();
-  } finally {
-    isPolling = false;
-  }
-}
-
-async function processRemoteReplyScrapeJob(
+export async function processRemoteReplyScrapeJob(
   job: RemoteReplyScrapeJob,
-  options: ProcessRemoteReplyScrapeJobsOptions,
+  ctx: Context<void>,
+  options: ProcessRemoteReplyScrapeJobsOptions = {},
 ): Promise<number> {
   const clock = options.clock ?? (() => options.now ?? new Date());
-  const post = await db.query.posts.findFirst({
-    where: { id: { eq: job.postId } },
-  });
-
-  if (post == null) {
-    await failJob(job, "Post not found", clock());
-    return 0;
-  }
-
-  let fetchedItems = 0;
-  let lastFetchError: unknown;
-  let lastFetchErrorUrl: URL | undefined;
-  const isLastFetchOriginRateLimit = (error: unknown = lastFetchError) =>
-    error === lastFetchError &&
-    isOriginRateLimit(error, lastFetchErrorUrl, job);
-
-  try {
-    const documentLoader =
-      options.documentLoader ?? (await getDefaultDocumentLoader(job.baseUrl));
-    const throttledDocumentLoader = createThrottledDocumentLoader(job, {
-      documentLoader,
-      intervalSeconds:
-        options.intervalSeconds ?? REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS,
-      staleProcessingSeconds:
-        options.staleProcessingSeconds ?? STALE_PROCESSING_TIMEOUT_SECONDS,
-      clock,
-      sleep: options.sleep ?? sleep,
-    });
-    const recordingDocumentLoader: DocumentLoader = async (url, options) => {
-      try {
-        return await throttledDocumentLoader(url, options);
-      } catch (error) {
-        lastFetchError = error;
-        lastFetchErrorUrl = new URL(url);
-        throw error;
-      }
-    };
-    const collection = await lookupObject(new URL(job.repliesIri), {
-      documentLoader: recordingDocumentLoader,
-    });
-
-    if (collection == null && isLastFetchOriginRateLimit()) {
-      throw lastFetchError;
+  let lost: unknown;
+  let interrupted = false;
+  let lastProgress = Date.now();
+  let refreshing: Promise<void> | undefined;
+  const checkpoint = async () => {
+    if (lost != null) throw lost;
+    if (options.signal?.aborted) {
+      interrupted = true;
+      throw options.signal.reason;
     }
-
-    if (collection == null) {
-      throw new Error(`Replies collection not found: ${job.repliesIri}`);
-    }
-
-    if (!(collection instanceof Collection)) {
-      throw new Error(
-        `Replies collection is not a Collection: ${job.repliesIri}`,
-      );
-    }
-
-    for await (const item of iterateCollection(collection, {
-      documentLoader: recordingDocumentLoader,
-    })) {
-      if (
-        fetchedItems >= (options.maxItems ?? REMOTE_REPLIES_SCRAPE_MAX_ITEMS)
-      ) {
-        break;
-      }
-      if (!isPost(item)) continue;
-
-      await updateProcessingHeartbeat(job, clock());
-      const reply = await persistPost(db, item, job.baseUrl, {
-        documentLoader: recordingDocumentLoader,
-        enqueueRemoteReplies: false,
-        fetchEmojiReactions: false,
-        replyTarget: post,
-        skipUpdate: true,
-      });
-      await updateProcessingHeartbeat(job, clock());
-      if (reply == null) continue;
-
-      fetchedItems++;
-      const childRepliesIri = item.repliesId;
-      if (
-        childRepliesIri != null &&
-        job.depth + 1 < (options.maxDepth ?? REMOTE_REPLIES_SCRAPE_DEPTH)
-      ) {
-        await enqueueRemoteReplyScrape(db, {
-          baseUrl: job.baseUrl,
-          depth: job.depth + 1,
-          post: reply,
-          repliesIri: childRepliesIri,
+    await updateProcessingHeartbeat(job, clock());
+    lastProgress = Date.now();
+  };
+  const staleSeconds =
+    options.staleProcessingSeconds ?? STALE_PROCESSING_TIMEOUT_SECONDS;
+  const timer = setInterval(
+    () => {
+      if (refreshing || Date.now() - lastProgress >= staleSeconds * 1000)
+        return;
+      refreshing = updateProcessingHeartbeat(job, clock())
+        .catch((error: unknown) => {
+          if (error instanceof LostScrapeAttempt) lost = error;
+        })
+        .finally(() => {
+          refreshing = undefined;
         });
-      }
+    },
+    Math.max(1, staleSeconds * 500),
+  );
+  timer.unref();
+  try {
+    const post = await db.query.posts.findFirst({
+      where: { id: { eq: job.postId } },
+    });
+
+    if (post == null) {
+      await failJob(job, "Post not found", clock());
+      return 0;
     }
 
-    await updateScrapedRepliesCount(job.postId);
-    await completeJob(job, fetchedItems, clock());
-    return fetchedItems;
-  } catch (error) {
-    await updateScrapedRepliesCount(job.postId);
-    if (isLastFetchOriginRateLimit(error)) {
-      const failedAt = clock();
-      await backOffJob(
+    let fetchedItems = 0;
+    let lastFetchError: unknown;
+    let lastFetchErrorUrl: URL | undefined;
+    const isLastFetchOriginRateLimit = (error: unknown = lastFetchError) =>
+      error === lastFetchError &&
+      isOriginRateLimit(error, lastFetchErrorUrl, job);
+
+    try {
+      const documentLoader =
+        options.documentLoader ??
+        (await getDefaultDocumentLoader(ctx, job.baseUrl));
+      const throttledDocumentLoader = createThrottledDocumentLoader(job, {
+        documentLoader,
+        intervalSeconds:
+          options.intervalSeconds ?? REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS,
+        staleProcessingSeconds:
+          options.staleProcessingSeconds ?? STALE_PROCESSING_TIMEOUT_SECONDS,
+        clock,
+        sleep: options.sleep ?? ((ms) => sleep(ms, options.signal)),
+        checkpoint,
+      });
+      const recordingDocumentLoader: DocumentLoader = async (
+        url,
+        loadOptions,
+      ) => {
+        try {
+          return await throttledDocumentLoader(url, loadOptions);
+        } catch (error) {
+          if (error instanceof LostScrapeAttempt) lost = error;
+          if (options.signal?.aborted) interrupted = true;
+          lastFetchError = error;
+          lastFetchErrorUrl = new URL(url);
+          throw error;
+        }
+      };
+      const collection = await lookupObject(new URL(job.repliesIri), {
+        documentLoader: recordingDocumentLoader,
+      });
+
+      if (collection == null && isLastFetchOriginRateLimit()) {
+        throw lastFetchError;
+      }
+
+      if (collection == null) {
+        throw new Error(`Replies collection not found: ${job.repliesIri}`);
+      }
+
+      if (!(collection instanceof Collection)) {
+        throw new Error(
+          `Replies collection is not a Collection: ${job.repliesIri}`,
+        );
+      }
+
+      for await (const item of iterateCollection(collection, {
+        documentLoader: recordingDocumentLoader,
+      })) {
+        if (
+          fetchedItems >= (options.maxItems ?? REMOTE_REPLIES_SCRAPE_MAX_ITEMS)
+        ) {
+          break;
+        }
+        if (!isPost(item)) continue;
+
+        await checkpoint();
+        const reply = await persistPost(db, item, job.baseUrl, {
+          documentLoader: recordingDocumentLoader,
+          enqueueRemoteReplies: false,
+          fetchEmojiReactions: false,
+          replyTarget: post,
+          skipUpdate: true,
+        });
+        await checkpoint();
+        if (reply == null) continue;
+
+        fetchedItems++;
+        const childRepliesIri = item.repliesId;
+        if (
+          childRepliesIri != null &&
+          job.depth + 1 < (options.maxDepth ?? REMOTE_REPLIES_SCRAPE_DEPTH)
+        ) {
+          await enqueueRemoteReplyScrape(db, {
+            baseUrl: job.baseUrl,
+            depth: job.depth + 1,
+            post: reply,
+            repliesIri: childRepliesIri,
+          });
+        }
+      }
+
+      await checkpoint();
+      await updateScrapedRepliesCount(job.postId);
+      await completeJob(job, fetchedItems, clock());
+      return fetchedItems;
+    } catch (error) {
+      if (lost != null || error instanceof LostScrapeAttempt) return 0;
+      if (interrupted || options.signal?.aborted) {
+        await interruptJob(job, clock());
+        return 0;
+      }
+      try {
+        await checkpoint();
+      } catch (checkpointError) {
+        if (lost != null || checkpointError instanceof LostScrapeAttempt)
+          return 0;
+        if (interrupted || options.signal?.aborted) {
+          await interruptJob(job, clock());
+          return 0;
+        }
+        // A transient heartbeat failure must not discard the scrape error.
+        // Outcome writes below still fence this attempt against replacement.
+      }
+      await updateScrapedRepliesCount(job.postId);
+      if (isLastFetchOriginRateLimit(error)) {
+        const failedAt = clock();
+        await backOffJob(
+          job,
+          retryAfterSeconds(error, failedAt) ??
+            options.backoffSeconds ??
+            REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS,
+          error,
+          failedAt,
+        );
+        return 0;
+      }
+      await failJob(
         job,
-        retryAfterSeconds(error, failedAt) ??
-          options.backoffSeconds ??
-          REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS,
-        error,
-        failedAt,
+        error instanceof Error ? error.message : String(error),
+        clock(),
       );
       return 0;
     }
-    await failJob(
-      job,
-      error instanceof Error ? error.message : String(error),
-      clock(),
-    );
-    return 0;
+  } finally {
+    clearInterval(timer);
+    await refreshing;
   }
 }
 
@@ -335,7 +289,9 @@ function createThrottledDocumentLoader(
     staleProcessingSeconds,
     clock,
     sleep,
+    checkpoint,
   }: {
+    checkpoint: () => Promise<void>;
     clock: () => Date;
     documentLoader: DocumentLoader;
     intervalSeconds: number;
@@ -358,7 +314,7 @@ function createThrottledDocumentLoader(
     if (sameOrigin) originRequests++;
 
     try {
-      await updateProcessingHeartbeat(job, clock());
+      await checkpoint();
       return await documentLoader(url, options);
     } finally {
       const requestTime = clock();
@@ -453,7 +409,7 @@ async function updateProcessingHeartbeat(
   job: RemoteReplyScrapeJob,
   now: Date,
 ): Promise<void> {
-  await db.transaction(async (tx) => {
+  const owned = await db.transaction(async (tx) => {
     const [updatedJob] = await tx
       .update(remoteReplyScrapeJobs)
       .set({ updated: now })
@@ -461,10 +417,10 @@ async function updateProcessingHeartbeat(
       .returning({ id: remoteReplyScrapeJobs.id });
     if (updatedJob == null) {
       await releaseOriginLeaseIfJobDeleted(tx, job, now);
-      return;
+      return false;
     }
 
-    await tx
+    const owned = await tx
       .update(remoteReplyScrapeOrigins)
       .set({
         processingStartedAt: now,
@@ -475,8 +431,14 @@ async function updateProcessingHeartbeat(
           eq(remoteReplyScrapeOrigins.originHost, job.originHost),
           eq(remoteReplyScrapeOrigins.processingJobId, job.id),
         ),
-      );
+      )
+      .returning({ host: remoteReplyScrapeOrigins.originHost });
+    return owned.length > 0;
   });
+  if (!owned)
+    throw new LostScrapeAttempt(
+      "Scrape attempt no longer owns the job and origin",
+    );
 }
 
 async function updateScrapedRepliesCount(
@@ -503,6 +465,7 @@ async function completeJob(
       .update(remoteReplyScrapeJobs)
       .set({
         status: "completed",
+        nextDispatchAt: now,
         fetchedItems,
         completedAt: now,
         errorMessage: null,
@@ -541,6 +504,7 @@ async function failJob(
       .update(remoteReplyScrapeJobs)
       .set({
         status: "failed",
+        nextDispatchAt: now,
         errorMessage: message,
         completedAt: now,
         updated: now,
@@ -580,6 +544,7 @@ async function backOffJob(
       .update(remoteReplyScrapeJobs)
       .set({
         status: "pending",
+        nextDispatchAt: now,
         nextAttemptAt,
         errorMessage: error instanceof Error ? error.message : String(error),
         startedAt: null,
@@ -638,10 +603,10 @@ async function releaseOriginLeaseIfJobDeleted(
 }
 
 async function getDefaultDocumentLoader(
+  ctx: Context<void>,
   baseUrl: string,
 ): Promise<DocumentLoader> {
-  const { federation } = await import("./index");
-  const context = federation.createContext(new Request(baseUrl), undefined);
+  const context = ctx.federation.createContext(new URL(baseUrl), undefined);
   const owner = await db.query.accountOwners.findFirst();
   if (owner == null) return context.documentLoader;
 
@@ -694,6 +659,45 @@ function retryAfterSeconds(error: unknown, now = new Date()): number | null {
   return Math.max(0, Math.ceil((date - now.getTime()) / 1000));
 }
 
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function sleep(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    signal?.throwIfAborted();
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
+async function interruptJob(job: RemoteReplyScrapeJob, now: Date) {
+  await db.transaction(async (tx) => {
+    const [owned] = await tx
+      .update(remoteReplyScrapeJobs)
+      .set({
+        status: "pending",
+        nextDispatchAt: now,
+        startedAt: null,
+        updated: now,
+      })
+      .where(processingJobAttemptCondition(job))
+      .returning({ id: remoteReplyScrapeJobs.id });
+    if (!owned) {
+      await releaseOriginLeaseIfJobDeleted(tx, job, now);
+      return;
+    }
+    await tx
+      .update(remoteReplyScrapeOrigins)
+      .set({ processingJobId: null, processingStartedAt: null, updated: now })
+      .where(
+        and(
+          eq(remoteReplyScrapeOrigins.originHost, job.originHost),
+          eq(remoteReplyScrapeOrigins.processingJobId, job.id),
+        ),
+      );
+  });
 }
