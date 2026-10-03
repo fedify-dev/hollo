@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { after, before } from "node:test";
 
 import { sql } from "drizzle-orm";
+import { afterAll, beforeAll } from "vitest";
 
 import db from "../src/db";
 import { drive } from "../src/storage";
@@ -38,13 +38,13 @@ export async function cleanDatabase() {
   );
 }
 
-before(async () => {
+beforeAll(async () => {
   await cleanDatabase();
 });
 
 // Automatically close the database and remove test file uploads
 // Without this the tests hang due to the database
-after(async () => {
+afterAll(async () => {
   await db.$client.end({ timeout: 5 });
 
   const disk = drive.fake();
