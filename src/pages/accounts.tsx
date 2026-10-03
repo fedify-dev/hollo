@@ -11,7 +11,7 @@ import {
 } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { createObjectCsvStringifier } from "csv-writer-portable";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { uniq } from "es-toolkit";
 import type { Disk } from "flydrive";
 import { Hono } from "hono";
@@ -36,6 +36,7 @@ import {
   REMOTE_ACTOR_FETCH_POSTS,
   unfollowAccount,
 } from "../federation/account.ts";
+import { backgroundJobs } from "../federation/federation";
 import { getInstanceHost } from "../instance-host.ts";
 import { loginRequired } from "../login.ts";
 import {
@@ -1688,24 +1689,31 @@ accounts.post("/:id/migrate/import", async (c) => {
 
   // Create the import job
   const jobId = uuidv7();
-  await db.insert(importJobs).values({
-    id: jobId,
-    accountOwnerId: accountOwner.id,
-    category: category as ImportJobCategory,
-    totalItems: parsedItems.length,
+  await db.transaction(async (tx) => {
+    await tx.insert(importJobs).values({
+      id: jobId,
+      accountOwnerId: accountOwner.id,
+      category: category as ImportJobCategory,
+      totalItems: parsedItems.length,
+    });
+
+    // Create import job items in batches
+    const itemValues = parsedItems.map((data) => ({
+      id: uuidv7(),
+      jobId,
+      data,
+    }));
+
+    // Insert in batches of 1000 to avoid hitting query size limits
+    for (let i = 0; i < itemValues.length; i += 1000) {
+      await tx.insert(importJobItems).values(itemValues.slice(i, i + 1000));
+    }
   });
-
-  // Create import job items in batches
-  const itemValues = parsedItems.map((data) => ({
-    id: uuidv7(),
+  await backgroundJobs.enqueueJob(
+    federation.createContext(c.req.raw, undefined),
+    "import",
     jobId,
-    data,
-  }));
-
-  // Insert in batches of 1000 to avoid hitting query size limits
-  for (let i = 0; i < itemValues.length; i += 1000) {
-    await db.insert(importJobItems).values(itemValues.slice(i, i + 1000));
-  }
+  );
 
   logger.info(
     "Created import job {jobId} with {count} items for category {category}",
@@ -1754,7 +1762,12 @@ accounts.post("/:id/migrate/import/:jobId/cancel", async (c) => {
   await db
     .update(importJobs)
     .set({ status: "cancelled", completedAt: new Date() })
-    .where(eq(importJobs.id, jobId));
+    .where(
+      and(
+        eq(importJobs.id, jobId),
+        inArray(importJobs.status, ["pending", "processing"]),
+      ),
+    );
 
   logger.info("Import job {jobId} cancelled by user", { jobId });
 

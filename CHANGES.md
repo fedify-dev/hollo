@@ -89,6 +89,13 @@ To be released.
     characters.  The endpoint requires no authentication, and the value was
     previously stored unbounded and shown on the admin dashboard.
 
+ -  Import and cleanup jobs now run through a dedicated Fedify task queue,
+    with bounded concurrency, durable retries, cancellation, and recovery
+    after interrupted processing or failed dispatch.  Proxy-cache enumeration
+    saves bounded batches without duplicating deletion items on retry.
+    Stop older nodes before migrating, then deploy matching web and worker
+    versions.  [[#636], [#637], [#645]]
+
  -  Upgraded *@simplewebauthn/server* to 14.0.3 and
     *@simplewebauthn/browser* to 14.0.0, refreshing the vendored browser
     bundle to match.  The server release fixes two moderate-severity
@@ -107,7 +114,10 @@ To be released.
 [#602]: https://github.com/fedify-dev/hollo/issues/602
 [#609]: https://github.com/fedify-dev/hollo/issues/609
 [#635]: https://github.com/fedify-dev/hollo/issues/635
+[#636]: https://github.com/fedify-dev/hollo/issues/636
+[#637]: https://github.com/fedify-dev/hollo/issues/637
 [#641]: https://github.com/fedify-dev/hollo/pull/641
+[#645]: https://github.com/fedify-dev/hollo/pull/645
 
 
 Version 0.9.21

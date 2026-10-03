@@ -1,11 +1,15 @@
-import { getLogger } from "@logtape/logtape";
-import { eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 
+import { getLogger } from "@logtape/logtape";
+import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+
+import { JobCancelledError, TerminalJobItemError } from "../background/errors";
 import db from "../db";
 import * as schema from "../schema";
 import { drive } from "../storage";
 import { STORAGE_URL_BASE } from "../storage-config";
-import { type Uuid, uuidv7 } from "../uuid";
+import { type Uuid, uuid } from "../uuid";
 
 const logger = getLogger(["hollo", "cleanup"]);
 
@@ -24,14 +28,14 @@ interface ProxyCacheCleanupItemData {
   key: string;
 }
 
-interface EnumerateProxyCacheItemData {
-  kind: "enumerate_proxy_cache";
-}
-
-type CleanupItemData =
-  | ThumbnailCleanupItemData
-  | ProxyCacheCleanupItemData
-  | EnumerateProxyCacheItemData;
+const cleanupItemSchema = z.union([
+  z.object({ kind: z.literal("thumbnail").optional(), id: uuid }),
+  z.object({
+    kind: z.literal("proxy_cache"),
+    key: z.string().regex(PROXY_CACHE_BIN_KEY),
+  }),
+  z.object({ kind: z.literal("enumerate_proxy_cache") }),
+]);
 
 // Single entry point used by the worker.  The cleanup_thumbnails enum value
 // historically meant "delete a Hollo-derived sharp thumbnail"; we now also
@@ -39,21 +43,34 @@ type CleanupItemData =
 // need a schema migration for an extra enum value.
 export async function processCleanupItem(
   item: schema.CleanupJobItem,
+  check: () => Promise<void>,
+  dispatch: () => Promise<void>,
 ): Promise<void> {
-  const data = item.data as unknown as CleanupItemData;
+  await check();
+  const parsed = cleanupItemSchema.safeParse(item.data);
+  if (!parsed.success) throw new TerminalJobItemError(parsed.error.message);
+  const data = parsed.data;
   if (data != null && data.kind === "proxy_cache") {
-    await processProxyCacheDeletion(data);
+    await processProxyCacheDeletion(data, check);
     return;
   }
   if (data != null && data.kind === "enumerate_proxy_cache") {
-    await processProxyCacheEnumeration(item);
+    await processProxyCacheEnumeration(item, check, dispatch);
     return;
   }
-  await processThumbnailDeletion(item);
+  if (
+    data == null ||
+    (data.kind != null && data.kind !== "thumbnail") ||
+    typeof (data as ThumbnailCleanupItemData).id !== "string"
+  ) {
+    throw new TerminalJobItemError("Invalid cleanup item data");
+  }
+  await processThumbnailDeletion(item, check);
 }
 
 export async function processThumbnailDeletion(
   item: schema.CleanupJobItem,
+  check: () => Promise<void>,
 ): Promise<void> {
   const data = item.data as unknown as ThumbnailCleanupItemData;
 
@@ -62,11 +79,11 @@ export async function processThumbnailDeletion(
   });
 
   if (medium == null) {
-    throw new Error(`medium missing in database: ${data.id}`);
+    throw new TerminalJobItemError(`medium missing in database: ${data.id}`);
   }
 
   if (STORAGE_URL_BASE == null) {
-    throw new Error("storage url is not configured");
+    throw new TerminalJobItemError("storage url is not configured");
   }
 
   const key = medium.thumbnailUrl.split("/").slice(-3).join("/");
@@ -78,16 +95,20 @@ export async function processThumbnailDeletion(
 
   if (reconstructedUrl !== medium.thumbnailUrl) {
     if (!medium.thumbnailUrl.startsWith(STORAGE_URL_BASE)) {
-      throw new Error(
+      throw new TerminalJobItemError(
         `The thumbnail URL ${medium.thumbnailUrl} does not match the storage URL pattern ${STORAGE_URL_BASE}!`,
       );
     } else {
-      throw new Error(`The thumbnail URL ${medium.thumbnailUrl} is malformed.`);
+      throw new TerminalJobItemError(
+        `The thumbnail URL ${medium.thumbnailUrl} is malformed.`,
+      );
     }
   }
 
   const disk = drive.use();
+  await check();
   await disk.delete(key);
+  await check();
   await db
     .update(schema.media)
     .set({ thumbnailCleaned: true })
@@ -102,60 +123,98 @@ export async function processThumbnailDeletion(
 // empty pending job and finalizes it mid-enqueue" race.
 async function processProxyCacheEnumeration(
   item: schema.CleanupJobItem,
+  check: () => Promise<void>,
+  dispatch: () => Promise<void>,
 ): Promise<void> {
-  const BATCH_SIZE = 1000;
-  const jobId = item.jobId;
-  let batch: Array<{
-    id: Uuid;
-    jobId: Uuid;
-    data: { kind: "proxy_cache"; key: string };
-  }> = [];
+  const batch = new Set<string>();
   let added = 0;
   const flush = async () => {
-    if (batch.length === 0) return;
-    await db.insert(schema.cleanupJobItems).values(batch);
-    batch = [];
+    if (batch.size === 0) return;
+    await check();
+    const keys = [...batch];
+    added += await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+      const [job] = await tx
+        .select()
+        .from(schema.cleanupJobs)
+        .where(eq(schema.cleanupJobs.id, item.jobId))
+        .for("no key update");
+      if (!job || !["pending", "processing"].includes(job.status))
+        throw new JobCancelledError("Cleanup cancelled");
+      // Include legacy random-ID children, including already deleted keys.
+      const existing = await tx
+        .select({ key: sql<string>`${schema.cleanupJobItems.data}->>'key'` })
+        .from(schema.cleanupJobItems)
+        .where(
+          and(
+            eq(schema.cleanupJobItems.jobId, item.jobId),
+            sql`${schema.cleanupJobItems.data}->>'kind' = 'proxy_cache'`,
+            sql`${schema.cleanupJobItems.data}->>'key' IN (${sql.join(
+              keys.map((key) => sql`${key}`),
+              sql`, `,
+            )})`,
+          ),
+        );
+      const known = new Set(existing.map((row) => row.key));
+      const values = keys
+        .filter((key) => !known.has(key))
+        .map((key) => {
+          const hash = createHash("sha256")
+            .update(`${item.jobId}:${key}`)
+            .digest("hex");
+          const id =
+            `${hash.slice(0, 8)}-${hash.slice(8, 12)}-8${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}` as Uuid;
+          return { id, jobId: item.jobId, data: { kind: "proxy_cache", key } };
+        });
+      if (values.length === 0) return 0;
+      await check();
+      const inserted = await tx
+        .insert(schema.cleanupJobItems)
+        .values(values)
+        .onConflictDoNothing()
+        .returning({ id: schema.cleanupJobItems.id });
+      await tx
+        .update(schema.cleanupJobs)
+        .set({
+          totalItems: sql`${schema.cleanupJobs.totalItems} + ${inserted.length}`,
+        })
+        .where(eq(schema.cleanupJobs.id, item.jobId));
+      await check();
+      return inserted.length;
+    });
+    batch.clear();
+    await check();
+    await dispatch();
   };
   for await (const key of iterateProxyCacheBinKeys()) {
-    batch.push({
-      id: uuidv7(),
-      jobId,
-      data: { kind: "proxy_cache", key },
-    });
-    added++;
-    if (batch.length >= BATCH_SIZE) await flush();
+    batch.add(key);
+    if (batch.size >= 1000) await flush();
   }
   await flush();
-  if (added > 0) {
-    // Bump totalItems on the parent job by exactly the number we just
-    // queued.  The enumeration item itself was already counted at job
-    // creation, so we don't include it here.
-    await db
-      .update(schema.cleanupJobs)
-      .set({
-        totalItems: sql`${schema.cleanupJobs.totalItems} + ${added}`,
-      })
-      .where(eq(schema.cleanupJobs.id, jobId));
-  }
   logger.info(
     "Enumerated proxy cache for cleanup job {jobId}: queued {count} items",
-    { jobId, count: added },
+    { jobId: item.jobId, count: added },
   );
 }
 
 async function processProxyCacheDeletion(
   data: ProxyCacheCleanupItemData,
+  check: () => Promise<void>,
 ): Promise<void> {
   if (typeof data.key !== "string" || !PROXY_CACHE_BIN_KEY.test(data.key)) {
-    throw new Error(`Invalid proxy cache key: ${String(data.key)}`);
+    throw new TerminalJobItemError(
+      `Invalid proxy cache key: ${String(data.key)}`,
+    );
   }
   const disk = drive.use();
   const stem = data.key.slice(0, -".bin".length);
   // Deleting the body is required; we want a failed delete to surface as a
   // failed item so it can be retried, instead of being silently lost.
+  await check();
   await disk.delete(`${stem}.bin`);
   // The JSON sidecar is best-effort: a previous partial cleanup may have
   // already removed it, and that should not flip the item to failed.
+  await check();
   try {
     await disk.delete(`${stem}.json`);
   } catch (error) {

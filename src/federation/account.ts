@@ -561,6 +561,7 @@ export async function followAccount(
   follower: schema.Account & { owner: schema.AccountOwner | null },
   following: schema.Account & { owner: schema.AccountOwner | null },
   options: {
+    iri?: URL;
     shares?: boolean;
     notify?: boolean;
     languages?: string[];
@@ -572,7 +573,9 @@ export async function followAccount(
   const result = await db
     .insert(schema.follows)
     .values({
-      iri: new URL(`#follows/${crypto.randomUUID()}`, follower.iri).href,
+      iri:
+        options.iri?.href ??
+        new URL(`#follows/${crypto.randomUUID()}`, follower.iri).href,
       followingId: following.id,
       followerId: follower.id,
       shares: options.shares ?? true,
@@ -730,6 +733,7 @@ export async function blockAccount(
       accountId: blocker.id,
       blockedAccountId: blockee.id,
     })
+    .onConflictDoNothing()
     .returning();
   if (result.length < 1) return null;
   if (blockee.owner == null) {

@@ -1174,10 +1174,16 @@ export const importJobs = pgTable(
       .default(currentTimestamp),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    nextDispatchAt: timestamp("next_dispatch_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
   },
   (table) => [
     index().on(table.accountOwnerId, table.status),
     index().on(table.status, table.created),
+    index()
+      .on(table.nextDispatchAt)
+      .where(sql`${table.status} IN ('pending', 'processing')`),
   ],
 );
 
@@ -1197,11 +1203,43 @@ export const importJobItems = pgTable(
     data: jsonb("data").notNull().$type<Record<string, unknown>>(),
     errorMessage: text("error_message"),
     processedAt: timestamp("processed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    nextDispatchAt: timestamp("next_dispatch_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
     created: timestamp("created", { withTimezone: true })
       .notNull()
       .default(currentTimestamp),
   },
-  (table) => [index().on(table.jobId, table.status)],
+  (table) => [
+    index().on(table.jobId, table.status),
+    index()
+      .on(table.jobId, table.nextDispatchAt)
+      .where(sql`${table.status} IN ('pending', 'processing')`),
+  ],
+);
+
+export const importJobEffects = pgTable(
+  "import_job_effects",
+  {
+    itemId: uuid("item_id")
+      .$type<Uuid>()
+      .primaryKey()
+      .references(() => importJobItems.id, { onDelete: "cascade" }),
+    deliveries: jsonb("deliveries")
+      .notNull()
+      .$type<import("./import/delivery").ImportDelivery[]>()
+      .default([]),
+    delivered: integer("delivered").notNull().default(0),
+  },
+  (table) => [
+    index()
+      .on(table.itemId)
+      .where(sql`${table.delivered} < jsonb_array_length(${table.deliveries})`),
+  ],
 );
 
 export type ImportJobItem = typeof importJobItems.$inferSelect;
@@ -1245,8 +1283,16 @@ export const cleanupJobs = pgTable(
       .default(currentTimestamp),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    nextDispatchAt: timestamp("next_dispatch_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
   },
-  (table) => [index().on(table.status, table.created)],
+  (table) => [
+    index().on(table.status, table.created),
+    index()
+      .on(table.nextDispatchAt)
+      .where(sql`${table.status} IN ('pending', 'processing')`),
+  ],
 );
 
 export type CleanupJob = typeof cleanupJobs.$inferSelect;
@@ -1265,11 +1311,26 @@ export const cleanupJobItems = pgTable(
     data: jsonb("data").notNull().$type<Record<string, unknown>>(),
     errorMessage: text("error_message"),
     processedAt: timestamp("processed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    nextDispatchAt: timestamp("next_dispatch_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
     created: timestamp("created", { withTimezone: true })
       .notNull()
       .default(currentTimestamp),
   },
-  (table) => [index().on(table.jobId, table.status)],
+  (table) => [
+    index().on(table.jobId, table.status),
+    index()
+      .on(table.jobId, table.nextDispatchAt)
+      .where(sql`${table.status} IN ('pending', 'processing')`),
+    index("cleanup_job_items_proxy_key_index")
+      .on(table.jobId, sql`(${table.data}->>'key')`)
+      .where(sql`${table.data}->>'kind' = 'proxy_cache'`),
+  ],
 );
 
 export type CleanupJobItem = typeof cleanupJobItems.$inferSelect;
