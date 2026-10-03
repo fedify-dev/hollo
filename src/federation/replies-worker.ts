@@ -243,7 +243,18 @@ export async function processRemoteReplyScrapeJob(
         await interruptJob(job, clock());
         return 0;
       }
-      await checkpoint();
+      try {
+        await checkpoint();
+      } catch (checkpointError) {
+        if (lost != null || checkpointError instanceof LostScrapeAttempt)
+          return 0;
+        if (interrupted || options.signal?.aborted) {
+          await interruptJob(job, clock());
+          return 0;
+        }
+        // A transient heartbeat failure must not discard the scrape error.
+        // Outcome writes below still fence this attempt against replacement.
+      }
       await updateScrapedRepliesCount(job.postId);
       if (isLastFetchOriginRateLimit(error)) {
         const failedAt = clock();

@@ -1322,6 +1322,88 @@ describe("remote replies task delivery", () => {
     );
   });
 
+  it.each([false, true])(
+    "preserves scrape error handling after a heartbeat failure (rate limited: %s)",
+    async (rateLimited) => {
+      const j = await seedPostWithScrapeJob();
+      const initial = await db.query.remoteReplyScrapeJobs.findFirst();
+      const now = new Date();
+      const error = Object.assign(new Error("fetch failed"), {
+        response: new Response(null, {
+          status: rateLimited ? 429 : 500,
+          headers: { "Retry-After": "300" },
+        }),
+      });
+      const originalTransaction = db.transaction.bind(db);
+      const transaction = vi.spyOn(db, "transaction");
+      const f = fixture({
+        now,
+        intervalSeconds: 0,
+        documentLoader: async () => {
+          transaction
+            .mockImplementationOnce(originalTransaction)
+            .mockRejectedValueOnce(new Error("connection reset"));
+          throw error;
+        },
+      });
+      try {
+        await f.tasks.enqueue(f.ctx, j.jobId);
+        await f.run();
+      } finally {
+        transaction.mockRestore();
+      }
+      const job = await db.query.remoteReplyScrapeJobs.findFirst();
+      const origin = await db.query.remoteReplyScrapeOrigins.findFirst();
+      expect(job?.status).toBe(rateLimited ? "pending" : "failed");
+      expect(job?.errorMessage).not.toContain("connection reset");
+      expect(origin?.processingJobId).toBeNull();
+      expect(job?.errorMessage).toBe(
+        rateLimited
+          ? "fetch failed"
+          : `Replies collection not found: ${j.repliesIri}`,
+      );
+      expect(job?.nextAttemptAt.getTime()).toBe(
+        rateLimited
+          ? now.getTime() + 300_000
+          : initial?.nextAttemptAt.getTime(),
+      );
+      expect(origin?.nextRequestAt.getTime()).toBe(
+        now.getTime() + (rateLimited ? 300_000 : 0),
+      );
+      expect(f.queue.delays).toEqual(rateLimited ? [0, 300_000] : [0]);
+    },
+  );
+
+  it("does not apply backoff after the error checkpoint loses ownership", async () => {
+    const j = await seedPostWithScrapeJob();
+    const now = new Date();
+    const f = fixture({
+      now,
+      documentLoader: async () => {
+        await db
+          .update(remoteReplyScrapeJobs)
+          .set({ attempts: 2 })
+          .where(eq(remoteReplyScrapeJobs.id, j.jobId));
+        throw Object.assign(new Error("limited"), {
+          response: new Response(null, {
+            status: 429,
+            headers: { "Retry-After": "300" },
+          }),
+        });
+      },
+    });
+    await f.tasks.enqueue(f.ctx, j.jobId);
+    await f.run();
+    expect(await db.query.remoteReplyScrapeJobs.findFirst()).toMatchObject({
+      status: "processing",
+      attempts: 2,
+    });
+    expect(
+      (await db.query.remoteReplyScrapeOrigins.findFirst())?.processingJobId,
+    ).toBe(j.jobId);
+    expect(f.queue.messages).toHaveLength(0);
+  });
+
   it("recovers a committed job after enqueue failure", async () => {
     const j = await seedPostWithScrapeJob();
     let now = new Date();
