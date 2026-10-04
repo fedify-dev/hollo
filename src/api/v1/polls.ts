@@ -15,6 +15,7 @@ import {
   withAccountOwner,
   type AccountOwnerVariables,
 } from "../../oauth/middleware";
+import { enqueuePollNotification } from "../../poll-notification-tasks";
 import { pollOptions, polls, pollVotes } from "../../schema";
 import { isUuid } from "../../uuid";
 
@@ -156,6 +157,7 @@ app.post(
     });
     if (poll == null) throw new Error("Record not found");
     const fedCtx = federation.createContext(c.req.raw, undefined);
+    await enqueuePollNotification(db, poll.id, fedCtx.url);
     const posts = poll.posts.filter((p) => p.sharingId == null);
     const post = maxBy(posts, (p) => +(p.published ?? p.updated))!;
     if (post.account.owner == null) {

@@ -1,13 +1,14 @@
 import { getLogger } from "@logtape/logtape";
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
 
-import { db } from "./db";
+import { db, type DatabaseLike } from "./db";
 import type { Account, AccountOwner, Poll, Post } from "./schema";
 import {
   accountOwners,
   type NotificationType,
   notificationGroups,
   notifications,
+  polls,
   pollVotes,
   posts,
 } from "./schema";
@@ -67,12 +68,13 @@ export function generateGroupKey(context: NotificationContext): string {
  */
 export async function createNotification(
   context: NotificationContext,
+  database: DatabaseLike = db,
 ): Promise<Uuid> {
   const groupKey = generateGroupKey(context);
   const created = context.created ?? new Date();
   const notificationId = uuidv7(Math.max(0, +created));
 
-  return await db.transaction(async (tx) => {
+  return await database.transaction(async (tx) => {
     // Check for existing duplicate notification to prevent duplicates from
     // federation activities that may be processed multiple times
     const existingNotification = await tx.query.notifications.findFirst({
@@ -397,18 +399,22 @@ export async function createPollNotifications(
   poll: Poll,
   post: Post & { account: Account & { owner: AccountOwner | null } },
   participantOwnerIds: Uuid[],
+  database: DatabaseLike = db,
 ): Promise<Uuid[]> {
   const notificationIds: Uuid[] = [];
 
   // Create notification for poll author if they're a local user
   if (post.account.owner != null) {
-    const authorNotificationId = await createNotification({
-      accountOwnerId: post.account.owner.id,
-      type: "poll",
-      targetPostId: post.id,
-      targetPollId: poll.id,
-      created: poll.expires,
-    });
+    const authorNotificationId = await createNotification(
+      {
+        accountOwnerId: post.account.owner.id,
+        type: "poll",
+        targetPostId: post.id,
+        targetPollId: poll.id,
+        created: poll.expires,
+      },
+      database,
+    );
     notificationIds.push(authorNotificationId);
   }
 
@@ -422,33 +428,47 @@ export async function createPollNotifications(
       continue;
     }
 
-    const participantNotificationId = await createNotification({
-      accountOwnerId: participantOwnerId,
-      type: "poll",
-      targetPostId: post.id,
-      targetPollId: poll.id,
-      created: poll.expires,
-    });
+    const participantNotificationId = await createNotification(
+      {
+        accountOwnerId: participantOwnerId,
+        type: "poll",
+        targetPostId: post.id,
+        targetPollId: poll.id,
+        created: poll.expires,
+      },
+      database,
+    );
     notificationIds.push(participantNotificationId);
   }
 
   return notificationIds;
 }
 
-/**
- * Materializes expired poll notifications that were previously synthesized by
- * the v1 notifications endpoint.
- */
-export async function materializeExpiredPollNotifications(
-  options: { limit?: number; now?: Date } = {},
-): Promise<number> {
+/** Finds a bounded page of expired polls with missing local notifications. */
+export async function findMissingPollNotifications(
+  options: {
+    limit?: number;
+    now?: Date;
+    after?: Pick<Poll, "id" | "expires">;
+  } = {},
+): Promise<Pick<Poll, "id" | "expires">[]> {
   const limit = options.limit ?? 100;
   const now = options.now ?? new Date();
-  const pollRows = await db.query.polls.findMany({
+  return await db.query.polls.findMany({
+    columns: { id: true, expires: true },
     where: {
       RAW: (pollsTable, { and }) =>
         and(
           lte(pollsTable.expires, now),
+          options.after == null
+            ? undefined
+            : or(
+                gt(pollsTable.expires, options.after.expires),
+                and(
+                  eq(pollsTable.expires, options.after.expires),
+                  gt(pollsTable.id, options.after.id),
+                ),
+              ),
           sql`EXISTS (
             SELECT 1
             FROM ${posts}
@@ -484,34 +504,58 @@ export async function materializeExpiredPollNotifications(
           )`,
         )!,
     },
-    orderBy: (pollsTable, { asc }) => [asc(pollsTable.expires)],
+    orderBy: (pollsTable, { asc }) => [
+      asc(pollsTable.expires),
+      asc(pollsTable.id),
+    ],
     limit,
-    with: {
-      posts: { with: { account: { with: { owner: true } } } },
-      votes: { with: { account: { with: { owner: true } } } },
-    },
   });
+}
 
-  let count = 0;
-  for (const poll of pollRows) {
-    const post = poll.posts[0];
-    if (post == null) continue;
+/**
+ * Reloads recipients and serializes the expiry decision with poll updates.
+ * Returns a new wakeup time only for an eligible poll that has not expired.
+ */
+export async function notifyExpiredPoll(
+  pollId: Uuid,
+  now = new Date(),
+): Promise<Date | undefined> {
+  return await db.transaction(async (tx) => {
+    const [poll] = await tx
+      .select()
+      .from(polls)
+      .where(eq(polls.id, pollId))
+      .for("no key update");
+    if (poll == null) return;
+    // A concurrent post deletion either precedes this read or waits and
+    // cascades the notifications afterwards, without an insert FK failure.
+    const [postRow] = await tx
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.pollId, pollId))
+      .limit(1)
+      .for("key share");
+    if (postRow == null) return;
+    const post = await tx.query.posts.findFirst({
+      where: { id: { eq: postRow.id } },
+      with: { account: { with: { owner: true } } },
+    });
+    if (post == null) return;
+    const votes = await tx.query.pollVotes.findMany({
+      where: { pollId: { eq: pollId } },
+      with: { account: { with: { owner: true } } },
+    });
     const participantOwnerIds = Array.from(
       new Set(
-        poll.votes
+        votes
           .map((vote) => vote.account.owner?.id)
           .filter((id): id is Uuid => id != null),
       ),
     );
-    const notificationIds = await createPollNotifications(
-      poll,
-      post,
-      participantOwnerIds,
-    );
-    count += notificationIds.length;
-  }
-
-  return count;
+    if (post.account.owner == null && participantOwnerIds.length === 0) return;
+    if (poll.expires > now) return poll.expires;
+    await createPollNotifications(poll, post, participantOwnerIds, tx);
+  });
 }
 
 /**

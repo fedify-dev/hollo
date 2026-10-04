@@ -7,7 +7,7 @@ import db from "./db";
 import {
   createNotification,
   createMentionNotifications,
-  materializeExpiredPollNotifications,
+  notifyExpiredPoll,
   createQuotedUpdateNotifications,
   createQuoteNotification,
   createReplyMentionNotification,
@@ -201,10 +201,8 @@ describe("Poll notifications", () => {
     });
 
     expect(
-      await materializeExpiredPollNotifications({
-        now: new Date("2026-01-01T00:00:01.000Z"),
-      }),
-    ).toBe(1);
+      await notifyExpiredPoll(pollId, new Date("2026-01-01T00:00:01.000Z")),
+    ).toBeUndefined();
 
     const notification = await db.query.notifications.findFirst({
       where: {
@@ -230,10 +228,8 @@ describe("Poll notifications", () => {
     expect(group?.targetPostId).toBe(postId);
 
     expect(
-      await materializeExpiredPollNotifications({
-        now: new Date("2026-01-01T00:00:02.000Z"),
-      }),
-    ).toBe(0);
+      await notifyExpiredPoll(pollId, new Date("2026-01-01T00:00:02.000Z")),
+    ).toBeUndefined();
   });
 
   it("deduplicates poll notifications by owner and poll", async () => {
