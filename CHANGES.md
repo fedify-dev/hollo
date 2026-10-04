@@ -89,6 +89,13 @@ To be released.
     characters.  The endpoint requires no authentication, and the value was
     previously stored unbounded and shown on the admin dashboard.
 
+ -  Titles of incoming ActivityPub `Article` objects, such as posts from
+    blogging platforms, are now preserved instead of being dropped.  The title
+    is shown as a heading above the post body on Hollo's web pages, and
+    Mastodon-compatible clients receive it as an `<h2>` heading prepended to
+    the status `content`.  Articles received before this change get their
+    titles when they are updated by their author or refreshed.  [[#646], [#650]]
+
  -  Import and cleanup jobs now run through a dedicated Fedify task queue,
     with bounded concurrency, durable retries, cancellation, and recovery
     after interrupted processing or failed dispatch.  Proxy-cache enumeration
@@ -134,8 +141,10 @@ To be released.
 [#639]: https://github.com/fedify-dev/hollo/issues/639
 [#641]: https://github.com/fedify-dev/hollo/pull/641
 [#645]: https://github.com/fedify-dev/hollo/pull/645
+[#646]: https://github.com/fedify-dev/hollo/issues/646
 [#648]: https://github.com/fedify-dev/hollo/pull/648
 [#649]: https://github.com/fedify-dev/hollo/pull/649
+[#650]: https://github.com/fedify-dev/hollo/pull/650
 
 
 Version 0.9.21

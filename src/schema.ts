@@ -511,6 +511,7 @@ export const posts = pgTable(
       "quote_approval_policy",
     ).default("public"),
     visibility: postVisibilityEnum("visibility").notNull(),
+    name: text("name"),
     summary: text("summary"),
     contentHtml: text("content_html"),
     content: text("content"),

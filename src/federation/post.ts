@@ -402,6 +402,10 @@ export async function persistPost(
     (preserveAcceptedQuote ? existingPost.quoteAuthorizationIri : null);
   const published = publishedRaw;
   const updated = updatedRaw ?? published ?? new Date();
+  // Only Articles carry a title; other types may use `name` for unrelated
+  // purposes (e.g., poll options), so it is ignored for them:
+  const name =
+    object instanceof Article ? object.name?.toString().trim() || null : null;
   const values = {
     type:
       object instanceof Question
@@ -431,6 +435,7 @@ export async function persistPost(
         : account.followersUrl != null && to.has(account.followersUrl)
           ? "private"
           : "direct",
+    name,
     summary: object.summary?.toString(),
     contentHtml: object.content?.toString(),
     language:
@@ -438,7 +443,9 @@ export async function persistPost(
         ? object.content.locale.toString()
         : object.summary instanceof LanguageString
           ? object.summary.locale.toString()
-          : null,
+          : name != null && object.name instanceof LanguageString
+            ? object.name.locale.toString()
+            : null,
     previewCard,
     tags,
     emojis,
@@ -1079,6 +1086,9 @@ export function toObject(
     // For unlisted posts, include PUBLIC_COLLECTION in cc
     // For all other visibilities, cc is null
     cc: post.visibility === "unlisted" ? vocab.PUBLIC_COLLECTION : null,
+    // The title's own language is not stored, so it is not tagged with
+    // the post's language to avoid producing an incorrect nameMap:
+    name: post.type === "Article" ? post.name : null,
     summaries:
       post.summary == null
         ? []

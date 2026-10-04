@@ -372,8 +372,21 @@ function PostContent({ post, featured, baseUrl }: PostContentProps) {
     post.emojis,
     baseUrl,
   );
+  const titleClass = featured
+    ? "mb-2 text-xl font-semibold leading-snug text-neutral-900 dark:text-neutral-100"
+    : "mb-2 text-lg font-semibold leading-snug text-neutral-900 dark:text-neutral-100";
   return (
     <>
+      {post.name != null &&
+        (featured ? (
+          <h2 lang={post.language ?? undefined} class={titleClass}>
+            {post.name}
+          </h2>
+        ) : (
+          <h3 lang={post.language ?? undefined} class={titleClass}>
+            {post.name}
+          </h3>
+        ))}
       {displayContentHtml && (
         <div
           class={

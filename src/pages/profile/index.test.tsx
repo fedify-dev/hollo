@@ -567,3 +567,107 @@ describe("profile tagged page", { concurrent: false }, () => {
     expect(html.toLowerCase()).toContain("no longer available");
   });
 });
+
+describe("profile shared Article titles", { concurrent: false }, () => {
+  let account: Awaited<ReturnType<typeof createAccount>>;
+  let remoteAuthorId: ReturnType<typeof uuidv7>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+    account = await createAccount();
+    remoteAuthorId = uuidv7();
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAuthorId,
+      iri: "https://remote.test/@blogger",
+      type: "Person",
+      name: "Blogger",
+      handle: "@blogger@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@blogger/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+  });
+
+  async function shareArticle(
+    values: Pick<typeof posts.$inferInsert, "name" | "summary" | "contentHtml">,
+  ) {
+    const articleId = uuidv7();
+    const shareId = uuidv7();
+    await db.insert(posts).values([
+      {
+        id: articleId,
+        iri: `https://remote.test/@blogger/articles/${articleId}`,
+        type: "Article",
+        accountId: remoteAuthorId,
+        visibility: "public",
+        published: new Date(),
+        ...values,
+      },
+      {
+        id: shareId,
+        iri: `https://hollo.test/@hollo/${shareId}`,
+        type: "Article",
+        accountId: account.id,
+        sharingId: articleId,
+        visibility: "public",
+        published: new Date(),
+      },
+    ]);
+    return shareId;
+  }
+
+  async function renderArticle(path: string) {
+    const response = await app.request(path);
+    expect(response.status).toBe(200);
+    const { document } = parseHTML(await response.text());
+    return document.querySelector("article");
+  }
+
+  it("renders the escaped title as a heading", async () => {
+    expect.assertions(3);
+    await shareArticle({
+      name: "<b>Bold</b> & title",
+      contentHtml: "<p>Body</p>",
+    });
+    const post = await renderArticle("/@hollo");
+    const heading = post?.querySelector("h3");
+    expect(heading?.textContent).toBe("<b>Bold</b> & title");
+    expect(heading?.querySelector("b")).toBeNull();
+  });
+
+  it("renders the title of an Article without a body", async () => {
+    expect.assertions(2);
+    await shareArticle({ name: "Title only", contentHtml: null });
+    const post = await renderArticle("/@hollo");
+    expect(post?.querySelector("h3")?.textContent).toBe("Title only");
+  });
+
+  it("renders the title as an h2 on the post's own page", async () => {
+    expect.assertions(4);
+    const shareId = await shareArticle({
+      name: "Featured title",
+      contentHtml: "<p>Body</p>",
+    });
+    const post = await renderArticle(`/@hollo/${shareId}`);
+    const heading = post?.querySelector("h2");
+    expect(heading?.textContent).toBe("Featured title");
+    expect(heading?.getAttribute("class")).toContain("text-xl");
+    expect(post?.querySelector("h3")).toBeNull();
+  });
+
+  it("hides the title behind a content warning", async () => {
+    expect.assertions(3);
+    await shareArticle({
+      name: "Hidden title",
+      summary: "Spoilers",
+      contentHtml: "<p>Body</p>",
+    });
+    const post = await renderArticle("/@hollo");
+    const details = post?.querySelector("details");
+    expect(details?.hasAttribute("open")).toBe(false);
+    expect(details?.querySelector("h3")?.textContent).toBe("Hidden title");
+  });
+});
