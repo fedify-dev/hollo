@@ -821,7 +821,11 @@ describe("auth authorized applications", () => {
       await seedCredential();
       const account = await createAccount();
       const client = await createOAuthApplication({ scopes: ["read"] });
-      const padded = `https://example.com/${"a".repeat(1024 * 1024)}`;
+      // Well past the 2,048-character cap, but kept modest: CI logs every
+      // query with its parameters, and a megabyte-long run of one character
+      // stalls the GitHub Actions log processing for close to an hour.
+      // See https://github.com/fedify-dev/hollo/issues/651.
+      const padded = `https://example.com/${"a".repeat(10_000)}`;
       await db
         .update(applications)
         .set({ website: padded })
