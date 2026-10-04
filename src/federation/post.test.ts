@@ -9,6 +9,7 @@ import {
   Image,
   InteractionPolicy,
   InteractionRule,
+  LanguageString,
   Link,
   Mention,
   Note,
@@ -1091,6 +1092,108 @@ describe("persistPost", () => {
   });
 });
 
+describe("persistPost Article titles", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+
+  async function persistAndLoad(object: Article | Note) {
+    const author = await seedRemoteAccount("author");
+    const result = await persistPost(db, object, "https://hollo.test", {
+      account: author,
+    });
+    if (result == null) throw new Error("Failed to persist post");
+    return await db.query.posts.findFirst({
+      where: { id: { eq: result.id } },
+    });
+  }
+
+  function createArticle(
+    values: Omit<ConstructorParameters<typeof Article>[0], "id">,
+  ) {
+    return new Article({
+      id: new URL("https://remote.test/@author/articles/1"),
+      attribution: new Person({
+        id: new URL("https://remote.test/@author"),
+        inbox: new URL("https://remote.test/@author/inbox"),
+      }),
+      to: PUBLIC_COLLECTION,
+      ...values,
+    });
+  }
+
+  it("stores the trimmed name of an Article", async () => {
+    expect.assertions(1);
+    const post = await persistAndLoad(
+      createArticle({
+        name: "  Why I left  ",
+        content: "<p>Body</p>",
+      }),
+    );
+    expect(post?.name).toBe("Why I left");
+  });
+
+  it("stores null for a whitespace-only Article name", async () => {
+    expect.assertions(1);
+    const post = await persistAndLoad(
+      createArticle({ name: "   ", content: "<p>Body</p>" }),
+    );
+    expect(post?.name).toBeNull();
+  });
+
+  it("ignores the name of a Note", async () => {
+    expect.assertions(1);
+    const post = await persistAndLoad(
+      new Note({
+        id: new URL("https://remote.test/@author/posts/named-note"),
+        attribution: new Person({
+          id: new URL("https://remote.test/@author"),
+          inbox: new URL("https://remote.test/@author/inbox"),
+        }),
+        name: "Not a title",
+        content: "<p>Body</p>",
+        to: PUBLIC_COLLECTION,
+      }),
+    );
+    expect(post?.name).toBeNull();
+  });
+
+  it("uses the name locale only when content and summary have none", async () => {
+    expect.assertions(1);
+    const post = await persistAndLoad(
+      createArticle({
+        name: new LanguageString("제목", "ko"),
+        content: "<p>Body</p>",
+      }),
+    );
+    expect(post?.language).toBe("ko");
+  });
+
+  it("prefers the content locale over the name locale", async () => {
+    expect.assertions(1);
+    const post = await persistAndLoad(
+      createArticle({
+        name: new LanguageString("Title", "en"),
+        summary: new LanguageString("要約", "ja"),
+        content: new LanguageString("<p>본문</p>", "ko"),
+      }),
+    );
+    expect(post?.language).toBe("ko");
+  });
+
+  it("prefers the summary locale over the name locale", async () => {
+    expect.assertions(1);
+    const post = await persistAndLoad(
+      createArticle({
+        name: new LanguageString("Title", "en"),
+        summary: new LanguageString("要約", "ja"),
+        content: "<p>Body</p>",
+      }),
+    );
+    expect(post?.language).toBe("ja");
+  });
+});
+
 describe("toObject", () => {
   beforeEach(async () => {
     await cleanDatabase();
@@ -1123,6 +1226,50 @@ describe("toObject", () => {
     );
     return await toObject(post, ctx).toJsonLd();
   }
+
+  it("emits the plain name of an Article without a nameMap", async () => {
+    expect.assertions(2);
+    const author = await seedRemoteAccount("article-author");
+    const postId = crypto.randomUUID() as Uuid;
+    await db.insert(posts).values({
+      id: postId,
+      iri: "https://remote.test/@article-author/articles/1",
+      type: "Article",
+      accountId: author.id,
+      visibility: "public",
+      name: "English title",
+      contentHtml: "<p>한국어 본문</p>",
+      content: "한국어 본문",
+      language: "ko",
+      published: new Date(),
+    });
+
+    const json = await getObjectJson(postId);
+
+    expect(json).toMatchObject({ type: "Article", name: "English title" });
+    expect(json).not.toHaveProperty("nameMap");
+  });
+
+  it("does not emit a name for a Note", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("note-author");
+    const postId = crypto.randomUUID() as Uuid;
+    await db.insert(posts).values({
+      id: postId,
+      iri: "https://remote.test/@note-author/posts/1",
+      type: "Note",
+      accountId: author.id,
+      visibility: "public",
+      name: "Stale title",
+      contentHtml: "<p>Body</p>",
+      content: "Body",
+      published: new Date(),
+    });
+
+    const json = await getObjectJson(postId);
+
+    expect(json).not.toHaveProperty("name");
+  });
 
   it("adds a quote-inline fallback to explicit quote content", async () => {
     const account = await createAccount({ username: "quote-author" });

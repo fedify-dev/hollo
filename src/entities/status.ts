@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { escape } from "es-toolkit";
 
 import { stripQuoteInlineFallbacks } from "../html";
 import { orderMedia } from "../media-order";
@@ -409,9 +410,12 @@ export function serializePost(
         ? false
         : post.pin != null && post.pin.accountId === currentAccountOwner.id,
     content: sanitizeHtml(
-      !quoteIsDisplayable
-        ? (post.contentHtml ?? "")
-        : stripQuoteInlineFallbacks(post.contentHtml ?? ""),
+      // Mastodon's Status entity has no title field, so an Article's title
+      // is prepended as a heading, the same way Mastodon converts Articles:
+      (post.name == null ? "" : `<h2>${escape(post.name)}</h2>`) +
+        (!quoteIsDisplayable
+          ? (post.contentHtml ?? "")
+          : stripQuoteInlineFallbacks(post.contentHtml ?? "")),
     ),
     reblog:
       post.sharing == null

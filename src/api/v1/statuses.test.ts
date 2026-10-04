@@ -2110,3 +2110,139 @@ describe("/api/v1/statuses visibility", { concurrent: false }, () => {
     expect(json.descendants).toHaveLength(0);
   });
 });
+
+describe("/api/v1/statuses Article titles", { concurrent: false }, () => {
+  let account: Awaited<ReturnType<typeof createAccount>>;
+  let accessToken: Awaited<ReturnType<typeof getAccessToken>>;
+  let remoteAuthorId: ReturnType<typeof uuidv7>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+
+    account = await createAccount({ generateKeyPair: true });
+    const client = await createOAuthApplication({
+      scopes: ["read:statuses"],
+    });
+    accessToken = await getAccessToken(client, account, ["read:statuses"]);
+    remoteAuthorId = uuidv7();
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAuthorId,
+      iri: "https://remote.test/@blogger",
+      type: "Person",
+      name: "Blogger",
+      handle: "@blogger@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: "https://remote.test/@blogger/inbox",
+      sharedInboxUrl: "https://remote.test/inbox",
+      instanceHost: "remote.test",
+    });
+  });
+
+  async function insertArticle(name: string) {
+    const id = uuidv7();
+    await db.insert(posts).values({
+      id,
+      iri: `https://remote.test/@blogger/articles/${id}`,
+      type: "Article",
+      accountId: remoteAuthorId,
+      visibility: "public",
+      name,
+      content: "Body",
+      contentHtml: "<p>Body</p>",
+      published: new Date(),
+    });
+    return id;
+  }
+
+  async function getStatus(id: string) {
+    const response = await app.request(`/api/v1/statuses/${id}`, {
+      headers: { authorization: bearerAuthorization(accessToken) },
+    });
+    expect(response.status).toBe(200);
+    return await response.json();
+  }
+
+  it("prepends the escaped title as a heading", async () => {
+    expect.assertions(4);
+    const id = await insertArticle("Why I left");
+    const html = await insertArticle("<script>alert(1)</script> & co");
+
+    expect((await getStatus(id)).content).toBe(
+      "<h2>Why I left</h2><p>Body</p>",
+    );
+    expect((await getStatus(html)).content).toBe(
+      "<h2>&lt;script&gt;alert(1)&lt;/script&gt; &amp; co</h2><p>Body</p>",
+    );
+  });
+
+  it("keeps an entity-looking title verbatim", async () => {
+    expect.assertions(2);
+    const id = await insertArticle("&lt;script&gt;");
+
+    expect((await getStatus(id)).content).toBe(
+      "<h2>&amp;lt;script&amp;gt;</h2><p>Body</p>",
+    );
+  });
+
+  it("includes the title in a reblogged status", async () => {
+    expect.assertions(2);
+    const articleId = await insertArticle("Shared title");
+    const shareId = uuidv7();
+    await db.insert(posts).values({
+      id: shareId,
+      iri: `https://hollo.test/@hollo/${shareId}`,
+      type: "Article",
+      accountId: account.id,
+      sharingId: articleId,
+      visibility: "public",
+      published: new Date(),
+    });
+
+    const json = await getStatus(shareId);
+
+    expect(json.reblog.content).toBe("<h2>Shared title</h2><p>Body</p>");
+  });
+
+  it("includes the title in an accepted quote but not in a pending one", async () => {
+    expect.assertions(5);
+    const articleId = await insertArticle("Quoted title");
+    const acceptedId = uuidv7();
+    const pendingId = uuidv7();
+    await db.insert(posts).values([
+      {
+        id: acceptedId,
+        iri: `https://hollo.test/@hollo/${acceptedId}`,
+        type: "Note",
+        accountId: account.id,
+        visibility: "public",
+        content: "Accepted",
+        contentHtml: "<p>Accepted</p>",
+        quoteTargetId: articleId,
+        quoteState: "accepted",
+        published: new Date(),
+      },
+      {
+        id: pendingId,
+        iri: `https://hollo.test/@hollo/${pendingId}`,
+        type: "Note",
+        accountId: account.id,
+        visibility: "public",
+        content: "Pending",
+        contentHtml: "<p>Pending</p>",
+        quoteTargetId: articleId,
+        quoteState: "pending",
+        published: new Date(),
+      },
+    ]);
+
+    const accepted = await getStatus(acceptedId);
+    expect(accepted.quote.quoted_status.content).toBe(
+      "<h2>Quoted title</h2><p>Body</p>",
+    );
+    const pending = await getStatus(pendingId);
+    expect(pending.quote.quoted_status).toBeNull();
+    expect(JSON.stringify(pending)).not.toContain("Quoted title");
+  });
+});

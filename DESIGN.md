@@ -252,6 +252,13 @@ HTML, no visible card border.  A subtle bottom divider separates each
 entry in a list.  Avatar, display name, handle, timestamp, and content
 stack vertically on mobile and arrange into a media object on `md`.
 
+A post with a title (an incoming ActivityPub `Article`) shows it as a
+heading above the body, inside the content warning disclosure if there is
+one: `text-lg font-semibold leading-snug` in neutral ink, stepping up to
+`text-xl` on a featured post.  The heading is an `<h2>` on a featured
+post's own page and an `<h3>` in lists, following the one-level-per-depth
+rule.
+
 ### Avatar
 
 Always circular.  Sizes: *sm* 1.5 rem, *md* 2.5 rem, *lg* 4 rem,
