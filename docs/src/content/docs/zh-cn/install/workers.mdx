@@ -343,8 +343,9 @@ Worker started (Fedify activity/task queues + Job recovery)
  -  *工作节点*：资源密集型，特别是在高联合活动期间（建议1GB-2GB RAM）
  -  *数据库*：由所有节点共享；确保它有足够的资源
     （对于繁忙的实例建议2GB+ RAM）
- -  *并发*：每个工作器最多并发处理10条消息
-    （通过`ParallelMessageQueue`配置）
+ -  *并发*：每个工作器通过独立队列同时处理最多 10 条 ActivityPub
+    消息和 4 个应用任务。远程回复收集最多占用这 4 个任务名额中的 2 个。
+    限制按工作器进程计算，增加工作器会提高总并发量。
 
 
 最佳实践

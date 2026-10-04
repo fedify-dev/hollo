@@ -376,8 +376,10 @@ Performance considerations
     activity (1GB-2GB RAM recommended)
  -  *Database*: Shared by all nodes; ensure it has adequate resources
     (2GB+ RAM recommended for busy instances)
- -  *Concurrency*: Each worker processes up to 10 messages concurrently
-    (configured via `ParallelMessageQueue`)
+ -  *Concurrency*: Each worker processes up to 10 ActivityPub messages and
+    four application tasks concurrently on separate queues. Remote replies
+    scraping uses at most two of those four task slots. These limits apply
+    per worker process; adding workers increases total concurrency.
 
 
 Best practices
