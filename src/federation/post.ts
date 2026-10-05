@@ -1,4 +1,5 @@
 import type { Context } from "@fedify/fedify";
+import { quoteInteraction } from "@fedify/interaction-controls";
 import * as vocab from "@fedify/vocab";
 import {
   type Announce,
@@ -36,6 +37,7 @@ import { extractPreviewLink } from "../html";
 import { makeVideoScreenshot, type Thumbnail, uploadThumbnail } from "../media";
 import { orderMedia } from "../media-order";
 import { REMOTE_MEDIA_THUMBNAILS } from "../media-proxy";
+import { createNotification } from "../notification";
 import { enqueuePollNotification } from "../poll-notification-tasks";
 import { fetchPreviewCard } from "../previewcard";
 import {
@@ -68,7 +70,11 @@ import {
 import { toDate, toTemporalInstant } from "./date";
 import { toEmoji } from "./emoji";
 import { federation } from "./federation";
-import { verifyQuoteAuthorization } from "./quote";
+import {
+  createQuoteTargetSubject,
+  getQuoteAuthorizationIri,
+  verifyQuoteAuthorization,
+} from "./quote";
 import { persistRemoteEmojiReactions } from "./reactions";
 import { enqueueRemoteReplyScrape } from "./replies";
 import { appendPostToTimelines } from "./timeline";
@@ -356,6 +362,9 @@ export async function persistPost(
   let quoteTargetIri: string | null = null;
   let quoteTargetAccountId: Uuid | null = null;
   let quoteTargetAccountIri: string | null = null;
+  let localQuoteTarget:
+    | (Post & { account: Account & { owner: AccountOwner | null } })
+    | null = null;
   if (objectLink == null && object.quoteId != null) {
     objectLink = object.quoteId;
   }
@@ -366,12 +375,15 @@ export async function persistPost(
     quoteTargetIri = objectLink.href;
     const found = await db.query.posts.findFirst({
       where: { iri: { eq: objectLink.href } },
-      with: { account: true },
+      with: { account: { with: { owner: true } } },
     });
     if (found != null) {
       quoteTargetId = found.id;
       quoteTargetAccountId = found.accountId;
       quoteTargetAccountIri = found.account.iri;
+      if (found.account.owner != null && found.sharingId == null) {
+        localQuoteTarget = found;
+      }
       logger.debug("The quote target is already persisted: {quoteTargetId}", {
         quoteTargetId,
       });
@@ -406,22 +418,76 @@ export async function persistPost(
         );
   const previewCard =
     previewLink == null ? null : await fetchPreviewCard(previewLink);
-  const quoteAuthorizationIri = await getVerifiedQuoteAuthorizationIri(
-    object,
-    baseUrl,
-    quoteTargetIri,
-    quoteTargetAccountIri,
-    options,
-  );
+  const sameQuoteTarget =
+    existingPost != null &&
+    ((quoteTargetId != null && existingPost.quoteTargetId === quoteTargetId) ||
+      (quoteTargetIri != null &&
+        existingPost.quoteTargetIri === quoteTargetIri));
+  const preserveRevokedQuote =
+    sameQuoteTarget && existingPost?.quoteState === "revoked";
+  const quoteAuthorizationIri = preserveRevokedQuote
+    ? null
+    : await getVerifiedQuoteAuthorizationIri(
+        object,
+        baseUrl,
+        quoteTargetIri,
+        quoteTargetAccountIri,
+        options,
+      );
   const preserveAcceptedQuote =
-    quoteTargetIri != null &&
-    existingPost?.quoteState === "accepted" &&
-    existingPost.quoteTargetIri === quoteTargetIri;
-  const preservedQuoteAuthorizationIri =
-    quoteAuthorizationIri ??
-    (preserveAcceptedQuote ? existingPost.quoteAuthorizationIri : null);
+    sameQuoteTarget && existingPost?.quoteState === "accepted";
+  let acceptImpoliteQuote = false;
+  if (
+    !preserveRevokedQuote &&
+    !preserveAcceptedQuote &&
+    quoteAuthorizationIri == null &&
+    account.owner == null &&
+    object.id.origin === new URL(account.iri).origin &&
+    localQuoteTarget != null &&
+    (localQuoteTarget.quoteApprovalPolicy ?? "public") === "public" &&
+    (localQuoteTarget.visibility === "public" ||
+      localQuoteTarget.visibility === "unlisted")
+  ) {
+    const block = await db.query.blocks.findFirst({
+      where: {
+        RAW: (blocks, { and, eq, or }) =>
+          or(
+            and(
+              eq(blocks.accountId, localQuoteTarget.accountId),
+              eq(blocks.blockedAccountId, account.id),
+            ),
+            and(
+              eq(blocks.accountId, account.id),
+              eq(blocks.blockedAccountId, localQuoteTarget.accountId),
+            ),
+          )!,
+      },
+    });
+    if (block == null) {
+      const ctx = federation.createContext(new URL(baseUrl), undefined);
+      const decision = await quoteInteraction.evaluatePolicy(ctx, {
+        subject: createQuoteTargetSubject(
+          localQuoteTarget,
+          getCanQuoteRule(localQuoteTarget, ctx),
+        ),
+        requester: new URL(account.iri),
+      });
+      acceptImpoliteQuote =
+        decision.result === "automatic" && decision.reason.type === "public";
+    }
+  }
   const published = publishedRaw;
   const updated = updatedRaw ?? published ?? new Date();
+  const postId =
+    existingPost?.id ?? uuidv7(Math.max(0, +(published ?? updated)));
+  const preservedQuoteAuthorizationIri = preserveRevokedQuote
+    ? null
+    : (quoteAuthorizationIri ??
+      (preserveAcceptedQuote
+        ? existingPost.quoteAuthorizationIri
+        : acceptImpoliteQuote && localQuoteTarget != null
+          ? getQuoteAuthorizationIri(localQuoteTarget, { id: postId })
+          : null));
   // Only Articles carry a title; other types may use `name` for unrelated
   // purposes (e.g., poll options), so it is ignored for them:
   const name =
@@ -439,12 +505,14 @@ export async function persistPost(
     sharingId: null,
     quoteTargetId,
     quoteTargetIri,
-    quoteState:
-      quoteTargetId == null
+    quoteState: preserveRevokedQuote
+      ? "revoked"
+      : quoteTargetId == null
         ? null
         : quoteTargetAccountId === account.id ||
             quoteAuthorizationIri != null ||
-            preserveAcceptedQuote
+            preserveAcceptedQuote ||
+            acceptImpoliteQuote
           ? "accepted"
           : "unauthorized",
     quoteAuthorizationIri: preservedQuoteAuthorizationIri,
@@ -470,22 +538,97 @@ export async function persistPost(
     published,
     updated,
   } as const;
-  await db
-    .insert(posts)
-    .values({
-      ...values,
-      repliesCount: existingPost?.repliesCount ?? 0,
-      id: uuidv7(Math.max(0, +(published ?? updated))),
-      iri: object.id.href,
-    })
-    .onConflictDoUpdate({
-      target: [posts.iri],
-      set: values,
-      setWhere: eq(posts.iri, object.id.href),
+  // Read moderation state from the conflicting row, not just the snapshot
+  // above: an approval or revocation may arrive during remote fetches.
+  const sameStoredTarget = sql`(
+    (${quoteTargetId}::uuid IS NOT NULL AND ${posts.quoteTargetId} = ${quoteTargetId}::uuid)
+    OR (${quoteTargetIri}::text IS NOT NULL AND ${posts.quoteTargetIri} = ${quoteTargetIri}::text)
+  )`;
+  const storedRevoked = sql`${sameStoredTarget} AND ${posts.quoteState} = 'revoked'`;
+  const storedAccepted = sql`${sameStoredTarget} AND ${posts.quoteState} = 'accepted'`;
+  const impoliteAuthorization =
+    acceptImpoliteQuote && localQuoteTarget != null
+      ? sql`${localQuoteTarget.iri + "/quote_authorizations/"}::text || ${posts.id}::text`
+      : sql`NULL::text`;
+
+  const postIri = object.id.href;
+  const persistValues = async (database: DatabaseLike) => {
+    // Keep the acceptance transition and its notification in one short
+    // transaction. Network/media work remains outside it, so a retry after
+    // a failed attachment fetch cannot lose the notification.
+    const previous =
+      localQuoteTarget == null
+        ? existingPost
+        : (
+            await database
+              .select({
+                quoteTargetId: posts.quoteTargetId,
+                quoteState: posts.quoteState,
+              })
+              .from(posts)
+              .where(eq(posts.iri, postIri))
+              .for("update")
+          )[0];
+    await database
+      .insert(posts)
+      .values({
+        ...values,
+        repliesCount: existingPost?.repliesCount ?? 0,
+        id: postId,
+        iri: postIri,
+      })
+      .onConflictDoUpdate({
+        target: [posts.iri],
+        set: {
+          ...values,
+          quoteState: sql`CASE
+          WHEN ${storedRevoked} THEN 'revoked'::quote_state
+          WHEN ${quoteTargetId}::uuid IS NULL THEN NULL
+          WHEN ${storedAccepted} THEN 'accepted'::quote_state
+          ELSE ${values.quoteState}::quote_state END`,
+          quoteAuthorizationIri: sql`CASE
+          WHEN ${storedRevoked} THEN NULL
+          WHEN ${quoteAuthorizationIri}::text IS NOT NULL THEN ${quoteAuthorizationIri}::text
+          WHEN ${storedAccepted} THEN ${posts.quoteAuthorizationIri}
+          ELSE ${impoliteAuthorization} END`,
+        },
+        setWhere: eq(posts.iri, postIri),
+      });
+    const post = await database.query.posts.findFirst({
+      where: { iri: { eq: postIri } },
     });
-  let post = await db.query.posts.findFirst({
-    where: { iri: { eq: object.id.href } },
-  });
+
+    if (post == null) return undefined;
+    for (const targetId of new Set([
+      previous?.quoteTargetId,
+      post.quoteTargetId,
+    ])) {
+      if (targetId != null) await updatePostStats(database, { id: targetId });
+    }
+    if (
+      localQuoteTarget?.account.owner != null &&
+      post.quoteTargetId === localQuoteTarget.id &&
+      post.quoteState === "accepted" &&
+      account.id !== localQuoteTarget.accountId &&
+      (previous?.quoteTargetId !== post.quoteTargetId ||
+        (previous.quoteState != null && previous.quoteState !== "accepted"))
+    ) {
+      await createNotification(
+        {
+          accountOwnerId: localQuoteTarget.account.owner.id,
+          type: "quote",
+          actorAccountId: account.id,
+          targetPostId: post.id,
+        },
+        database,
+      );
+    }
+    return post;
+  };
+  let post =
+    localQuoteTarget == null
+      ? await persistValues(db)
+      : await db.transaction(persistValues);
   if (post == null) return null;
   if (
     options.fetchEmojiReactions !== false &&

@@ -842,8 +842,8 @@ export async function onQuoteRequested(
       subject,
     ));
   const authorizationIri = getQuoteAuthorizationIri(target, persistedQuote);
-  await db.transaction(async (tx) => {
-    await tx
+  const committed = await db.transaction(async (tx) => {
+    const changed = await tx
       .update(posts)
       .set({
         quoteTargetId: target.id,
@@ -852,22 +852,26 @@ export async function onQuoteRequested(
         quoteAuthorizationIri: accepted ? authorizationIri : null,
         updated: new Date(),
       })
-      .where(eq(posts.id, persistedQuote.id));
-    if (accepted && !wasAccepted) {
-      await tx
-        .update(posts)
-        .set({ quotesCount: sql`coalesce(${posts.quotesCount}, 0) + 1` })
-        .where(eq(posts.id, target.id));
-    } else if (accepted) {
-      await updatePostStats(tx, { id: target.id });
-    }
+      .where(
+        and(
+          eq(posts.id, persistedQuote.id),
+          sql`${posts.quoteState} IS DISTINCT FROM 'revoked'`,
+        ),
+      )
+      .returning({ id: posts.id });
+    if (changed.length < 1) return false;
+    // Create may have accepted and counted the instrument while this
+    // request was being verified. Recount instead of incrementing.
+    await updatePostStats(tx, { id: target.id });
     if (
       previousAcceptedTargetId != null &&
       previousAcceptedTargetId !== target.id
     ) {
       await updatePostStats(tx, { id: previousAcceptedTargetId });
     }
+    return true;
   });
+  if (!committed) return;
   if (accepted) {
     await createQuoteNotification(
       persistedQuote.account,
