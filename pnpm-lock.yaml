@@ -74,7 +74,7 @@ importers:
         version: 2.3.0
       '@logtape/sentry':
         specifier: ~2.3.0
-        version: 2.3.0(@logtape/logtape@2.3.0)(@sentry/core@10.70.0)
+        version: 2.3.0(@logtape/logtape@2.3.0)(@sentry/core@11.2.0)
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -88,8 +88,8 @@ importers:
         specifier: ^2.11.0
         version: 2.11.0(@opentelemetry/api@1.9.1)
       '@sentry/core':
-        specifier: ^10.70.0
-        version: 10.70.0
+        specifier: ^11.2.0
+        version: 11.2.0
       '@sentry/node':
         specifier: ^10.70.0
         version: 10.70.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(supports-color@10.2.2)
@@ -2618,9 +2618,17 @@ packages:
     resolution: {integrity: sha512-fO9PLmHdVURcSPUpWCItWAtgKiMwGdJHbovoSEyLplX5sxs2ugvI4CBPTrkkgqhObnZOD0CnWBKDzSVQYBKEyQ==}
     engines: {node: '>=14'}
 
+  '@sentry/conventions@0.24.0':
+    resolution: {integrity: sha512-pmmF2mLy7A23z8gnLRG87lYu4SSPIBColtfqu9cfkh1omn/0CI3w0/AqZ/uf/VGAtM/wJMN61J58Ks/IWBCHpQ==}
+    engines: {node: '>=14'}
+
   '@sentry/core@10.70.0':
     resolution: {integrity: sha512-ozhCTDqg89oB4XmWfAwuHshABpvT7AkRpaPnogopPfMAaI61G1t8EKCJ4W7aum8JSBonlfyjPCyW5oYZFm0KvA==}
     engines: {node: '>=18'}
+
+  '@sentry/core@11.2.0':
+    resolution: {integrity: sha512-vkJDLDVk0WmMN7cixXULEkW2sopJwcTP3ODFkdrRFUJILARHS855TzJ3WG7WarNXtlzKY6ALzmsGPzHMZQfMrA==}
+    engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
   '@sentry/node-core@10.70.0':
     resolution: {integrity: sha512-oPOEVVNxv5WHtckx2i06Wi9FLWyvOg/1DUeX732jZ4iqT2nupINaMH4nF4f4kSvUThFnxkFSRQxwqOxgzMKhKA==}
@@ -8020,10 +8028,10 @@ snapshots:
 
   '@logtape/logtape@2.3.0': {}
 
-  '@logtape/sentry@2.3.0(@logtape/logtape@2.3.0)(@sentry/core@10.70.0)':
+  '@logtape/sentry@2.3.0(@logtape/logtape@2.3.0)(@sentry/core@11.2.0)':
     dependencies:
       '@logtape/logtape': 2.3.0
-      '@sentry/core': 10.70.0
+      '@sentry/core': 11.2.0
 
   '@multiformats/base-x@4.0.1': {}
 
@@ -8731,9 +8739,15 @@ snapshots:
 
   '@sentry/conventions@0.16.0': {}
 
+  '@sentry/conventions@0.24.0': {}
+
   '@sentry/core@10.70.0':
     dependencies:
       '@sentry/conventions': 0.16.0
+
+  '@sentry/core@11.2.0':
+    dependencies:
+      '@sentry/conventions': 0.24.0
 
   '@sentry/node-core@10.70.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@10.2.2))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))':
     dependencies:
