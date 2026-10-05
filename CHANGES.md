@@ -8,14 +8,14 @@ To be released.
 
  -  Upgraded Fedify to 2.4.1.
 
- -  Quotes awaiting FEP-044f approval now expose `quoteUrl` for compatibility
+ -  Quotes awaiting [FEP-044f] approval now expose `quoteUrl` for compatibility
     with older software when the original public or unlisted post explicitly
     allows automatic approval for everyone.  The `quote` field and generated
     fallback still wait for approval.  Rejection or revocation removes the
     reference through an `Update`; failed rejection updates can be retried
     without changing the quote state or counts.  [[#602]]
 
- -  FEP-044f quote authorization now uses Fedify's
+ -  [FEP-044f] quote authorization now uses Fedify's
     *@fedify/interaction-controls* package to build and verify quote
     requests and authorizations and to evaluate local quote policies.
     Verification is stricter in a few cases:  [[#635], [#641]]
@@ -32,6 +32,14 @@ To be released.
         of a temporary failure, the `Accept` is retried later.
      -  Outgoing `Accept` and `Reject` responses to quote requests now have
         explicit IDs and address the requester in `to`.
+
+ -  Remote quotes without [FEP-044f] approval are now accepted when the local
+    target is public or unlisted, allows automatic quotes by everyone
+    (including the default policy), and neither account blocks the other.
+    Accepted quotes have a local authorization and appear in quote counts
+    and notifications.  Cached unauthorized quotes are reevaluated on later
+    updates; there is no backfill.  Revoked quotes retain their state on
+    updates for the same target, including remote targets.  [[#640], [#660]]
 
  -  Added WebP (`image/webp`) as an accepted format for profile avatar and
     banner image uploads.  Previously only JPEG, PNG, and GIF were accepted
@@ -124,6 +132,7 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
+[FEP-044f]: https://w3id.org/fep/044f
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
@@ -139,12 +148,14 @@ To be released.
 [#637]: https://github.com/fedify-dev/hollo/issues/637
 [#638]: https://github.com/fedify-dev/hollo/issues/638
 [#639]: https://github.com/fedify-dev/hollo/issues/639
+[#640]: https://github.com/fedify-dev/hollo/issues/640
 [#641]: https://github.com/fedify-dev/hollo/pull/641
 [#645]: https://github.com/fedify-dev/hollo/pull/645
 [#646]: https://github.com/fedify-dev/hollo/issues/646
 [#648]: https://github.com/fedify-dev/hollo/pull/648
 [#649]: https://github.com/fedify-dev/hollo/pull/649
 [#650]: https://github.com/fedify-dev/hollo/pull/650
+[#660]: https://github.com/fedify-dev/hollo/pull/660
 
 
 Version 0.9.22
@@ -926,7 +937,6 @@ Released on May 20, 2026.
  -  Added Traditional Chinese (繁體中文; `zh-TW`) documentation.
 
 [Split-domain WebFinger guide]: https://docs.hollo.social/install/split-domain/
-[FEP-044f]: https://w3id.org/fep/044f
 [logfmt]: https://brandur.org/logfmt
 [@hollo@hollo.social]: https://hollo.social/@hollo
 [#67]: https://github.com/fedify-dev/hollo/issues/67

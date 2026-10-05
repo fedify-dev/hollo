@@ -1,3 +1,5 @@
+import type { InboxContext } from "@fedify/fedify";
+import { Create, Note, Person, PUBLIC_COLLECTION, Update } from "@fedify/vocab";
 import { eq } from "drizzle-orm";
 import {
   afterAll,
@@ -20,6 +22,7 @@ import {
 } from "../../../tests/helpers/oauth";
 import db from "../../db";
 import { federation } from "../../federation";
+import { onPostCreated, onPostUpdated } from "../../federation/inbox";
 import app from "../../index";
 import {
   accountOwners,
@@ -935,6 +938,118 @@ describe("/api/v1/statuses quotes", { concurrent: false }, () => {
       body: JSON.stringify(body),
     });
   }
+
+  it("exposes an impolite quote and preserves API revocation through a remote Update", async () => {
+    const targetResponse = await createStatus(authorToken, {
+      status: "Quote this",
+      quote_approval_policy: "public",
+    });
+    const target = await targetResponse.json();
+    const remoteId = uuidv7();
+    const remoteIri = "https://remote.test/users/impolite-quoter";
+    const quoteIri = "https://remote.test/notes/impolite";
+    await db
+      .insert(instances)
+      .values({ host: "remote.test" })
+      .onConflictDoNothing();
+    await db.insert(accounts).values({
+      id: remoteId,
+      iri: remoteIri,
+      instanceHost: "remote.test",
+      type: "Person",
+      name: "Impolite quoter",
+      handle: "@impolite-quoter@remote.test",
+      bioHtml: "",
+      protected: false,
+      inboxUrl: `${remoteIri}/inbox`,
+      published: new Date(),
+    });
+    function note() {
+      return new Note({
+        id: new URL(quoteIri),
+        attribution: new Person({
+          id: new URL(remoteIri),
+          preferredUsername: "impolite-quoter",
+          inbox: new URL(`${remoteIri}/inbox`),
+        }),
+        quoteUrl: new URL(target.uri),
+        to: PUBLIC_COLLECTION,
+        content: "<p>Remote quote</p>",
+      });
+    }
+    const ctx = federation.createContext(
+      new URL("https://hollo.test"),
+      undefined,
+    ) as InboxContext<void>;
+    await onPostCreated(
+      ctx,
+      new Create({ actor: new URL(remoteIri), object: note() }),
+    );
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: quoteIri } },
+    });
+    const quoteResponse = await app.request(`/api/v1/statuses/${quote!.id}`, {
+      headers: { authorization: bearerAuthorization(authorToken) },
+    });
+    expect(quoteResponse.status).toBe(200);
+    expect((await quoteResponse.json()).quote).toMatchObject({
+      state: "accepted",
+      quoted_status: { id: target.id },
+    });
+    const counted = await app.request(`/api/v1/statuses/${target.id}`);
+    expect((await counted.json()).quotes_count).toBe(1);
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote!.id } },
+      }),
+    ).toHaveLength(1);
+    const authorizationRequest = () =>
+      new Request(quote!.quoteAuthorizationIri!, {
+        headers: { Accept: "application/activity+json" },
+      });
+    expect(
+      (
+        await federation.fetch(authorizationRequest(), {
+          contextData: undefined,
+        })
+      ).status,
+    ).toBe(200);
+
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    try {
+      const revoked = await app.request(
+        `/api/v1/statuses/${target.id}/quotes/${quote!.id}/revoke`,
+        {
+          method: "POST",
+          headers: { authorization: bearerAuthorization(authorToken) },
+        },
+      );
+      expect(revoked.status).toBe(200);
+      expect((await revoked.json()).quote.state).toBe("revoked");
+      await onPostUpdated(
+        ctx,
+        new Update({ actor: new URL(remoteIri), object: note() }),
+      );
+      const edited = await app.request(`/api/v1/statuses/${quote!.id}`);
+      expect((await edited.json()).quote).toMatchObject({
+        state: "revoked",
+        quoted_status: null,
+      });
+      const countedAgain = await app.request(`/api/v1/statuses/${target.id}`);
+      expect((await countedAgain.json()).quotes_count).toBe(0);
+      expect(
+        (
+          await federation.fetch(authorizationRequest(), {
+            contextData: undefined,
+          })
+        ).status,
+      ).toBe(404);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
 
   it("allows same-instance quotes regardless of quote policy and emits an authorization IRI", async () => {
     expect.assertions(7);

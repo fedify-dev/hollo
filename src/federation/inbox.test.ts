@@ -1,6 +1,7 @@
 import type { InboxContext } from "@fedify/fedify";
 import {
   Accept,
+  Create,
   Delete,
   type DocumentLoader,
   Note,
@@ -28,6 +29,8 @@ import type { Uuid } from "../uuid";
 import {
   onFollowAccepted,
   onFollowRejected,
+  onPostCreated,
+  onPostUpdated,
   onQuoteAuthorizationDeleted,
   onQuoteRequestAccepted,
   onQuoteRequested,
@@ -35,6 +38,7 @@ import {
   sendQuoteUpdate,
 } from "./inbox";
 import federation from "./index";
+import { persistPost } from "./post";
 
 type SeededFollow = {
   followerId: Uuid;
@@ -1735,6 +1739,378 @@ describe("quote request lifecycle", () => {
     } as unknown as InboxContext<void>;
     return { requestCtx, sendActivity };
   }
+
+  async function seedOrderedQuote() {
+    const { quotedPostId, quotedPostIri } = await seedLocalQuoteTarget();
+    const { requestCtx, sendActivity } = createRequestCtx();
+    const json = quoteRequestJson(quotedPostIri);
+    const create = async () =>
+      onPostCreated(
+        requestCtx,
+        new Create({
+          actor: new URL(quoterIri),
+          object: await Note.fromJsonLd({
+            "@context": json["@context"],
+            ...(json.instrument as Record<string, unknown>),
+          }),
+        }),
+      );
+    const request = async () =>
+      onQuoteRequested(requestCtx, await QuoteRequest.fromJsonLd(json));
+    return { quotedPostId, quotedPostIri, sendActivity, create, request };
+  }
+
+  async function expectAcceptedQuote(
+    quotedPostId: Uuid,
+    quotedPostIri: string,
+  ) {
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: `${quoterIri}/statuses/1` } },
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(quote?.quoteAuthorizationIri).toBe(
+      `${quotedPostIri}/quote_authorizations/${quote?.id}`,
+    );
+    expect(
+      (
+        await db.query.posts.findFirst({
+          where: { id: { eq: quotedPostId } },
+        })
+      )?.quotesCount,
+    ).toBe(1);
+    return quote!;
+  }
+
+  it.each(["create-first", "request-first"])(
+    "counts and notifies once with repeated %s delivery",
+    async (ordering) => {
+      const { quotedPostId, quotedPostIri, sendActivity, create, request } =
+        await seedOrderedQuote();
+      if (ordering === "create-first") {
+        await create();
+        await request();
+      } else {
+        await request();
+        await create();
+      }
+      const quote = await expectAcceptedQuote(quotedPostId, quotedPostIri);
+      expect(sendActivity).toHaveBeenCalledOnce();
+      const [, , response] = sendActivity.mock.calls[0] as unknown as [
+        unknown,
+        unknown,
+        Accept,
+      ];
+      expect(response).toBeInstanceOf(Accept);
+      expect(response.resultId?.href).toBe(quote.quoteAuthorizationIri);
+      await create();
+      await request();
+      expect(
+        await db.query.notifications.findMany({
+          where: { type: { eq: "quote" }, targetPostId: { eq: quote.id } },
+        }),
+      ).toHaveLength(1);
+      await expectAcceptedQuote(quotedPostId, quotedPostIri);
+    },
+  );
+
+  it("counts concurrent Create and QuoteRequest delivery once", async () => {
+    const { quotedPostId, quotedPostIri, sendActivity, create, request } =
+      await seedOrderedQuote();
+    await Promise.all([create(), request()]);
+    const quote = await expectAcceptedQuote(quotedPostId, quotedPostIri);
+    expect(sendActivity).toHaveBeenCalledOnce();
+    const [, , response] = sendActivity.mock.calls[0] as unknown as [
+      unknown,
+      unknown,
+      Accept,
+    ];
+    expect(response).toBeInstanceOf(Accept);
+    expect(response.resultId?.href).toBe(quote.quoteAuthorizationIri);
+  });
+
+  it("does not answer a QuoteRequest when revocation lands during persistence", async () => {
+    const { quotedPostId, quotedPostIri } = await seedLocalQuoteTarget();
+    const json = quoteRequestJson(quotedPostIri);
+    const note = await Note.fromJsonLd({
+      "@context": json["@context"],
+      ...(json.instrument as Record<string, unknown>),
+    });
+    const quote = await persistPost(db, note, "https://hollo.test", { ...ctx });
+    await serveQuoteAuthorization(
+      quote!.quoteAuthorizationIri!,
+      "https://hollo.test/@quote-author",
+      quote!.iri,
+      quotedPostIri,
+    );
+    let revoked = false;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url === quote!.quoteAuthorizationIri) {
+        revoked = true;
+        await db.transaction(async (tx) => {
+          await tx
+            .update(posts)
+            .set({ quoteState: "revoked", quoteAuthorizationIri: null })
+            .where(eq(posts.id, quote!.id));
+          await tx
+            .update(posts)
+            .set({ quotesCount: 0 })
+            .where(eq(posts.id, quotedPostId));
+        });
+      }
+      return documentLoader(url, options);
+    };
+    const { requestCtx, sendActivity } = createRequestCtx(loader);
+    await onQuoteRequested(
+      requestCtx,
+      new QuoteRequest({
+        id: new URL(`${quote!.iri}#quote-request`),
+        actor: new URL(quoterIri),
+        object: new URL(quotedPostIri),
+        instrument: note.clone({
+          quoteAuthorization: new URL(quote!.quoteAuthorizationIri!),
+        }),
+      }),
+    );
+    expect(revoked).toBe(true);
+    expect(sendActivity).not.toHaveBeenCalled();
+    const persisted = await db.query.posts.findFirst({
+      where: { id: { eq: quote!.id } },
+    });
+    expect(persisted?.quoteState).toBe("revoked");
+    expect(persisted?.quoteAuthorizationIri).toBeNull();
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: quotedPostId } } }))
+        ?.quotesCount,
+    ).toBe(0);
+  });
+
+  it("rolls back quote acceptance if its notification cannot be saved", async () => {
+    const { quotedPostId, quotedPostIri } = await seedLocalQuoteTarget();
+    const { requestCtx } = createRequestCtx();
+    const json = quoteRequestJson(quotedPostIri);
+    async function update() {
+      return onPostUpdated(
+        requestCtx,
+        new Update({
+          actor: new URL(quoterIri),
+          object: await Note.fromJsonLd({
+            "@context": json["@context"],
+            ...(json.instrument as Record<string, unknown>),
+          }),
+        }),
+      );
+    }
+    const notificationModule = await import("../notification");
+    const notify = vi
+      .spyOn(notificationModule, "createNotification")
+      .mockRejectedValueOnce(new Error("Notification storage unavailable"));
+    try {
+      await expect(update()).rejects.toThrow(
+        "Notification storage unavailable",
+      );
+    } finally {
+      notify.mockRestore();
+    }
+    expect(
+      await db.query.posts.findFirst({
+        where: { iri: { eq: `${quoterIri}/statuses/1` } },
+      }),
+    ).toBeUndefined();
+    expect(
+      (
+        await db.query.posts.findFirst({
+          where: { id: { eq: quotedPostId } },
+        })
+      )?.quotesCount,
+    ).toBe(0);
+    await update();
+    const quote = await expectAcceptedQuote(quotedPostId, quotedPostIri);
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote.id } },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("retains the quote notification when an Update retries a failed attachment fetch", async () => {
+    const { quotedPostId, quotedPostIri } = await seedLocalQuoteTarget();
+    const attachmentIri = "https://remote.test/attachments/retry";
+    let fail = true;
+    const loader: DocumentLoader = async (url, options) => {
+      if (url !== attachmentIri) return documentLoader(url, options);
+      if (fail) {
+        fail = false;
+        throw Object.assign(new Error("HTTP 503"), {
+          response: new Response(null, { status: 503 }),
+        });
+      }
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: {
+          "@context": "https://www.w3.org/ns/activitystreams",
+          id: url,
+          type: "Document",
+        },
+      };
+    };
+    const { requestCtx } = createRequestCtx(loader);
+    const json = quoteRequestJson(quotedPostIri);
+    async function update() {
+      return onPostUpdated(
+        requestCtx,
+        new Update({
+          actor: new URL(quoterIri),
+          object: await Note.fromJsonLd({
+            "@context": json["@context"],
+            ...(json.instrument as Record<string, unknown>),
+            attachment: attachmentIri,
+          }),
+        }),
+      );
+    }
+    await expect(update()).rejects.toThrow("HTTP 503");
+    const quote = await expectAcceptedQuote(quotedPostId, quotedPostIri);
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote.id } },
+      }),
+    ).toHaveLength(1);
+    await update();
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote.id } },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("notifies and recounts a quote first materialized by Update", async () => {
+    const { quotedPostId, quotedPostIri } = await seedLocalQuoteTarget();
+    const { requestCtx } = createRequestCtx();
+    const json = quoteRequestJson(quotedPostIri);
+    async function update(targetIri?: string) {
+      const object = await Note.fromJsonLd({
+        "@context": json["@context"],
+        ...(json.instrument as Record<string, unknown>),
+        quote: targetIri,
+        quoteUri: targetIri,
+        _misskey_quote: targetIri,
+      });
+      await onPostUpdated(
+        requestCtx,
+        new Update({
+          actor: new URL(quoterIri),
+          object,
+        }),
+      );
+    }
+    await update(quotedPostIri);
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: `${quoterIri}/statuses/1` } },
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: quotedPostId } } }))
+        ?.quotesCount,
+    ).toBe(1);
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote!.id } },
+      }),
+    ).toHaveLength(1);
+    // Dismissed notifications must not reappear on ordinary edits.
+    const notification = await db.query.notifications.findFirst({
+      where: { type: { eq: "quote" }, targetPostId: { eq: quote!.id } },
+    });
+    const { deleteNotifications } = await import("../notification");
+    await deleteNotifications(notification!.accountOwnerId, [notification!.id]);
+    await update(quotedPostIri);
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote!.id } },
+      }),
+    ).toHaveLength(0);
+    await update();
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: quotedPostId } } }))
+        ?.quotesCount,
+    ).toBe(0);
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: quote!.id } } }))
+        ?.quoteAuthorizationIri,
+    ).toBeNull();
+  });
+
+  it("accepts a previously unauthorized quote on Update and recounts when retargeted", async () => {
+    const { quotedPostId, quotedPostIri, authorId } =
+      await seedLocalQuoteTarget("nobody");
+    const { requestCtx } = createRequestCtx();
+    async function update(iri: string) {
+      const json = quoteRequestJson(iri);
+      await onPostUpdated(
+        requestCtx,
+        new Update({
+          actor: new URL(quoterIri),
+          object: await Note.fromJsonLd({
+            "@context": json["@context"],
+            ...(json.instrument as Record<string, unknown>),
+          }),
+        }),
+      );
+    }
+    await update(quotedPostIri);
+    expect(
+      (
+        await db.query.posts.findFirst({
+          where: { iri: { eq: `${quoterIri}/statuses/1` } },
+        })
+      )?.quoteState,
+    ).toBe("unauthorized");
+    await db
+      .update(posts)
+      .set({ quoteApprovalPolicy: "public" })
+      .where(eq(posts.id, quotedPostId));
+    await update(quotedPostIri);
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: `${quoterIri}/statuses/1` } },
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote!.id } },
+      }),
+    ).toHaveLength(1);
+    const nextId = crypto.randomUUID() as Uuid;
+    const nextIri = `https://hollo.test/@quote-author/${nextId}`;
+    await db.insert(posts).values({
+      id: nextId,
+      iri: nextIri,
+      accountId: authorId,
+      type: "Note",
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      published: new Date(),
+    });
+    await update(nextIri);
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: quotedPostId } } }))
+        ?.quotesCount,
+    ).toBe(0);
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: nextId } } }))
+        ?.quotesCount,
+    ).toBe(1);
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: quote!.id } } }))
+        ?.quoteAuthorizationIri,
+    ).toBe(`${nextIri}/quote_authorizations/${quote!.id}`);
+    // Same-owner retargets use the existing notification deduplication key.
+    expect(
+      await db.query.notifications.findMany({
+        where: { type: { eq: "quote" }, targetPostId: { eq: quote!.id } },
+      }),
+    ).toHaveLength(1);
+  });
 
   it("accepts a Mastodon-shaped QuoteRequest with a helper-built Accept", async () => {
     const { quotedPostIri } = await seedLocalQuoteTarget();

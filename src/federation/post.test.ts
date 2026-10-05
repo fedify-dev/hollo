@@ -29,6 +29,7 @@ import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
 import {
   accounts,
+  blocks,
   follows,
   instances,
   polls,
@@ -40,6 +41,7 @@ import { toTemporalInstant } from "./date";
 import { onPostShared } from "./inbox";
 import federation from "./index";
 import { persistPost, persistSharingPost, toObject } from "./post";
+import { getQuoteAuthorizationIri } from "./quote";
 
 async function seedRemoteAccount(username: string) {
   const id = crypto.randomUUID() as Uuid;
@@ -2337,5 +2339,434 @@ describe("Remote poll expiry task dispatch", () => {
     } finally {
       enqueue.mockRestore();
     }
+  });
+});
+
+describe("persistPost impolite quotes", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+
+  async function seedTarget(
+    policy: "public" | "followers" | "nobody" | null = "public",
+    visibility: "public" | "unlisted" | "private" | "direct" = "public",
+  ) {
+    const owner = await createAccount({ username: "impolite-author" });
+    const id = crypto.randomUUID() as Uuid;
+    const iri = `https://hollo.test/@impolite-author/${id}`;
+    await db.insert(posts).values({
+      id,
+      iri,
+      type: "Note",
+      accountId: owner.id as Uuid,
+      visibility,
+      quoteApprovalPolicy: policy,
+      contentHtml: "<p>Original</p>",
+      published: new Date(),
+    });
+    return { id, iri, accountId: owner.id as Uuid };
+  }
+
+  function quoteNote(
+    quoter: Parameters<typeof createPerson>[0],
+    targetIri: string,
+    overrides: ConstructorParameters<typeof Note>[0] = {},
+  ) {
+    return new Note({
+      id: new URL("https://remote.test/objects/impolite-quote"),
+      attribution: createPerson(quoter),
+      quoteUrl: new URL(targetIri),
+      to: PUBLIC_COLLECTION,
+      content: "<p>Quote</p>",
+      ...overrides,
+    });
+  }
+
+  it.each([
+    ["public", "public"],
+    ["public", "unlisted"],
+    [null, "public"],
+    [null, "unlisted"],
+  ] as const)(
+    "accepts %s policy on %s local targets",
+    async (policy, visibility) => {
+      const target = await seedTarget(policy, visibility);
+      const quoter = await seedRemoteAccount("impolite-quoter");
+      const quote = await persistPost(
+        db,
+        quoteNote(quoter, target.iri),
+        "https://hollo.test",
+      );
+      expect(quote?.quoteState).toBe("accepted");
+      expect(quote?.quoteTargetId).toBe(target.id);
+      expect(quote?.quoteAuthorizationIri).toBe(
+        getQuoteAuthorizationIri(target, quote!),
+      );
+      expect(
+        (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+          ?.quotesCount,
+      ).toBe(1);
+
+      const edited = await persistPost(
+        db,
+        quoteNote(quoter, target.iri, { content: "<p>Edited</p>" }),
+        "https://hollo.test",
+      );
+      expect(edited?.id).toBe(quote?.id);
+      expect(edited?.quoteAuthorizationIri).toBe(quote?.quoteAuthorizationIri);
+    },
+  );
+
+  it.each([
+    ["followers", "public"],
+    ["nobody", "public"],
+    ["public", "private"],
+    ["public", "direct"],
+    [null, "private"],
+    [null, "direct"],
+  ] as const)(
+    "does not accept %s policy on %s targets without approval",
+    async (policy, visibility) => {
+      const target = await seedTarget(policy, visibility);
+      const quoter = await seedRemoteAccount("impolite-quoter");
+      await db.insert(follows).values({
+        iri: `${quoter.iri}#follow`,
+        followingId: target.accountId,
+        followerId: quoter.id,
+        approved: new Date(),
+      });
+      const quote = await persistPost(
+        db,
+        quoteNote(quoter, target.iri),
+        "https://hollo.test",
+      );
+      expect(quote?.quoteState).toBe("unauthorized");
+      expect(quote?.quoteAuthorizationIri).toBeNull();
+      expect(
+        (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+          ?.quotesCount,
+      ).toBe(0);
+    },
+  );
+
+  it.each([null, "public"] as const)(
+    "does not approve a local boost wrapper with %s policy",
+    async (policy) => {
+      const target = await seedTarget(policy);
+      const originalAuthor = await seedRemoteAccount("original-author");
+      const originalId = crypto.randomUUID() as Uuid;
+      await db.insert(posts).values({
+        id: originalId,
+        iri: "https://remote.test/objects/boosted-original",
+        type: "Note",
+        accountId: originalAuthor.id,
+        visibility: "public",
+        quoteApprovalPolicy: policy,
+        contentHtml: "<p>Remote original</p>",
+        published: new Date(),
+      });
+      await db
+        .update(posts)
+        .set({ sharingId: originalId })
+        .where(eq(posts.id, target.id));
+      const quoter = await seedRemoteAccount("impolite-quoter");
+      const quote = await persistPost(
+        db,
+        quoteNote(quoter, target.iri),
+        "https://hollo.test",
+      );
+      expect(quote?.quoteState).toBe("unauthorized");
+      expect(quote?.quoteAuthorizationIri).toBeNull();
+      expect(
+        (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+          ?.quotesCount,
+      ).toBe(0);
+      expect(await db.query.notifications.findMany()).toHaveLength(0);
+    },
+  );
+
+  it.each(["author", "quoter"])(
+    "does not accept when the %s blocks the other account",
+    async (blocker) => {
+      const target = await seedTarget();
+      const quoter = await seedRemoteAccount("impolite-quoter");
+      await db.insert(blocks).values({
+        accountId: blocker === "author" ? target.accountId : quoter.id,
+        blockedAccountId: blocker === "author" ? quoter.id : target.accountId,
+      });
+      const quote = await persistPost(
+        db,
+        quoteNote(quoter, target.iri),
+        "https://hollo.test",
+      );
+      expect(quote?.quoteState).toBe("unauthorized");
+      expect(quote?.quoteAuthorizationIri).toBeNull();
+    },
+  );
+
+  it("does not grant an authorization to a quote hosted on another actor's origin", async () => {
+    const target = await seedTarget();
+    const quoter = await seedRemoteAccount("impolite-quoter");
+    const quote = await persistPost(
+      db,
+      quoteNote(quoter, target.iri, { id: new URL("https://evil.test/quote") }),
+      "https://hollo.test",
+    );
+    expect(quote?.quoteState).toBe("unauthorized");
+    expect(quote?.quoteAuthorizationIri).toBeNull();
+  });
+
+  // Wire shapes modeled on Misskey's ApRendererService and contexts.ts,
+  // rather than captured live traffic. Test each fallback independently.
+  it.each(["_misskey_quote", "quoteUrl", "quote", "tag"])(
+    "accepts the %s wire representation",
+    async (field) => {
+      const target = await seedTarget();
+      const quoter = await seedRemoteAccount("impolite-quoter");
+      const note = await Note.fromJsonLd({
+        "@context": [
+          "https://www.w3.org/ns/activitystreams",
+          {
+            _misskey_quote: "https://misskey-hub.net/ns#_misskey_quote",
+            quoteUrl: "as:quoteUrl",
+            quote: { "@id": "https://w3id.org/fep/044f#quote", "@type": "@id" },
+          },
+        ],
+        id: "https://remote.test/objects/impolite-quote",
+        type: "Note",
+        attributedTo: await createPerson(quoter).toJsonLd(),
+        to: PUBLIC_COLLECTION.href,
+        content: "<p>Quote</p>",
+        [field]:
+          field === "tag"
+            ? [
+                {
+                  type: "Link",
+                  mediaType: "application/activity+json",
+                  href: target.iri,
+                },
+              ]
+            : target.iri,
+      });
+      const quote = await persistPost(db, note, "https://hollo.test");
+      expect(quote?.quoteState).toBe("accepted");
+      expect(quote?.quoteTargetId).toBe(target.id);
+    },
+  );
+
+  it("uses the actual row id for authorizations after concurrent first persists", async () => {
+    const target = await seedTarget();
+    const quoter = await seedRemoteAccount("impolite-quoter");
+    const results = await Promise.all([
+      persistPost(db, quoteNote(quoter, target.iri), "https://hollo.test"),
+      persistPost(db, quoteNote(quoter, target.iri), "https://hollo.test"),
+    ]);
+    const quote = await db.query.posts.findFirst({
+      where: { iri: { eq: "https://remote.test/objects/impolite-quote" } },
+    });
+    expect(quote?.quoteState).toBe("accepted");
+    expect(results[0]?.id).toBe(results[1]?.id);
+    expect(quote?.quoteAuthorizationIri).toBe(
+      getQuoteAuthorizationIri(target, quote!),
+    );
+    const response = await federation.fetch(
+      new Request(quote!.quoteAuthorizationIri!, {
+        headers: { Accept: "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      type: "QuoteAuthorization",
+      interactingObject: quote?.iri,
+      interactionTarget: target.iri,
+      attributedTo: "https://hollo.test/@impolite-author",
+    });
+  });
+
+  it.each([false, true])(
+    "preserves revocation during an update with a stamp: %s",
+    async (withStamp) => {
+      const target = await seedTarget();
+      const quoter = await seedRemoteAccount("impolite-quoter");
+      const quote = await persistPost(
+        db,
+        quoteNote(quoter, target.iri),
+        "https://hollo.test",
+      );
+      await db
+        .update(posts)
+        .set({ quoteState: "revoked", quoteAuthorizationIri: null })
+        .where(eq(posts.id, quote!.id));
+      await db
+        .update(posts)
+        .set({ quotesCount: 0 })
+        .where(eq(posts.id, target.id));
+      const loader = vi.fn(async () => {
+        throw new Error("Revoked stamps must not be fetched");
+      });
+      const updated = await persistPost(
+        db,
+        quoteNote(quoter, target.iri, {
+          content: "<p>Edited after revocation</p>",
+          quoteAuthorization: withStamp
+            ? new URL(quote!.quoteAuthorizationIri!)
+            : null,
+        }),
+        "https://hollo.test",
+        { documentLoader: loader },
+      );
+      expect(updated?.quoteState).toBe("revoked");
+      expect(updated?.quoteAuthorizationIri).toBeNull();
+      expect(updated?.contentHtml).toBe("<p>Edited after revocation</p>");
+      expect(loader).not.toHaveBeenCalled();
+      expect(
+        (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+          ?.quotesCount,
+      ).toBe(0);
+    },
+  );
+
+  it("does not carry revocation to a different quote target", async () => {
+    const target = await seedTarget();
+    const quoter = await seedRemoteAccount("impolite-quoter");
+    const quote = await persistPost(
+      db,
+      quoteNote(quoter, target.iri),
+      "https://hollo.test",
+    );
+    await db
+      .update(posts)
+      .set({ quoteState: "revoked", quoteAuthorizationIri: null })
+      .where(eq(posts.id, quote!.id));
+    const nextId = crypto.randomUUID() as Uuid;
+    const nextIri = `https://hollo.test/@impolite-author/${nextId}`;
+    await db.insert(posts).values({
+      id: nextId,
+      iri: nextIri,
+      accountId: target.accountId,
+      type: "Note",
+      visibility: "unlisted",
+      quoteApprovalPolicy: "public",
+      published: new Date(),
+    });
+    const updated = await persistPost(
+      db,
+      quoteNote(quoter, nextIri),
+      "https://hollo.test",
+    );
+    expect(updated?.quoteState).toBe("accepted");
+    expect(updated?.quoteAuthorizationIri).toBe(
+      getQuoteAuthorizationIri({ iri: nextIri }, quote!),
+    );
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+        ?.quotesCount,
+    ).toBe(0);
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: nextId } } }))
+        ?.quotesCount,
+    ).toBe(1);
+  });
+
+  it("counts an impolite quote discovered through an Announce", async () => {
+    const target = await seedTarget();
+    const quoter = await seedRemoteAccount("impolite-quoter");
+    const booster = await seedRemoteAccount("impolite-booster");
+    const boost = await persistSharingPost(
+      db,
+      createAnnounce(
+        "https://remote.test/announces/impolite",
+        createPerson(booster),
+        quoteNote(quoter, target.iri),
+      ),
+      quoteNote(quoter, target.iri),
+      "https://hollo.test",
+    );
+    expect(boost?.sharingId).not.toBeNull();
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+        ?.quotesCount,
+    ).toBe(1);
+  });
+
+  it("preserves revoked remote quotes without applying their public policy", async () => {
+    const author = await seedRemoteAccount("remote-author");
+    const quoter = await seedRemoteAccount("impolite-quoter");
+    const targetId = crypto.randomUUID() as Uuid;
+    const targetIri = "https://remote.test/objects/remote-target";
+    await db.insert(posts).values({
+      id: targetId,
+      iri: targetIri,
+      accountId: author.id,
+      type: "Note",
+      visibility: "public",
+      quoteApprovalPolicy: "public",
+      published: new Date(),
+    });
+    const quote = await persistPost(
+      db,
+      quoteNote(quoter, targetIri),
+      "https://hollo.test",
+    );
+    expect(quote?.quoteState).toBe("unauthorized");
+    await db
+      .update(posts)
+      .set({ quoteState: "revoked" })
+      .where(eq(posts.id, quote!.id));
+    const updated = await persistPost(
+      db,
+      quoteNote(quoter, targetIri),
+      "https://hollo.test",
+    );
+    expect(updated?.quoteState).toBe("revoked");
+    expect(updated?.quoteAuthorizationIri).toBeNull();
+  });
+
+  it("keeps a revocation committed while a stamp is being verified", async () => {
+    const target = await seedTarget();
+    const quoter = await seedRemoteAccount("impolite-quoter");
+    const quote = await persistPost(
+      db,
+      quoteNote(quoter, target.iri),
+      "https://hollo.test",
+    );
+    const authorization = new QuoteAuthorization({
+      id: new URL(quote!.quoteAuthorizationIri!),
+      attribution: new URL("https://hollo.test/@impolite-author"),
+      interactingObject: new URL(quote!.iri),
+      interactionTarget: new URL(target.iri),
+    });
+    const loader: DocumentLoader = async (url) => {
+      await db.transaction(async (tx) => {
+        await tx
+          .update(posts)
+          .set({ quoteState: "revoked", quoteAuthorizationIri: null })
+          .where(eq(posts.id, quote!.id));
+        await tx
+          .update(posts)
+          .set({ quotesCount: 0 })
+          .where(eq(posts.id, target.id));
+      });
+      return {
+        documentUrl: url,
+        contextUrl: null,
+        document: await authorization.toJsonLd(),
+      };
+    };
+    const updated = await persistPost(
+      db,
+      quoteNote(quoter, target.iri, {
+        quoteAuthorization: new URL(quote!.quoteAuthorizationIri!),
+      }),
+      "https://hollo.test",
+      { documentLoader: loader },
+    );
+    expect(updated?.quoteState).toBe("revoked");
+    expect(updated?.quoteAuthorizationIri).toBeNull();
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: target.id } } }))
+        ?.quotesCount,
+    ).toBe(0);
   });
 });
