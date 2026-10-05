@@ -95,6 +95,33 @@ Hollo 由六個主要元件組成：
 交易結束，中斷的工作可復原。升級前停止舊節點，並在所有節點使用相容的任務定義。
 
 
+共享資料庫最多儲存 100 條待處理投票訊息，包括延遲喚醒與重試。新預約按每個
+投票合併為一條訊息。重複投票與到期更新會合併；到期提前時，現有喚醒也提前；
+到期延後時，執行時重新讀取。達到上限後，更早的喚醒取代最晚的訊息。被延後或
+取代的投票在到期後復原。突發負載導致入列鎖無法在一秒內取得時也可能延後。
+上限由所有節點共享，而非按工作節點計算，限制儲存的任務數而非通知或執行的處理器。
+
+延遲喚醒使用佇列每五秒的輪詢，不為每個工作節點分配計時器。共享就緒訊息達到
+200 條時，復原仍會暫停。100 條上限等於一頁復原批次，並不保證吞吐量。升級前
+停止所有舊的生產節點。舊訊息也計入上限，但已超過 100 條的積壓會逐漸減少；
+新預約不會增加該積壓。
+
+`hollo.poll-notifications.queue` 日誌以 warning 級別報告容量延後、喚醒取代與
+鎖逾時，每個原因、每個程序每分鐘最多一次。用下面的 SQL 觀察儲存壓力。入列計數
+包含合併及延後的嘗試，不代表儲存訊息數。
+
+~~~~ sql
+SELECT count(*) AS queued,
+       count(*) FILTER (WHERE created + delay <= CURRENT_TIMESTAMP) AS ready,
+       count(*) FILTER (WHERE created + delay > CURRENT_TIMESTAMP) AS delayed,
+       count(*) FILTER (
+         WHERE message->>'type' = 'task'
+           AND message->>'taskName' = 'hollo.poll-notification.v1'
+       ) AS pending_polls
+FROM hollo_task_message_v1;
+~~~~
+
+
 Docker Compose 設定
 -------------------
 

@@ -17,6 +17,7 @@ import {
 
 import metadata from "../../package.json" with { type: "json" };
 import { registerBackgroundJobs } from "../background/jobs";
+import { PollMessageQueue } from "../background/poll-queue";
 import { TaskMessageQueue } from "../background/queue";
 import { postgres } from "../db";
 import { FEDIFY_ORIGIN } from "../env";
@@ -46,9 +47,7 @@ const activityQueue = new ParallelMessageQueue(
   10,
 );
 export const taskQueue = new TaskMessageQueue(
-  new PostgresMessageQueue(postgres, {
-    tableName: "hollo_task_message_v1",
-    channelName: "hollo_task_channel_v1",
+  new PollMessageQueue(postgres, {
     handlerTimeout: { seconds: 0 },
   }),
 );

@@ -120,6 +120,40 @@ interrupted work remains recoverable. Stop older nodes before upgrading and
 run compatible task definitions on every node.
 
 
+The shared database stores at most 100 pending poll messages, including delayed
+wakeups and retries, with one wakeup per poll for new schedules. Repeated votes
+and expiry updates coalesce: an earlier expiry advances the existing wakeup;
+a later expiry is reloaded when that wakeup runs. At the limit, an earlier
+wakeup replaces the latest one. Deferred or displaced polls are recovered after
+expiry. Bursts can also defer admission when its database lock cannot be
+acquired within one second. These limits apply across nodes, rather than per
+worker. They bound stored work, not notifications or running handlers.
+
+Delayed poll wakeups use the queue's five-second polling interval rather than
+allocating a timer in each worker. Recovery still pauses at 200 shared ready
+messages. The limit of 100 matches one recovery page; it is not a throughput
+guarantee. Stop all older producers before upgrading. Legacy queued messages
+count toward the limit, but an existing backlog above 100 drains gradually;
+new admissions do not increase that backlog.
+
+The `hollo.poll-notifications.queue` logger reports capacity deferrals,
+displaced wakeups and lock timeouts at warning level, at most once per reason
+per minute per process. Inspect storage pressure with the query below.
+Enqueue counters include coalesced and deferred attempts, so they do not
+measure stored messages.
+
+~~~~ sql
+SELECT count(*) AS queued,
+       count(*) FILTER (WHERE created + delay <= CURRENT_TIMESTAMP) AS ready,
+       count(*) FILTER (WHERE created + delay > CURRENT_TIMESTAMP) AS delayed,
+       count(*) FILTER (
+         WHERE message->>'type' = 'task'
+           AND message->>'taskName' = 'hollo.poll-notification.v1'
+       ) AS pending_polls
+FROM hollo_task_message_v1;
+~~~~
+
+
 Docker Compose setup
 --------------------
 

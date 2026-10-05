@@ -109,6 +109,38 @@ Hollo는 여섯 가지 주요 구성 요소로 이루어져 있습니다:
 업그레이드 전 기존 노드를 중지하고 모든 노드에 호환되는 태스크 정의를 배포하세요.
 
 
+공유 데이터베이스에는 지연 wakeup과 재시도를 포함해 대기 투표 메시지를 최대
+100개 저장하며, 새 예약은 투표당 하나의 wakeup으로 합칩니다. 반복 참여와 만료
+변경도 합쳐지고, 만료가 앞당겨지면 기존 wakeup을 앞당깁니다. 만료가 늦춰지면
+wakeup 실행 시 현재 시각을 다시 읽습니다. 상한에서는 더 이른 wakeup이 가장
+늦은 메시지를 대체합니다. 보류되거나 밀려난 투표는 만료 후 복구됩니다. 부하가
+몰려 입장 잠금을 1초 안에 얻지 못해도 예약을 보류할 수 있습니다. 이 상한은
+워커별이 아니라 모든 노드에 걸쳐 적용되며, 실행 중 handler나 알림 수가 아닌
+저장된 작업 수를 제한합니다.
+
+지연 예약은 워커마다 타이머를 할당하는 대신 큐의 5초 주기 확인을 사용합니다.
+복구는 공유 ready 메시지가 200개이면 여전히 일시 중지합니다. 100개 상한은
+복구 한 페이지 크기이며 처리량 보장은 아닙니다. 업그레이드 전에 모든 기존
+생산자를 중지하세요. 기존 메시지도 상한에 포함되지만 이미 100개를 넘은 backlog는
+점차 줄어듭니다. 새 예약으로 그 backlog가 더 커지지는 않습니다.
+
+`hollo.poll-notifications.queue` 로거는 상한에 따른 보류, wakeup 대체와 잠금
+시간 초과를 warning 수준으로 원인별·프로세스별 매분 최대 한 번 기록합니다.
+아래 SQL로 저장 부하를 확인할 수 있습니다. enqueue 카운터에는 합쳐지거나
+보류된 시도도 포함되므로 저장 메시지 수를 나타내지 않습니다.
+
+~~~~ sql
+SELECT count(*) AS queued,
+       count(*) FILTER (WHERE created + delay <= CURRENT_TIMESTAMP) AS ready,
+       count(*) FILTER (WHERE created + delay > CURRENT_TIMESTAMP) AS delayed,
+       count(*) FILTER (
+         WHERE message->>'type' = 'task'
+           AND message->>'taskName' = 'hollo.poll-notification.v1'
+       ) AS pending_polls
+FROM hollo_task_message_v1;
+~~~~
+
+
 Docker Compose 설정
 -------------------
 
