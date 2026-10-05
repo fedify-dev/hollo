@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.22
 --------------
 
-To be released.
+Released on October 5, 2026.
 
  -  Fixed the language of remote posts not being stored when they were
     received from Mastodon, Hollo, or any other software that sends `content`
