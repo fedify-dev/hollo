@@ -1090,6 +1090,99 @@ describe("persistPost", () => {
       { accountId: mentioned.id, postId: result.id },
     ]);
   });
+
+  it("stores the language when content is accompanied by contentMap", async () => {
+    expect.assertions(2);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://remote.test/@author/posts/content-map",
+      content: "<p>こんにちは</p>",
+      contentMap: { ja: "<p>こんにちは</p>" },
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.contentHtml).toBe("<p>こんにちは</p>");
+    expect(result?.language).toBe("ja");
+  });
+
+  it("stores the language from summaryMap when content has none", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://remote.test/@author/posts/summary-map",
+      summary: "CW",
+      summaryMap: { "zh-TW": "CW" },
+      content: "<p>內容</p>",
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.language).toBe("zh-TW");
+  });
+
+  it("normalizes extended language tags such as zh-YUE", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://remote.test/@author/posts/extlang",
+      content: "<p>你好</p>",
+      contentMap: { "zh-YUE": "<p>你好</p>" },
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.language).toBe("yue");
+  });
+
+  it("ignores undetermined languages from a default @language", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { "@language": "und" },
+      ],
+      type: "Note",
+      id: "https://remote.test/@author/posts/default-language",
+      content: "<p>こんにちは</p>",
+      contentMap: { ja: "<p>こんにちは</p>" },
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.language).toBe("ja");
+  });
 });
 
 describe("persistPost Article titles", () => {
@@ -1191,6 +1284,28 @@ describe("persistPost Article titles", () => {
       }),
     );
     expect(post?.language).toBe("ja");
+  });
+
+  it("uses the nameMap locale when name is accompanied by nameMap", async () => {
+    expect.assertions(1);
+    const object = await Article.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Article",
+      id: "https://remote.test/@author/articles/1",
+      name: "제목",
+      nameMap: { ko: "제목" },
+      content: "<p>Body</p>",
+      to: PUBLIC_COLLECTION.href,
+    });
+    const post = await persistAndLoad(
+      object.clone({
+        attribution: new Person({
+          id: new URL("https://remote.test/@author"),
+          inbox: new URL("https://remote.test/@author/inbox"),
+        }),
+      }),
+    );
+    expect(post?.language).toBe("ko");
   });
 });
 
