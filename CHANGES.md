@@ -6,6 +6,12 @@ Version 0.9.22
 
 To be released.
 
+ -  Fixed the language of remote posts not being stored when they were
+    received from Mastodon, Hollo, or any other software that sends `content`
+    together with `contentMap`.  [[#647]]
+
+[#647]: https://github.com/fedify-dev/hollo/issues/647
+
 
 Version 0.9.21
 --------------

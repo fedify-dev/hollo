@@ -755,6 +755,77 @@ describe("persistPost", () => {
       { accountId: mentioned.id, postId: result.id },
     ]);
   });
+
+  it("stores the language when content is accompanied by contentMap", async () => {
+    expect.assertions(2);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://remote.test/@author/posts/content-map",
+      content: "<p>こんにちは</p>",
+      contentMap: { ja: "<p>こんにちは</p>" },
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.contentHtml).toBe("<p>こんにちは</p>");
+    expect(result?.language).toBe("ja");
+  });
+
+  it("stores the language from summaryMap when content has none", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://remote.test/@author/posts/summary-map",
+      summary: "CW",
+      summaryMap: { "zh-TW": "CW" },
+      content: "<p>內容</p>",
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.language).toBe("zh-TW");
+  });
+
+  it("ignores undetermined languages from a default @language", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        { "@language": "und" },
+      ],
+      type: "Note",
+      id: "https://remote.test/@author/posts/default-language",
+      content: "<p>こんにちは</p>",
+      contentMap: { ja: "<p>こんにちは</p>" },
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.language).toBe("ja");
+  });
 });
 
 describe("toObject", () => {
