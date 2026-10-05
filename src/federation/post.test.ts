@@ -802,6 +802,28 @@ describe("persistPost", () => {
     expect(result?.language).toBe("zh-TW");
   });
 
+  it("normalizes extended language tags such as zh-YUE", async () => {
+    expect.assertions(1);
+    const author = await seedRemoteAccount("author");
+    const object = await Note.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Note",
+      id: "https://remote.test/@author/posts/extlang",
+      content: "<p>你好</p>",
+      contentMap: { "zh-YUE": "<p>你好</p>" },
+      to: PUBLIC_COLLECTION.href,
+    });
+
+    const result = await persistPost(
+      db,
+      object.clone({ attribution: createPerson(author) }),
+      "https://hollo.test",
+      { account: author },
+    );
+
+    expect(result?.language).toBe("yue");
+  });
+
   it("ignores undetermined languages from a default @language", async () => {
     expect.assertions(1);
     const author = await seedRemoteAccount("author");

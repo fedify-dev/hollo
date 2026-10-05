@@ -8,9 +8,17 @@ To be released.
 
  -  Fixed the language of remote posts not being stored when they were
     received from Mastodon, Hollo, or any other software that sends `content`
-    together with `contentMap`.  [[#647]]
+    together with `contentMap`.  [[#647], [#659]]
 
+ -  Upgraded Fedify to 2.2.16, which normalizes BCP 47 extended language
+    subtags before parsing language tags.  Language-tagged strings with tags
+    like `zh-YUE`, which Mastodon uses for Cantonese, were previously dropped
+    because `Intl.Locale` rejects them; they are now kept with the canonical
+    tag (e.g., `yue`).  [[#647], [fedify-dev/fedify#1229], [#659]]
+
+[fedify-dev/fedify#1229]: https://github.com/fedify-dev/fedify/issues/1229
 [#647]: https://github.com/fedify-dev/hollo/issues/647
+[#659]: https://github.com/fedify-dev/hollo/pull/659
 
 
 Version 0.9.21
