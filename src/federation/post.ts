@@ -119,6 +119,21 @@ function getQuoteApprovalPolicy(
   return "nobody";
 }
 
+// Mastodon and Hollo send both `content` and `contentMap`, so after JSON-LD
+// expansion the singular `content` accessor returns the plain string rather
+// than the LanguageString; search all values instead.  Values tagged `und`
+// (e.g., from a context-level default `@language`) are skipped, and recent
+// engines report `undefined` instead of `"und"` as their language:
+function getLanguage(object: ASPost): string | null {
+  for (const value of [...object.contents, ...object.summaries]) {
+    if (!(value instanceof LanguageString)) continue;
+    const language = value.locale.language;
+    if (language == null || language === "und") continue;
+    return value.locale.toString();
+  }
+  return null;
+}
+
 async function getVerifiedQuoteAuthorizationIri(
   object: ASPost,
   quoteTargetIri: string | null,
@@ -378,12 +393,7 @@ export async function persistPost(
           : "direct",
     summary: object.summary?.toString(),
     contentHtml: object.content?.toString(),
-    language:
-      object.content instanceof LanguageString
-        ? object.content.locale.toString()
-        : object.summary instanceof LanguageString
-          ? object.summary.locale.toString()
-          : null,
+    language: getLanguage(object),
     previewCard,
     tags,
     emojis,
