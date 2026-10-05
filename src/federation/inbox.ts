@@ -768,9 +768,12 @@ export async function onQuoteRequested(
   });
   if (target?.account.owner == null) return;
   // Resolve the instrument on an independent copy so the request echoed
-  // back in the response keeps the sender's representation (`clone()`
-  // would share the instrument storage).  Unlike the helper, this lookup
-  // does not suppress errors, so transient failures are retried.
+  // back in the response keeps the sender's representation.  `clone()` is
+  // shallow: an embedded instrument would stay shared, and hydrating it
+  // (e.g., its `attributedTo`) would leak into the echoed request.  Replace
+  // this round trip with `deepClone()` once Fedify provides it
+  // (fedify-dev/fedify#1243).  Unlike the helper, this lookup does not
+  // suppress errors, so transient failures are retried.
   const resolving = await QuoteRequest.fromJsonLd(
     await request.toJsonLd({ contextLoader: ctx.contextLoader }),
     { documentLoader: ctx.documentLoader, contextLoader: ctx.contextLoader },
