@@ -67,6 +67,12 @@ To be released.
     successor account at the top of the profile card and muting the old
     profile's visual treatment.
 
+ -  Limited pending poll notification messages to 100 across the shared task
+    queue, including delayed wakeups and retries. Repeated schedules coalesce,
+    earlier wakeups take priority at the limit, and deferred work is recovered
+    after expiry. Delayed poll schedules no longer allocate worker timers.
+    [[#653], [#663]]
+
  -  Replaced the undocumented `SEONBI_URL` integration with the embedded
     [Gukhanmun] Node-API binding.  Set `GUKHANMUN` to a comma-separated list of
     locale patterns, such as `ko,ko-*`, to add Hangul readings to Hanja in
@@ -155,7 +161,9 @@ To be released.
 [#648]: https://github.com/fedify-dev/hollo/pull/648
 [#649]: https://github.com/fedify-dev/hollo/pull/649
 [#650]: https://github.com/fedify-dev/hollo/pull/650
+[#653]: https://github.com/fedify-dev/hollo/issues/653
 [#660]: https://github.com/fedify-dev/hollo/pull/660
+[#663]: https://github.com/fedify-dev/hollo/pull/663
 
 
 Version 0.9.22

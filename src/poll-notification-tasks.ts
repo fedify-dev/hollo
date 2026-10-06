@@ -59,6 +59,7 @@ export function registerPollNotifications(
       task,
       { pollId },
       {
+        orderingKey: `hollo.poll-notification:${pollId}`,
         delay: {
           milliseconds: Math.min(
             MAX_DELAY_MS,
