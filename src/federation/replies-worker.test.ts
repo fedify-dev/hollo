@@ -5,15 +5,25 @@ import {
   type MessageQueue,
   type MessageQueueEnqueueOptions,
 } from "@fedify/fedify";
-import type { RemoteDocument } from "@fedify/vocab";
-import { and, eq, inArray, isNull, lte } from "drizzle-orm";
+import { Note, Person, type RemoteDocument } from "@fedify/vocab";
+import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { cleanDatabase } from "../../tests/helpers";
-import { createAccount } from "../../tests/helpers/oauth";
+import {
+  createAccount,
+  createOAuthApplication,
+  getAccessToken,
+  bearerAuthorization,
+} from "../../tests/helpers/oauth";
 import db from "../db";
 import {
   accounts,
+  follows,
+  lists,
+  listMembers,
+  blocks,
+  mutes,
   instances,
   posts,
   remoteReplyScrapeJobs,
@@ -21,6 +31,7 @@ import {
 } from "../schema";
 import type { Uuid } from "../uuid";
 import { uuidv7 } from "../uuid";
+import { enqueueRemoteReplyScrape } from "./replies";
 import { registerRemoteReplyScrapes } from "./replies-tasks";
 import {
   claimRemoteReplyScrapeJob as claimById,
@@ -515,58 +526,38 @@ describe("remote replies scrape worker", () => {
     expect(job?.attempts).toBe(1);
   });
 
-  it("does not reclaim processing jobs during long throttling sleeps", async () => {
-    expect.assertions(4);
+  it("reschedules long cooldowns without sleeping or advancing slots", async () => {
     const { jobId, postIri, repliesIri } = await seedPostWithScrapeJob();
+    const now = new Date("2026-04-25T00:00:00Z");
+    const sleep = vi.fn(async () => undefined);
     await seedRemoteAccount("replyer");
-    const startedAt = new Date("2026-04-25T00:00:00.000Z");
-    const requestTimes = [
-      startedAt,
-      new Date("2026-04-25T00:00:01.000Z"),
-      new Date("2026-04-25T00:07:31.000Z"),
-      new Date("2026-04-25T00:15:01.000Z"),
-      new Date("2026-04-25T00:20:02.000Z"),
-      new Date("2026-04-25T00:20:03.000Z"),
-    ];
-    const reclaimTimes = [
-      new Date("2026-04-25T00:07:31.000Z"),
-      new Date("2026-04-25T00:16:00.000Z"),
-      new Date("2026-04-25T00:20:01.000Z"),
-    ];
-    let reclaimedDuringSleep = false;
-    const sleepMilliseconds: number[] = [];
-
-    const processed = await processDueRemoteReplyScrapeJobs({
-      clock: () => requestTimes.shift() ?? new Date("2026-04-25T00:20:04.000Z"),
-      documentLoader: makeLoader({
-        [repliesIri]: collection(repliesIri, [
-          reply({
-            id: "https://remote.test/@replyer/posts/1",
-            replyTarget: postIri,
-          }),
-        ]),
-        "https://remote.test/@replyer": actor("replyer"),
-      }),
-      intervalSeconds: 20 * 60,
-      now: startedAt,
-      sleep: async (milliseconds) => {
-        sleepMilliseconds.push(milliseconds);
-        const reclaimed = await claimRemoteReplyScrapeJob(
-          reclaimTimes.shift() ?? new Date("2026-04-25T00:20:01.000Z"),
-          15 * 60,
-        );
-        reclaimedDuringSleep = reclaimed != null;
+    await processDueRemoteReplyScrapeJobs({
+      now,
+      intervalSeconds: 120,
+      sleep,
+      documentLoader: async (url) => {
+        if (url === repliesIri)
+          await db
+            .update(remoteReplyScrapeOrigins)
+            .set({ cooldownUntil: new Date(+now + 1200_000) })
+            .where(eq(remoteReplyScrapeOrigins.originHost, "remote.test"));
+        return makeLoader({
+          [repliesIri]: collection(repliesIri, [
+            reply({ id: "https://remote.test/posts/1", replyTarget: postIri }),
+          ]),
+          "https://remote.test/@replyer": actor("replyer"),
+        })(url);
       },
-      staleProcessingSeconds: 15 * 60,
     });
-
     const job = await db.query.remoteReplyScrapeJobs.findFirst({
       where: { id: { eq: jobId } },
     });
-    expect(processed).toBe(1);
-    expect(reclaimedDuringSleep).toBe(false);
-    expect(sleepMilliseconds).toEqual([450_000, 450_000, 300_000]);
-    expect(job?.attempts).toBe(1);
+    const origin = await db.query.remoteReplyScrapeOrigins.findFirst();
+    expect(job?.status).toBe("pending");
+    expect(job?.nextAttemptAt).toEqual(new Date(+now + 1200_000));
+    expect(origin?.nextRequestAt).toEqual(new Date(+now + 1200_000));
+    expect(origin?.processingJobId).toBeNull();
+    expect(sleep).not.toHaveBeenCalled();
   });
 
   it("does not reclaim jobs during long remote fetches", async () => {
@@ -851,7 +842,9 @@ describe("remote replies scrape worker", () => {
     const job = await db.query.remoteReplyScrapeJobs.findFirst({
       where: { id: { eq: jobId } },
     });
-    const origin = await db.query.remoteReplyScrapeOrigins.findFirst();
+    const origin = await db.query.remoteReplyScrapeOrigins.findFirst({
+      where: { originHost: { eq: "remote.test" } },
+    });
     expect(processed).toBe(0);
     expect(job?.status).toBe("failed");
     expect(job?.errorMessage).toBe("cross-origin rate limited");
@@ -1211,46 +1204,34 @@ describe("remote replies scrape worker", () => {
     expect(origin?.processingJobId).toBe(next.jobId);
   });
 
-  it("records per-request timestamps for throttled origin request fields", async () => {
-    expect.assertions(3);
+  it("spaces actual document requests and records their completion times", async () => {
     const { postIri, repliesIri } = await seedPostWithScrapeJob();
-    const now = new Date("2026-04-25T00:00:00.000Z");
-    const requestTimes = [
-      new Date("2026-04-25T00:00:01.000Z"),
-      new Date("2026-04-25T00:00:02.000Z"),
-      new Date("2026-04-25T00:00:03.000Z"),
-      new Date("2026-04-25T00:00:04.000Z"),
-      new Date("2026-04-25T00:00:05.000Z"),
-      new Date("2026-04-25T00:00:06.000Z"),
-      new Date("2026-04-25T00:00:07.000Z"),
-      new Date("2026-04-25T00:00:08.000Z"),
-    ];
+    const now = new Date("2026-04-25T00:00:00Z");
+    let time = +now;
+    const times: number[] = [];
     await seedRemoteAccount("replyer");
-
     await processDueRemoteReplyScrapeJobs({
-      clock: () => requestTimes.shift() ?? new Date("2026-04-25T00:00:04.000Z"),
-      documentLoader: makeLoader({
-        [repliesIri]: collection(repliesIri, [
-          reply({
-            id: "https://remote.test/@replyer/posts/1",
-            replyTarget: postIri,
-          }),
-        ]),
-        "https://remote.test/@replyer": actor("replyer"),
-      }),
-      intervalSeconds: 10,
       now,
-      sleep: async () => undefined,
+      clock: () => new Date(time),
+      intervalSeconds: 10,
+      sleep: async (ms) => {
+        time += ms;
+      },
+      documentLoader: makeLoader(
+        {
+          [repliesIri]: collection(repliesIri, [
+            reply({ id: "https://remote.test/posts/1", replyTarget: postIri }),
+          ]),
+          "https://remote.test/@replyer": actor("replyer"),
+        },
+        () => times.push(time),
+      ),
     });
-
     const origin = await db.query.remoteReplyScrapeOrigins.findFirst();
-    expect(origin?.lastRequestAt?.toISOString()).toBe(
-      "2026-04-25T00:00:06.000Z",
-    );
-    expect(origin?.nextRequestAt.toISOString()).toBe(
-      "2026-04-25T00:00:16.000Z",
-    );
-    expect(origin?.updated.toISOString()).toBe("2026-04-25T00:00:08.000Z");
+    expect(times).toEqual([+now, +now + 10_000]);
+    expect(origin?.lastRequestAt).toEqual(new Date(times.at(-1)!));
+    expect(origin?.nextRequestAt).toEqual(new Date(time + 10_000));
+    expect(origin?.updated).toEqual(new Date(time));
   });
 });
 
@@ -1334,15 +1315,12 @@ describe("remote replies task delivery", () => {
           headers: { "Retry-After": "300" },
         }),
       });
-      const originalTransaction = db.transaction.bind(db);
       const transaction = vi.spyOn(db, "transaction");
       const f = fixture({
         now,
         intervalSeconds: 0,
         documentLoader: async () => {
-          transaction
-            .mockImplementationOnce(originalTransaction)
-            .mockRejectedValueOnce(new Error("connection reset"));
+          transaction.mockRejectedValueOnce(new Error("connection reset"));
           throw error;
         },
       });
@@ -1756,4 +1734,1125 @@ it("a terminal scrape failure schedules its same-host sibling with spacing", asy
       where: { id: { eq: sibling.jobId } },
     }),
   ).toMatchObject({ status: "pending", attempts: 0 });
+});
+
+async function seedContextJob() {
+  const seed = await seedPostWithScrapeJob({
+    repliesIri: "https://remote.test/conversation/1",
+  });
+  await db
+    .update(remoteReplyScrapeJobs)
+    .set({ kind: "context" })
+    .where(eq(remoteReplyScrapeJobs.id, seed.jobId));
+  return seed;
+}
+function documentReply(options: Parameters<typeof reply>[0]) {
+  return {
+    "@context": "https://www.w3.org/ns/activitystreams",
+    ...reply(options),
+  };
+}
+async function gateReplies(
+  seed: Awaited<ReturnType<typeof seedContextJob>>,
+  repliesIri = "https://remote.test/fallback",
+) {
+  const post = await db.query.posts.findFirst({
+    where: { id: { eq: seed.postId } },
+  });
+  await db.transaction((tx) =>
+    enqueueRemoteReplyScrape(tx, {
+      baseUrl: "https://hollo.test",
+      post: post!,
+      contextIri: new URL(seed.repliesIri),
+      repliesIri: new URL(repliesIri),
+    }),
+  );
+  return db.query.remoteReplyScrapeJobs.findFirst({
+    where: { kind: { eq: "replies" }, repliesIri: { eq: repliesIri } },
+  });
+}
+const contextOptions = { intervalSeconds: 0, sleep: async () => undefined };
+
+describe("FEP-f228 conversation backfill", () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+    vi.restoreAllMocks();
+  });
+
+  it("enqueues context-only seeds and gates each seed's distinct replies", async () => {
+    const seed = await seedContextJob();
+    const first = await gateReplies(seed);
+    const second = await gateReplies(
+      seed,
+      "https://remote.test/fallback/second",
+    );
+    expect(first?.status).toBe("waiting");
+    expect(second?.blockedByJobId).toBe(seed.jobId);
+    expect(
+      await db.query.remoteReplyScrapeJobs.findMany({
+        where: { kind: { eq: "context" } },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("reads paginated contexts, reconciles out-of-order parents, and leaves missing ancestors unfetched", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    await seedRemoteAccount("replyer");
+    const parent = "https://remote.test/posts/parent";
+    const child = "https://remote.test/posts/child";
+    const orphan = "https://remote.test/posts/orphan";
+    const missing = "https://remote.test/posts/deleted";
+    const page = `${seed.repliesIri}?page=1`;
+    const documents = {
+      [seed.repliesIri]: { ...collection(seed.repliesIri, []), first: page },
+      [page]: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: page,
+        type: "OrderedCollectionPage",
+        partOf: seed.repliesIri,
+        orderedItems: [
+          reply({ id: child, replyTarget: parent }),
+          reply({ id: parent, replyTarget: seed.postIri }),
+          reply({ id: orphan, replyTarget: missing }),
+        ],
+      },
+      [child]: documentReply({ id: child, replyTarget: parent }),
+      [parent]: documentReply({ id: parent, replyTarget: seed.postIri }),
+      [orphan]: documentReply({ id: orphan, replyTarget: missing }),
+      "https://remote.test/@replyer": actor("replyer"),
+    };
+    const urls: string[] = [];
+    expect(
+      await processDueRemoteReplyScrapeJobs({
+        ...contextOptions,
+        documentLoader: makeLoader(documents, (url) => urls.push(url)),
+      }),
+    ).toBe(3);
+    const parentPost = await db.query.posts.findFirst({
+      where: { iri: { eq: parent } },
+    });
+    const childPost = await db.query.posts.findFirst({
+      where: { iri: { eq: child } },
+    });
+    const orphanPost = await db.query.posts.findFirst({
+      where: { iri: { eq: orphan } },
+    });
+    expect(childPost?.replyTargetId).toBe(parentPost?.id);
+    expect(parentPost?.repliesCount).toBe(1);
+    expect(orphanPost?.replyTargetId).toBeNull();
+    expect(urls).not.toContain(missing);
+    expect(urls.filter((url) => url === child)).toHaveLength(1);
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("completed");
+  });
+
+  it("covers waiting replies after a fully read empty context", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader({
+        [seed.repliesIri]: collection(seed.repliesIri, []),
+      }),
+    });
+    const jobs = await db.query.remoteReplyScrapeJobs.findMany();
+    expect(jobs.every((job) => job.status === "completed")).toBe(true);
+    expect(jobs.find((job) => job.kind === "context")?.partial).toBe(false);
+  });
+
+  it("releases replies when the context is missing and recovers orphaned gates", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader({}),
+    });
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("pending");
+    await db
+      .update(remoteReplyScrapeJobs)
+      .set({ status: "waiting", blockedByJobId: null })
+      .where(eq(remoteReplyScrapeJobs.kind, "replies"));
+    await fixture().tasks.reclaim();
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("pending");
+  });
+
+  it("counts existing objects against the yielded-item cap without changing their content", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    const knownIri = "https://remote.test/posts/known";
+    const seedPost = await db.query.posts.findFirst({
+      where: { id: { eq: seed.postId } },
+    });
+    await db.insert(posts).values({
+      ...seedPost!,
+      id: uuidv7(),
+      iri: knownIri,
+      replyTargetId: seed.postId,
+    });
+    const unseen = "https://remote.test/posts/unseen";
+    const loader = vi.fn(
+      makeLoader({
+        [seed.repliesIri]: collection(seed.repliesIri, [
+          reply({
+            id: knownIri,
+            replyTarget: seed.postIri,
+            content: "Forged replacement",
+          }),
+          reply({ id: unseen, replyTarget: seed.postIri }),
+        ]),
+      }),
+    );
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      maxItems: 1,
+      documentLoader: loader,
+    });
+    const job = await db.query.remoteReplyScrapeJobs.findFirst({
+      where: { kind: { eq: "context" } },
+    });
+    expect(job).toMatchObject({
+      partial: true,
+      yieldedItems: 1,
+      fetchedItems: 1,
+      requestCount: 1,
+    });
+    expect(
+      (await db.query.posts.findFirst({ where: { iri: { eq: knownIri } } }))
+        ?.content,
+    ).toBe("Root");
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: unseen } } }),
+    ).toBeUndefined();
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("pending");
+  });
+
+  it("shares the request cap with actor persistence and rolls back incomplete items", async () => {
+    const seed = await seedContextJob();
+    const id = "https://remote.test/posts/budget";
+    const loader = vi.fn(
+      makeLoader({
+        [seed.repliesIri]: collection(seed.repliesIri, [
+          reply({ id, replyTarget: seed.postIri }),
+        ]),
+        [id]: documentReply({ id, replyTarget: seed.postIri }),
+        "https://remote.test/@replyer": actor("replyer"),
+      }),
+    );
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      maxRequests: 2,
+      documentLoader: loader,
+    });
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+    ).toBeUndefined();
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())!).toMatchObject({
+      status: "completed",
+      partial: true,
+      requestCount: 2,
+    });
+  });
+
+  it("refetches embedded objects and rejects forged, local, and mismatched identities", async () => {
+    const seed = await seedContextJob();
+    const id = "https://remote.test/posts/forged";
+    const local = "https://hollo.test/posts/local";
+    const wrongActor = "https://remote.test/posts/foreign-author";
+    const good = "https://remote.test/posts/good";
+    await seedRemoteAccount("replyer");
+    const documents = {
+      [seed.repliesIri]: collection(seed.repliesIri, [
+        reply({ id, replyTarget: seed.postIri }),
+        reply({ id: local, replyTarget: seed.postIri }),
+        reply({ id: wrongActor, replyTarget: seed.postIri }),
+        reply({ id: good, replyTarget: seed.postIri, content: "Forged" }),
+      ]),
+      [id]: documentReply({
+        id: "https://foreign.test/posts/forged",
+        replyTarget: seed.postIri,
+      }),
+      [wrongActor]: documentReply({
+        id: wrongActor,
+        replyTarget: seed.postIri,
+        host: "foreign.test",
+      }),
+      [good]: documentReply({
+        id: good,
+        replyTarget: seed.postIri,
+        content: "Authoritative",
+      }),
+      "https://remote.test/@replyer": actor("replyer"),
+    };
+    const urls: string[] = [];
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(documents, (url) => urls.push(url)),
+    });
+    const saved = await db.query.posts.findMany();
+    expect(saved.map((post) => post.iri).sort()).toEqual(
+      [seed.postIri, good].sort(),
+    );
+    expect(saved.find((post) => post.iri === good)?.contentHtml).toBe(
+      "<p>Authoritative</p>",
+    );
+    expect(urls).not.toContain(local);
+  });
+
+  it("retains own-host Retry-After backoff and keeps fallbacks gated", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    const now = new Date();
+    const error = Object.assign(new Error("limited"), {
+      response: new Response(null, {
+        status: 429,
+        headers: { "Retry-After": "120" },
+      }),
+    });
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      now,
+      documentLoader: async () => {
+        throw error;
+      },
+    });
+    const job = await db.query.remoteReplyScrapeJobs.findFirst({
+      where: { kind: { eq: "context" } },
+    });
+    expect(job).toMatchObject({ status: "pending", requestCount: 1 });
+    expect(job?.nextAttemptAt).toEqual(new Date(+now + 120_000));
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("waiting");
+  });
+
+  it("skips a foreign host after 429, caches failures, and continues healthy items", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    const bad = "https://foreign.test/posts/bad";
+    const later = "https://foreign.test/posts/later";
+    const good = "https://remote.test/posts/good";
+    await seedRemoteAccount("replyer");
+    const base = makeLoader({
+      [seed.repliesIri]: collection(seed.repliesIri, [
+        reply({ id: bad, replyTarget: seed.postIri }),
+        reply({ id: later, replyTarget: seed.postIri }),
+        reply({ id: good, replyTarget: seed.postIri }),
+      ]),
+      [good]: documentReply({ id: good, replyTarget: seed.postIri }),
+      "https://remote.test/@replyer": actor("replyer"),
+    });
+    const urls: string[] = [];
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: async (url) => {
+        urls.push(url);
+        if (new URL(url).host === "foreign.test")
+          throw Object.assign(new Error("foreign limited"), {
+            response: new Response(null, {
+              status: 429,
+              headers: { "Retry-After": "300" },
+            }),
+          });
+        return base(url);
+      },
+    });
+    expect(urls.filter((url) => new URL(url).host === "foreign.test")).toEqual([
+      bad,
+    ]);
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: good } } }),
+    ).toBeDefined();
+    expect(
+      (await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { kind: { eq: "context" } },
+      }))!,
+    ).toMatchObject({ status: "completed", partial: true });
+  });
+
+  it("merges resolved aliases into a fresh completed job and settles late seed gates", async () => {
+    const seed = await seedContextJob();
+    const canonical = "https://remote.test/conversation/canonical";
+    const winnerId = uuidv7();
+    await db.insert(remoteReplyScrapeJobs).values({
+      id: winnerId,
+      kind: "context",
+      postId: seed.postId,
+      postIri: seed.postIri,
+      repliesIri: canonical,
+      originHost: "remote.test",
+      baseUrl: "https://hollo.test",
+      status: "completed",
+      completedAt: new Date(),
+    });
+    await gateReplies(seed);
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader({
+        [seed.repliesIri]: collection(canonical, []),
+      }),
+    });
+    expect(
+      await db.query.remoteReplyScrapeJobs.findMany({
+        where: { kind: { eq: "context" } },
+      }),
+    ).toHaveLength(1);
+    const alias = await db.query.remoteContextScrapeAliases.findFirst({
+      where: { iri: { eq: seed.repliesIri } },
+    });
+    expect(alias?.jobId).toBe(winnerId);
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("completed");
+  });
+
+  it("replaces expired canonical jobs instead of suppressing a new traversal", async () => {
+    const seed = await seedContextJob();
+    const canonical = "https://remote.test/conversation/canonical";
+    await db.insert(remoteReplyScrapeJobs).values({
+      id: uuidv7(),
+      kind: "context",
+      postId: seed.postId,
+      postIri: seed.postIri,
+      repliesIri: canonical,
+      originHost: "remote.test",
+      baseUrl: "https://hollo.test",
+      status: "completed",
+      completedAt: new Date(0),
+    });
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader({
+        [seed.repliesIri]: collection(canonical, []),
+      }),
+    });
+    const jobs = await db.query.remoteReplyScrapeJobs.findMany();
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      id: seed.jobId,
+      repliesIri: canonical,
+      status: "completed",
+    });
+  });
+  it("does not hold actor host locks while fetching persistence dependencies", async () => {
+    const seed = await seedContextJob();
+    const id = "https://remote.test/posts/new-author";
+    const followingIri = "https://remote.test/@fresh/following";
+    let checked = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
+    try {
+      const base = makeLoader({
+        [seed.repliesIri]: collection(seed.repliesIri, [
+          reply({ id, replyTarget: seed.postIri, username: "fresh" }),
+        ]),
+        [id]: documentReply({
+          id,
+          replyTarget: seed.postIri,
+          username: "fresh",
+        }),
+        "https://remote.test/@fresh": {
+          ...actor("fresh"),
+          preferredUsername: "fresh",
+          following: followingIri,
+        },
+        [followingIri]: collection(followingIri, []),
+        "https://remote.test/@fresh/followers": collection(
+          "https://remote.test/@fresh/followers",
+          [],
+        ),
+      });
+      await processDueRemoteReplyScrapeJobs({
+        ...contextOptions,
+        documentLoader: async (url) => {
+          if (url === followingIri) {
+            await db.transaction(async (tx) => {
+              await tx.execute(
+                sql`select host from ${instances} where host = 'remote.test' for update nowait`,
+              );
+            });
+            checked = true;
+          }
+          return base(url);
+        },
+      });
+      expect(checked).toBe(true);
+      expect(
+        await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+      ).toBeDefined();
+      expect((await db.query.remoteReplyScrapeJobs.findFirst())?.partial).toBe(
+        false,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("leaves an interrupted poll unsaved and retries it completely", async () => {
+    const seed = await seedContextJob();
+    const id = "https://remote.test/posts/poll";
+    const option = "https://remote.test/posts/poll/choice";
+    await seedRemoteAccount("replyer");
+    const controller = new AbortController();
+    const documents = {
+      [seed.repliesIri]: collection(seed.repliesIri, [
+        reply({ id, replyTarget: seed.postIri }),
+      ]),
+      [id]: {
+        ...documentReply({ id, replyTarget: seed.postIri }),
+        type: "Question",
+        oneOf: option,
+        endTime: "2030-01-01T00:00:00Z",
+      },
+      [option]: {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        id: option,
+        type: "Note",
+        name: "Yes",
+      },
+      "https://remote.test/@replyer": actor("replyer"),
+    };
+    const base = makeLoader(documents);
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      signal: controller.signal,
+      documentLoader: async (url) => {
+        if (url === option)
+          controller.abort(new Error("shutdown during preparation"));
+        return base(url);
+      },
+    });
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+    ).toBeUndefined();
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+      "pending",
+    );
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: base,
+    });
+    const post = await db.query.posts.findFirst({ where: { iri: { eq: id } } });
+    expect(post?.pollId).toBeTruthy();
+    expect(await db.query.pollOptions.findMany()).toHaveLength(1);
+  });
+  it("exposes reconstructed context through the API with privacy, mute, and block filtering", async () => {
+    const { default: app } = await import("../index");
+    const viewer = await createAccount();
+    const client = await createOAuthApplication({ scopes: ["read:statuses"] });
+    const token = await getAccessToken(client, viewer, ["read:statuses"]);
+    const seed = await seedContextJob();
+    const author = await seedRemoteAccount("replyer");
+    const visible = "https://remote.test/posts/public";
+    const privateIri = "https://remote.test/posts/private";
+    const documents = {
+      [seed.repliesIri]: collection(seed.repliesIri, [
+        reply({ id: visible, replyTarget: seed.postIri }),
+        reply({ id: privateIri, replyTarget: seed.postIri }),
+      ]),
+      [visible]: documentReply({ id: visible, replyTarget: seed.postIri }),
+      [privateIri]: {
+        ...documentReply({ id: privateIri, replyTarget: seed.postIri }),
+        to: "https://remote.test/@replyer/followers",
+      },
+      "https://remote.test/@replyer": actor("replyer"),
+    };
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(documents),
+    });
+    const publicPost = await db.query.posts.findFirst({
+      where: { iri: { eq: visible } },
+    });
+    const path = `/api/v1/statuses/${seed.postId}/context`;
+    const headers = { authorization: bearerAuthorization(token) };
+    const anonymous = await app.request(path);
+    expect(anonymous.status).toBe(200);
+    expect(
+      (await anonymous.json()).descendants.map(
+        (post: { id: string }) => post.id,
+      ),
+    ).toEqual([publicPost!.id]);
+    const authenticated = await app.request(path, { headers });
+    expect((await authenticated.json()).descendants).toHaveLength(1);
+    const childContext = await app.request(
+      `/api/v1/statuses/${publicPost!.id}/context`,
+    );
+    expect((await childContext.json()).ancestors[0].id).toBe(seed.postId);
+    await db.insert(mutes).values({
+      id: uuidv7(),
+      accountId: viewer.id,
+      mutedAccountId: author.id,
+    });
+    expect(
+      (await (await app.request(path, { headers })).json()).descendants,
+    ).toHaveLength(0);
+    await db.delete(mutes);
+    await db
+      .insert(blocks)
+      .values({ accountId: viewer.id, blockedAccountId: author.id });
+    expect(
+      (await (await app.request(path, { headers })).json()).descendants,
+    ).toHaveLength(0);
+    const timelineBefore = await db.query.timelinePosts.findMany();
+    await db
+      .update(remoteReplyScrapeJobs)
+      .set({
+        status: "pending",
+        completedAt: null,
+        nextAttemptAt: new Date(0),
+        nextDispatchAt: new Date(0),
+      })
+      .where(eq(remoteReplyScrapeJobs.id, seed.jobId));
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(documents),
+    });
+    expect(await db.query.timelinePosts.findMany()).toEqual(timelineBefore);
+    expect(await db.query.notifications.findMany()).toHaveLength(0);
+    expect(
+      (await db.query.posts.findFirst({ where: { id: { eq: seed.postId } } }))
+        ?.repliesCount,
+    ).toBe(2);
+  });
+  it.each(["child-first", "parent-first"])(
+    "applies home and list reply policies with %s context items",
+    async (order) => {
+      const seed = await seedContextJob();
+      const viewer = await createAccount();
+      const childAuthor = await seedRemoteAccount("replyer");
+      const parentAuthor = await seedRemoteAccount("parent");
+      await db.insert(follows).values({
+        iri: `https://local.test/follows/${uuidv7()}`,
+        followerId: viewer.id,
+        followingId: childAuthor.id,
+        approved: new Date(),
+      });
+      const excludedList = uuidv7();
+      const includedList = uuidv7();
+      await db.insert(lists).values([
+        {
+          id: excludedList,
+          accountOwnerId: viewer.id,
+          title: "No replies",
+          repliesPolicy: "none",
+        },
+        {
+          id: includedList,
+          accountOwnerId: viewer.id,
+          title: "Member replies",
+          repliesPolicy: "list",
+        },
+      ]);
+      await db.insert(listMembers).values([
+        { listId: excludedList, accountId: childAuthor.id },
+        { listId: includedList, accountId: childAuthor.id },
+        { listId: includedList, accountId: parentAuthor.id },
+      ]);
+      const childIri = "https://remote.test/posts/child";
+      const parentIri = "https://remote.test/posts/parent";
+      const child = reply({ id: childIri, replyTarget: parentIri });
+      const parent = {
+        ...reply({ id: parentIri, replyTarget: seed.postIri }),
+        attributedTo: parentAuthor.iri,
+      };
+      await processDueRemoteReplyScrapeJobs({
+        ...contextOptions,
+        documentLoader: makeLoader({
+          [seed.repliesIri]: collection(
+            seed.repliesIri,
+            order === "child-first" ? [child, parent] : [parent, child],
+          ),
+          [childIri]: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            ...child,
+          },
+          [parentIri]: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            ...parent,
+          },
+          [childAuthor.iri]: actor("replyer"),
+          [parentAuthor.iri]: actor("parent"),
+        }),
+      });
+      const savedChild = await db.query.posts.findFirst({
+        where: { iri: { eq: childIri } },
+      });
+      const savedParent = await db.query.posts.findFirst({
+        where: { iri: { eq: parentIri } },
+      });
+      expect(savedChild?.replyTargetId).toBe(savedParent?.id);
+      expect(
+        await db.query.timelinePosts.findMany({
+          where: { postId: { eq: savedChild!.id } },
+        }),
+      ).toEqual([]);
+      expect(
+        (
+          await db.query.listPosts.findMany({
+            where: { postId: { eq: savedChild!.id } },
+          })
+        ).map((row) => row.listId),
+      ).toEqual([includedList]);
+    },
+  );
+  it("terminates cached quote cycles within the shared request budget", async () => {
+    const seed = await seedContextJob();
+    await seedRemoteAccount("replyer");
+    const first = "https://remote.test/posts/quote-a";
+    const second = "https://remote.test/posts/quote-b";
+    const quoted = async (id: string, other: string) =>
+      new Note({
+        id: new URL(id),
+        attribution: new URL("https://remote.test/@replyer"),
+        replyTarget: new URL(seed.postIri),
+        quote: new URL(other),
+        to: new URL(PUBLIC_COLLECTION),
+        content: "Quote",
+      }).toJsonLd();
+    const loader = vi.fn(
+      makeLoader({
+        [seed.repliesIri]: collection(seed.repliesIri, [
+          reply({ id: first, replyTarget: seed.postIri }),
+        ]),
+        [first]: await quoted(first, second),
+        [second]: await quoted(second, first),
+        "https://remote.test/@replyer": actor("replyer"),
+      }),
+    );
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      maxRequests: 4,
+      documentLoader: loader,
+    });
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+      "completed",
+    );
+    expect(loader).toHaveBeenCalledTimes(4);
+    expect(await db.query.posts.findMany()).toHaveLength(3);
+  });
+
+  it("terminates actor successor cycles with a successful document cache", async () => {
+    const seed = await seedContextJob();
+    const id = "https://remote.test/posts/actor-cycle";
+    const first = "https://remote.test/@cycle-a";
+    const second = "https://remote.test/@cycle-b";
+    const person = async (iri: string, successor: string, username: string) =>
+      new Person({
+        id: new URL(iri),
+        name: username,
+        preferredUsername: username,
+        inbox: new URL(`${iri}/inbox`),
+        successor: new URL(successor),
+      }).toJsonLd();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
+    try {
+      const loader = vi.fn(
+        makeLoader({
+          [seed.repliesIri]: collection(seed.repliesIri, [
+            reply({ id, replyTarget: seed.postIri, username: "cycle-a" }),
+          ]),
+          [id]: documentReply({
+            id,
+            replyTarget: seed.postIri,
+            username: "cycle-a",
+          }),
+          [first]: await person(first, second, "cycle-a"),
+          [second]: await person(second, first, "cycle-b"),
+        }),
+      );
+      await processDueRemoteReplyScrapeJobs({
+        ...contextOptions,
+        maxRequests: 4,
+        documentLoader: loader,
+      });
+      expect((await db.query.remoteReplyScrapeJobs.findFirst())?.status).toBe(
+        "completed",
+      );
+      expect(
+        await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+      ).toBeDefined();
+      expect(loader).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("hands redirected context identity to its canonical host before traversal", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    const canonical = "https://canonical.test/conversation/1";
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: async () => ({
+        contextUrl: null,
+        documentUrl: canonical,
+        document: collection(canonical, []),
+      }),
+    });
+    expect(
+      (await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { id: { eq: seed.jobId } },
+      }))!,
+    ).toMatchObject({
+      status: "pending",
+      originHost: "canonical.test",
+      hostRequeues: 1,
+    });
+    expect(
+      (
+        await db.query.remoteReplyScrapeOrigins.findFirst({
+          where: { originHost: { eq: "remote.test" } },
+        })
+      )?.processingJobId,
+    ).toBeNull();
+    const urls: string[] = [];
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(
+        { [canonical]: collection(canonical, []) },
+        (url) => urls.push(url),
+      ),
+    });
+    expect(urls).toEqual([canonical]);
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("completed");
+  });
+  it("accepts Create wrappers, deduplicates posts, and skips other activities", async () => {
+    const seed = await seedContextJob();
+    await seedRemoteAccount("replyer");
+    const id = "https://remote.test/posts/created";
+    const updated = "https://remote.test/posts/update-only";
+    const note = reply({ id, replyTarget: seed.postIri });
+    const urls: string[] = [];
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(
+        {
+          [seed.repliesIri]: collection(seed.repliesIri, [
+            {
+              id: `${id}#create`,
+              type: "Create",
+              actor: "https://remote.test/@replyer",
+              object: note,
+            },
+            note,
+            {
+              id: `${updated}#update`,
+              type: "Update",
+              actor: "https://remote.test/@replyer",
+              object: reply({ id: updated, replyTarget: seed.postIri }),
+            },
+            {
+              id: `${updated}#delete`,
+              type: "Delete",
+              actor: "https://remote.test/@replyer",
+              object: updated,
+            },
+          ]),
+          [id]: documentReply({ id, replyTarget: seed.postIri }),
+          "https://remote.test/@replyer": actor("replyer"),
+        },
+        (url) => urls.push(url),
+      ),
+    });
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+    ).toBeDefined();
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: updated } } }),
+    ).toBeUndefined();
+    expect(urls).not.toContain(updated);
+    expect(urls.filter((url) => url === id)).toHaveLength(1);
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())!).toMatchObject({
+      status: "completed",
+      fetchedItems: 1,
+    });
+  });
+
+  it("falls back for a resolved non-collection context", async () => {
+    const seed = await seedContextJob();
+    await gateReplies(seed);
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader({
+        [seed.repliesIri]: documentReply({
+          id: seed.repliesIri,
+          replyTarget: seed.postIri,
+        }),
+      }),
+    });
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "context" } },
+        })
+      )?.status,
+    ).toBe("failed");
+    expect(
+      (
+        await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "replies" } },
+        })
+      )?.status,
+    ).toBe("pending");
+  });
+  it("repairs the stored seed when its missing parent is in the collection", async () => {
+    const seed = await seedContextJob();
+    const parent = "https://remote.test/posts/seed-parent";
+    await seedRemoteAccount("replyer");
+    const documents = {
+      [seed.repliesIri]: collection(seed.repliesIri, [
+        reply({ id: seed.postIri, replyTarget: parent, username: "author" }),
+        reply({ id: parent, replyTarget: "https://remote.test/posts/deleted" }),
+      ]),
+      [seed.postIri]: documentReply({
+        id: seed.postIri,
+        replyTarget: parent,
+        username: "author",
+      }),
+      [parent]: documentReply({
+        id: parent,
+        replyTarget: "https://remote.test/posts/deleted",
+      }),
+      "https://remote.test/@replyer": actor("replyer"),
+    };
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(documents),
+    });
+    const parentPost = await db.query.posts.findFirst({
+      where: { iri: { eq: parent } },
+    });
+    const seedPost = await db.query.posts.findFirst({
+      where: { id: { eq: seed.postId } },
+    });
+    expect(seedPost?.replyTargetId).toBe(parentPost?.id);
+    expect(seedPost?.content).toBe("Root");
+    expect(parentPost?.repliesCount).toBe(1);
+  });
+
+  it("repairs verified orphan links locally when the request cap stops traversal", async () => {
+    const seed = await seedContextJob();
+    await seedRemoteAccount("replyer");
+    const child = "https://remote.test/posts/capped-child";
+    const parent = "https://remote.test/posts/capped-parent";
+    const unseen = "https://remote.test/posts/capped-unseen";
+    const loader = vi.fn(
+      makeLoader({
+        [seed.repliesIri]: collection(seed.repliesIri, [
+          reply({ id: child, replyTarget: parent }),
+          reply({ id: parent, replyTarget: seed.postIri }),
+          reply({ id: unseen, replyTarget: seed.postIri }),
+        ]),
+        [child]: documentReply({ id: child, replyTarget: parent }),
+        [parent]: documentReply({ id: parent, replyTarget: seed.postIri }),
+        "https://remote.test/@replyer": actor("replyer"),
+      }),
+    );
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      maxRequests: 4,
+      documentLoader: loader,
+    });
+    const parentPost = await db.query.posts.findFirst({
+      where: { iri: { eq: parent } },
+    });
+    expect(
+      (await db.query.posts.findFirst({ where: { iri: { eq: child } } }))
+        ?.replyTargetId,
+    ).toBe(parentPost?.id);
+    expect(parentPost?.repliesCount).toBe(1);
+    expect(loader).toHaveBeenCalledTimes(4);
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())!).toMatchObject({
+      status: "completed",
+      partial: true,
+    });
+  });
+
+  it.each(["first", "next", "embedded"])(
+    "releases fallback when a %s page is a Note",
+    async (kind) => {
+      const seed = await seedContextJob();
+      await gateReplies(seed);
+      const invalid = `${seed.repliesIri}/invalid`;
+      const badPage = documentReply({ id: invalid, replyTarget: seed.postIri });
+      const root =
+        kind === "next"
+          ? {
+              ...collection(seed.repliesIri, []),
+              first: {
+                id: `${seed.repliesIri}/first`,
+                type: "OrderedCollectionPage",
+                next: invalid,
+                orderedItems: [],
+              },
+            }
+          : {
+              ...collection(seed.repliesIri, []),
+              first: kind === "embedded" ? badPage : invalid,
+            };
+      await processDueRemoteReplyScrapeJobs({
+        ...contextOptions,
+        documentLoader: makeLoader({
+          [seed.repliesIri]: root,
+          [invalid]: badPage,
+        }),
+      });
+      expect(
+        (await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { kind: { eq: "context" } },
+        }))!,
+      ).toMatchObject({
+        status: kind === "embedded" ? "failed" : "completed",
+        partial: true,
+      });
+      expect(
+        (
+          await db.query.remoteReplyScrapeJobs.findFirst({
+            where: { kind: { eq: "replies" } },
+          })
+        )?.status,
+      ).toBe("pending");
+    },
+  );
+  it("still follows valid next pages after inspecting their references", async () => {
+    const seed = await seedContextJob();
+    await seedRemoteAccount("replyer");
+    const first = `${seed.repliesIri}/first`;
+    const second = `${seed.repliesIri}/second`;
+    const id = "https://remote.test/posts/next-page";
+    const urls: string[] = [];
+    await processDueRemoteReplyScrapeJobs({
+      ...contextOptions,
+      documentLoader: makeLoader(
+        {
+          [seed.repliesIri]: { ...collection(seed.repliesIri, []), first },
+          [first]: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: first,
+            type: "OrderedCollectionPage",
+            next: second,
+            orderedItems: [],
+          },
+          [second]: {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: second,
+            type: "OrderedCollectionPage",
+            orderedItems: [reply({ id, replyTarget: seed.postIri })],
+          },
+          [id]: documentReply({ id, replyTarget: seed.postIri }),
+          "https://remote.test/@replyer": actor("replyer"),
+        },
+        (url) => urls.push(url),
+      ),
+    });
+    expect(urls).toContain(second);
+    expect(
+      await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+    ).toBeDefined();
+    expect((await db.query.remoteReplyScrapeJobs.findFirst())!).toMatchObject({
+      status: "completed",
+      partial: false,
+    });
+  });
+  it.each(["replies", "context"] as const)(
+    "completes %s jobs with intervals above 60 seconds while keeping the lease fresh",
+    async (kind) => {
+      const seed =
+        kind === "context"
+          ? await seedContextJob()
+          : await seedPostWithScrapeJob();
+      await seedRemoteAccount("replyer");
+      const now = new Date("2026-04-25T00:00:00Z");
+      let time = +now;
+      const clock = () => new Date(time);
+      const recovery = fixture({ clock, staleProcessingSeconds: 15 });
+      const id = "https://remote.test/posts/long-spacing";
+      const times: number[] = [];
+      const leaseStates: (string | undefined)[] = [];
+      await processDueRemoteReplyScrapeJobs({
+        now,
+        clock,
+        intervalSeconds: 120,
+        staleProcessingSeconds: 15,
+        sleep: async (ms) => {
+          time += ms;
+          if ((time - +now) % 60_000 === 0) {
+            await recovery.tasks.reclaim();
+            leaseStates.push(
+              (
+                await db.query.remoteReplyScrapeJobs.findFirst({
+                  where: { id: { eq: seed.jobId } },
+                })
+              )?.status,
+            );
+          }
+        },
+        documentLoader: makeLoader(
+          {
+            [seed.repliesIri]: collection(seed.repliesIri, [
+              reply({ id, replyTarget: seed.postIri }),
+            ]),
+            [id]: documentReply({ id, replyTarget: seed.postIri }),
+            "https://remote.test/@replyer": actor("replyer"),
+          },
+          () => times.push(time),
+        ),
+      });
+      expect(
+        (await db.query.remoteReplyScrapeJobs.findFirst({
+          where: { id: { eq: seed.jobId } },
+        }))!,
+      ).toMatchObject({ status: "completed", fetchedItems: 1, attempts: 1 });
+      expect(
+        await db.query.posts.findFirst({ where: { iri: { eq: id } } }),
+      ).toBeDefined();
+      expect(leaseStates.length).toBeGreaterThan(0);
+      expect(new Set(leaseStates)).toEqual(new Set(["processing"]));
+      for (let i = 1; i < times.length; i++)
+        expect(times[i] - times[i - 1]).toBeGreaterThanOrEqual(120_000);
+    },
+  );
 });

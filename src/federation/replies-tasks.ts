@@ -9,7 +9,7 @@ import {
   remoteReplyScrapeOrigins as origins,
 } from "../schema";
 import { uuid, type Uuid } from "../uuid";
-import { REMOTE_REPLIES_SCRAPE_DEPTH } from "./replies";
+import { REMOTE_REPLIES_SCRAPE_DEPTH, settleContextReplies } from "./replies";
 import type { ProcessRemoteReplyScrapeJobsOptions } from "./replies-worker";
 
 const logger = getLogger(["hollo", "federation", "replies-worker"]);
@@ -221,6 +221,32 @@ export function registerRemoteReplyScrapes(
     const stale = new Date(
       now.getTime() - (options.staleProcessingSeconds ?? STALE_SECONDS) * 1000,
     );
+    // Lock blockers before waiting replies, matching enqueue and completion.
+    await db.transaction(async (tx) => {
+      const blockers = await tx
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.kind, "context"),
+            sql`${jobs.status} in ('completed', 'failed')`,
+            sql`exists (select 1 from ${jobs} gate where gate.blocked_by_job_id = ${jobs.id} and gate.status = 'waiting')`,
+          ),
+        )
+        .limit(RECOVERY_BATCH)
+        .for("update", { skipLocked: true });
+      for (const blocker of blockers)
+        await settleContextReplies(tx, blocker, now);
+      await tx
+        .update(jobs)
+        .set({
+          status: "pending",
+          blockedByJobId: null,
+          nextDispatchAt: now,
+          updated: now,
+        })
+        .where(and(eq(jobs.status, "waiting"), isNull(jobs.blockedByJobId)));
+    });
     await db.transaction(async (tx) => {
       const batch = await tx
         .select()

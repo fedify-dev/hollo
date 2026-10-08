@@ -6,7 +6,7 @@ Version 0.10.0
 
 To be released.
 
- -  Upgraded Fedify to 2.4.1.
+ -  Upgraded Fedify to 2.4.2.
 
  -  Quotes awaiting [FEP-044f] approval now expose `quoteUrl` for compatibility
     with older software when the original public or unlisted post explicitly
@@ -73,6 +73,14 @@ To be released.
     after expiry. Delayed poll schedules no longer allocate worker timers.
     [[#653], [#663]]
 
+ -  Remote conversation backfill now reads [FEP-f228] `context` collections
+    through *@fedify/backfill* before falling back to `replies`.  Collection
+    aliases share durable jobs, and each seed's replies wait for the context
+    result.  Backfill preserves existing posts, restores available parent
+    links, and shares a per-attempt document-loader budget across traversal
+    and persistence.  Set `REMOTE_REPLIES_SCRAPE_MAX_REQUESTS` to tune that
+    budget (default: `200`).  [[#661], [#664]]
+
  -  Replaced the undocumented `SEONBI_URL` integration with the embedded
     [Gukhanmun] Node-API binding.  Set `GUKHANMUN` to a comma-separated list of
     locale patterns, such as `ko,ko-*`, to add Hangul readings to Hanja in
@@ -138,6 +146,7 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
+[FEP-f228]: https://w3id.org/fep/f228
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [Gukhanmun]: https://gukhanmun.org/
@@ -163,7 +172,9 @@ To be released.
 [#650]: https://github.com/fedify-dev/hollo/pull/650
 [#653]: https://github.com/fedify-dev/hollo/issues/653
 [#660]: https://github.com/fedify-dev/hollo/pull/660
+[#661]: https://github.com/fedify-dev/hollo/issues/661
 [#663]: https://github.com/fedify-dev/hollo/pull/663
+[#664]: https://github.com/fedify-dev/hollo/pull/664
 
 
 Version 0.9.22

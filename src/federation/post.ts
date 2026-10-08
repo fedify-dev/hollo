@@ -226,6 +226,11 @@ async function getVerifiedQuoteAuthorizationIri(
   return verification.verified ? verification.authorizationIri : null;
 }
 
+type PersistedPost = Post & {
+  account: Account & { owner: AccountOwner | null };
+  mentions: Mention[];
+};
+
 export async function persistPost(
   db: DatabaseLike,
   object: ASPost,
@@ -234,7 +239,12 @@ export async function persistPost(
     account?: Account & { owner: AccountOwner | null };
     enqueueRemoteReplies?: boolean;
     fetchEmojiReactions?: boolean;
+    fetchReplyTarget?: boolean;
+    postAncestry?: ReadonlySet<string>;
     replyTarget?: Post;
+    persistPrepared?: (
+      write: (db: DatabaseLike) => Promise<PersistedPost | null>,
+    ) => Promise<PersistedPost | null>;
   } = {},
 ): Promise<
   | (Post & {
@@ -252,6 +262,11 @@ export async function persistPost(
   if (existingPost != null && existingPost.account.owner != null) {
     return existingPost;
   }
+  if (options.postAncestry?.has(object.id.href)) return existingPost ?? null;
+  options = {
+    ...options,
+    postAncestry: new Set([...(options.postAncestry ?? []), object.id.href]),
+  };
   const publishedRaw = toDate(object.published);
   const updatedRaw = toDate(object.updated);
   const now = Date.now();
@@ -289,16 +304,17 @@ export async function persistPost(
       replyTargetId = options.replyTarget.id;
     } else {
       const result = await db
-        .select({ id: posts.id })
+        .select()
         .from(posts)
         .where(eq(posts.iri, object.replyTargetId.href))
         .limit(1);
       if (result != null && result.length > 0) {
         replyTargetId = result[0].id;
+        replyTargetObj = result[0];
         logger.debug("The reply target is already persisted: {replyTargetId}", {
           replyTargetId,
         });
-      } else {
+      } else if (options.fetchReplyTarget !== false) {
         logger.debug("Persisting the reply target...");
         const replyTarget = await object.getReplyTarget(options);
         if (isPost(replyTarget)) {
@@ -389,7 +405,10 @@ export async function persistPost(
       });
     } else {
       logger.debug("Persisting the quote target...");
-      const quoteTarget = await lookupObject(objectLink, options);
+      const quoteTarget =
+        options.objectLoader == null
+          ? await lookupObject(objectLink, options)
+          : await options.objectLoader(objectLink);
       if (isPost(quoteTarget)) {
         const quoteTargetObj = await persistPost(db, quoteTarget, baseUrl, {
           ...options,
@@ -569,7 +588,7 @@ export async function persistPost(
               .where(eq(posts.iri, postIri))
               .for("update")
           )[0];
-    await database
+    const inserted = await database
       .insert(posts)
       .values({
         ...values,
@@ -592,8 +611,10 @@ export async function persistPost(
           WHEN ${storedAccepted} THEN ${posts.quoteAuthorizationIri}
           ELSE ${impoliteAuthorization} END`,
         },
-        setWhere: eq(posts.iri, postIri),
-      });
+        setWhere: options.skipUpdate ? sql`false` : eq(posts.iri, postIri),
+      })
+      .returning({ id: posts.id });
+    if (options.skipUpdate && inserted.length === 0) return undefined;
     const post = await database.query.posts.findFirst({
       where: { iri: { eq: postIri } },
     });
@@ -625,135 +646,47 @@ export async function persistPost(
     }
     return post;
   };
-  let post =
-    localQuoteTarget == null
-      ? await persistValues(db)
-      : await db.transaction(persistValues);
-  if (post == null) return null;
-  if (
-    options.fetchEmojiReactions !== false &&
-    account.owner == null &&
-    (object instanceof Note ||
-      object instanceof Question ||
-      object instanceof Article)
-  ) {
-    const emojiReactions = await object.getEmojiReactions({
-      ...options,
-      crossOrigin: "trust",
-      suppressError: true,
-    });
-    if (emojiReactions != null) {
-      await persistRemoteEmojiReactions(
-        db,
-        emojiReactions,
-        {
-          ...post,
-          account,
-        },
-        baseUrl,
-        options,
-      );
-    }
+  // Ordinary inbox callers retain the post and quote notification if later
+  // media transport fails. Only scrape callers require complete atomic items.
+  const earlyPost =
+    options.persistPrepared == null
+      ? localQuoteTarget == null
+        ? await persistValues(db)
+        : await db.transaction(persistValues)
+      : undefined;
+  if (options.persistPrepared == null && earlyPost == null) {
+    if (!options.skipUpdate) return null;
+    return (
+      (await db.query.posts.findFirst({
+        where: { iri: { eq: postIri } },
+        with: { account: { with: { owner: true } }, mentions: true },
+      })) ?? null
+    );
   }
-  let rescheduledPollId: Uuid | undefined;
+
+  // Resolve poll options and attachment transport before the write phase.
+  // Scrape workers can then fence and commit complete items without holding
+  // database locks while waiting for a remote server or a pacing slot.
+  const choices: [string, number][] = [];
+  let multiple = false;
   if (object instanceof Question) {
-    const options: [string, number][] = [];
-    let multiple = false;
-    for await (const option of object.getExclusiveOptions()) {
+    for await (const option of object.getExclusiveOptions(options)) {
       if (option instanceof Note && option.name != null) {
-        const replies = await option.getReplies();
-        options.push([option.name.toString(), replies?.totalItems ?? 0]);
+        const replies = await option.getReplies(options);
+        choices.push([option.name.toString(), replies?.totalItems ?? 0]);
       }
     }
-    if (options.length < 1) {
-      for await (const option of object.getInclusiveOptions()) {
+    if (choices.length < 1) {
+      for await (const option of object.getInclusiveOptions(options)) {
         if (option instanceof Note && option.name != null) {
-          const replies = await option.getReplies();
-          options.push([option.name.toString(), replies?.totalItems ?? 0]);
+          const replies = await option.getReplies(options);
+          choices.push([option.name.toString(), replies?.totalItems ?? 0]);
         }
         multiple = true;
       }
     }
-    if (options.length > 0 && object.endTime != null) {
-      if (post.pollId == null) {
-        const [poll] = await db
-          .insert(polls)
-          .values({
-            id: uuidv7(),
-            multiple,
-            votersCount: object.voters ?? 0,
-            expires: toDate(object.endTime),
-          })
-          .returning();
-        await db.insert(pollOptions).values(
-          options.map(([title, votesCount], index) => ({
-            pollId: poll.id,
-            index,
-            title,
-            votesCount,
-          })),
-        );
-        await db
-          .update(posts)
-          .set({ pollId: poll.id })
-          .where(eq(posts.id, post.id));
-      } else {
-        const previousPoll = await db.query.polls.findFirst({
-          where: { id: { eq: post.pollId } },
-        });
-        const [poll] = await db
-          .update(polls)
-          .set({
-            multiple,
-            votersCount: object.voters ?? 0,
-            expires: toDate(object.endTime),
-          })
-          .where(eq(polls.id, post.pollId))
-          .returning();
-        if (previousPoll == null || +previousPoll.expires !== +poll.expires) {
-          rescheduledPollId = poll.id;
-        }
-        for (let index = 0; index < options.length; index++) {
-          const [title, votesCount] = options[index];
-          await db
-            .insert(pollOptions)
-            .values({ pollId: poll.id, index, title, votesCount })
-            .onConflictDoUpdate({
-              target: [pollOptions.pollId, pollOptions.index],
-              set: { title, votesCount },
-              setWhere: and(
-                eq(pollOptions.pollId, poll.id),
-                eq(pollOptions.index, index),
-              ),
-            });
-        }
-        await db
-          .delete(pollOptions)
-          .where(
-            and(
-              eq(pollOptions.pollId, post.pollId),
-              gte(pollOptions.index, options.length),
-            ),
-          );
-      }
-    }
   }
-  const mentionRows: Mention[] = [];
-  await db.delete(mentions).where(eq(mentions.postId, post.id));
-  for (const account of mentionedAccounts.values()) {
-    const result = await db
-      .insert(mentions)
-      .values({
-        accountId: account.id,
-        postId: post.id,
-      })
-      .onConflictDoNothing({
-        target: [mentions.accountId, mentions.postId],
-      })
-      .returning();
-    mentionRows.push(...result);
-  }
-  await db.delete(media).where(eq(media.postId, post.id));
+  const preparedMedia: Omit<NewMedium, "postId">[] = [];
   let mediaPosition = 0;
   for await (const attachment of object.getAttachments(options)) {
     if (
@@ -853,9 +786,8 @@ export async function persistPost(
         thumbnailHeight: metadata.height!,
       };
     }
-    await db.insert(media).values({
+    preparedMedia.push({
       id,
-      postId: post.id,
       position: mediaPosition,
       type: mediaType,
       url,
@@ -864,35 +796,168 @@ export async function persistPost(
       width: attachment.width ?? metadata.width!,
       height: attachment.height ?? metadata.height!,
       ...thumbnail,
-    } satisfies NewMedium);
+    } satisfies Omit<NewMedium, "postId">);
     mediaPosition++;
   }
-  post = await db.query.posts.findFirst({
-    where: { iri: { eq: object.id.href } },
-    with: { account: true, media: true },
-  });
-  if (post == null) return null;
-  if (
-    options.enqueueRemoteReplies !== false &&
-    account.owner == null &&
-    repliesIri != null
-  ) {
-    await enqueueRemoteReplyScrape(db, {
-      baseUrl,
-      post,
-      repliesIri,
+
+  const writePrepared = async (
+    db: DatabaseLike,
+  ): Promise<PersistedPost | null> => {
+    let post =
+      earlyPost ??
+      (localQuoteTarget == null
+        ? await persistValues(db)
+        : await db.transaction(persistValues));
+    if (post == null) {
+      if (!options.skipUpdate) return null;
+      return (
+        (await db.query.posts.findFirst({
+          where: { iri: { eq: postIri } },
+          with: { account: { with: { owner: true } }, mentions: true },
+        })) ?? null
+      );
+    }
+    if (
+      options.fetchEmojiReactions !== false &&
+      account.owner == null &&
+      (object instanceof Note ||
+        object instanceof Question ||
+        object instanceof Article)
+    ) {
+      const emojiReactions = await object.getEmojiReactions({
+        ...options,
+        crossOrigin: "trust",
+        suppressError: true,
+      });
+      if (emojiReactions != null) {
+        await persistRemoteEmojiReactions(
+          db,
+          emojiReactions,
+          {
+            ...post,
+            account,
+          },
+          baseUrl,
+          options,
+        );
+      }
+    }
+    let rescheduledPollId: Uuid | undefined;
+    if (object instanceof Question) {
+      if (choices.length > 0 && object.endTime != null) {
+        if (post.pollId == null) {
+          const [poll] = await db
+            .insert(polls)
+            .values({
+              id: uuidv7(),
+              multiple,
+              votersCount: object.voters ?? 0,
+              expires: toDate(object.endTime),
+            })
+            .returning();
+          await db.insert(pollOptions).values(
+            choices.map(([title, votesCount], index) => ({
+              pollId: poll.id,
+              index,
+              title,
+              votesCount,
+            })),
+          );
+          await db
+            .update(posts)
+            .set({ pollId: poll.id })
+            .where(eq(posts.id, post.id));
+        } else {
+          const previousPoll = await db.query.polls.findFirst({
+            where: { id: { eq: post.pollId } },
+          });
+          const [poll] = await db
+            .update(polls)
+            .set({
+              multiple,
+              votersCount: object.voters ?? 0,
+              expires: toDate(object.endTime),
+            })
+            .where(eq(polls.id, post.pollId))
+            .returning();
+          if (previousPoll == null || +previousPoll.expires !== +poll.expires) {
+            rescheduledPollId = poll.id;
+          }
+          for (let index = 0; index < choices.length; index++) {
+            const [title, votesCount] = choices[index];
+            await db
+              .insert(pollOptions)
+              .values({ pollId: poll.id, index, title, votesCount })
+              .onConflictDoUpdate({
+                target: [pollOptions.pollId, pollOptions.index],
+                set: { title, votesCount },
+                setWhere: and(
+                  eq(pollOptions.pollId, poll.id),
+                  eq(pollOptions.index, index),
+                ),
+              });
+          }
+          await db
+            .delete(pollOptions)
+            .where(
+              and(
+                eq(pollOptions.pollId, post.pollId),
+                gte(pollOptions.index, choices.length),
+              ),
+            );
+        }
+      }
+    }
+    const mentionRows: Mention[] = [];
+    await db.delete(mentions).where(eq(mentions.postId, post.id));
+    for (const account of mentionedAccounts.values()) {
+      const result = await db
+        .insert(mentions)
+        .values({
+          accountId: account.id,
+          postId: post.id,
+        })
+        .onConflictDoNothing({
+          target: [mentions.accountId, mentions.postId],
+        })
+        .returning();
+      mentionRows.push(...result);
+    }
+    await db.delete(media).where(eq(media.postId, post.id));
+    for (const medium of preparedMedia) {
+      await db.insert(media).values({ ...medium, postId: post.id });
+    }
+    post = await db.query.posts.findFirst({
+      where: { iri: { eq: postIri } },
+      with: { account: true, media: true },
     });
-  }
-  await appendPostToTimelines(db, {
-    ...post,
-    sharing: null,
-    mentions: mentionRows,
-    replyTarget: replyTargetObj,
-  });
-  if (rescheduledPollId != null) {
-    await enqueuePollNotification(db, rescheduledPollId, baseUrl);
-  }
-  return { ...post, account, mentions: mentionRows };
+    if (post == null) return null;
+    if (
+      options.enqueueRemoteReplies !== false &&
+      account.owner == null &&
+      (repliesIri != null || object.contextIds[0] != null)
+    ) {
+      await enqueueRemoteReplyScrape(db, {
+        baseUrl,
+        post,
+        repliesIri,
+        contextIri: object.contextIds[0],
+      });
+    }
+    await appendPostToTimelines(db, {
+      ...post,
+      sharing: null,
+      mentions: mentionRows,
+      replyTarget: replyTargetObj,
+    });
+    if (rescheduledPollId != null) {
+      await enqueuePollNotification(db, rescheduledPollId, baseUrl);
+    }
+    return { ...post, account, mentions: mentionRows };
+  };
+  return options.persistPrepared == null
+    ? await writePrepared(db)
+    : await options.persistPrepared(writePrepared);
 }
 
 export async function persistSharingPost(
