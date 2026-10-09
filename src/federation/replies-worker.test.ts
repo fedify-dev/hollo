@@ -2023,36 +2023,44 @@ describe("FEP-f228 conversation backfill", () => {
     expect(urls).not.toContain(local);
   });
 
-  it("retains own-host Retry-After backoff and keeps fallbacks gated", async () => {
-    const seed = await seedContextJob();
-    await gateReplies(seed);
-    const now = new Date();
-    const error = Object.assign(new Error("limited"), {
-      response: new Response(null, {
-        status: 429,
-        headers: { "Retry-After": "120" },
-      }),
-    });
-    await processDueRemoteReplyScrapeJobs({
-      ...contextOptions,
-      now,
-      documentLoader: async () => {
-        throw error;
-      },
-    });
-    const job = await db.query.remoteReplyScrapeJobs.findFirst({
-      where: { kind: { eq: "context" } },
-    });
-    expect(job).toMatchObject({ status: "pending", requestCount: 1 });
-    expect(job?.nextAttemptAt).toEqual(new Date(+now + 120_000));
-    expect(
-      (
-        await db.query.remoteReplyScrapeJobs.findFirst({
-          where: { kind: { eq: "replies" } },
-        })
-      )?.status,
-    ).toBe("waiting");
-  });
+  it.each([
+    ["120", 120],
+    ["10000000000000", 7 * 24 * 60 * 60],
+    ["9".repeat(400), 7 * 24 * 60 * 60],
+    ["Fri, 01 Jan 9999 00:00:00 GMT", 7 * 24 * 60 * 60],
+  ] as const)(
+    "backs off own-host Retry-After %s and keeps fallbacks gated",
+    async (header, seconds) => {
+      const seed = await seedContextJob();
+      await gateReplies(seed);
+      const now = new Date();
+      const error = Object.assign(new Error("limited"), {
+        response: new Response(null, {
+          status: 429,
+          headers: { "Retry-After": header },
+        }),
+      });
+      await processDueRemoteReplyScrapeJobs({
+        ...contextOptions,
+        now,
+        documentLoader: async () => {
+          throw error;
+        },
+      });
+      const job = await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { kind: { eq: "context" } },
+      });
+      expect(job).toMatchObject({ status: "pending", requestCount: 1 });
+      expect(job?.nextAttemptAt).toEqual(new Date(+now + seconds * 1000));
+      expect(
+        (
+          await db.query.remoteReplyScrapeJobs.findFirst({
+            where: { kind: { eq: "replies" } },
+          })
+        )?.status,
+      ).toBe("waiting");
+    },
+  );
 
   it("skips a foreign host after 429, caches failures, and continues healthy items", async () => {
     const seed = await seedContextJob();

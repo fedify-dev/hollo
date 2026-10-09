@@ -34,6 +34,8 @@ export function getErrorStatus(error: unknown): number | null {
     : null;
 }
 
+const MAX_RETRY_AFTER_SECONDS = 7 * 24 * 60 * 60;
+
 export function retryAfterSeconds(
   error: unknown,
   now = new Date(),
@@ -49,12 +51,15 @@ export function retryAfterSeconds(
   if (value == null) return null;
   if (/^-?\d+$/.test(value)) {
     const seconds = Number.parseInt(value, 10);
-    return seconds >= 0 ? seconds : null;
+    return seconds >= 0 ? Math.min(seconds, MAX_RETRY_AFTER_SECONDS) : null;
   }
   const date = Date.parse(value);
   return Number.isNaN(date)
     ? null
-    : Math.max(0, Math.ceil((date - now.getTime()) / 1000));
+    : Math.min(
+        MAX_RETRY_AFTER_SECONDS,
+        Math.max(0, Math.ceil((date - now.getTime()) / 1000)),
+      );
 }
 
 /** One invocation budget and cache shared by traversal and persistence. */
