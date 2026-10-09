@@ -8,6 +8,7 @@ services:
       SECRET_KEY: "${SECRET_KEY}"
       LOG_LEVEL: "${LOG_LEVEL}"
       BEHIND_PROXY: "${BEHIND_PROXY}"
+      # REMOTE_REPLIES_SCRAPE_MAX_REQUESTS: "200"
       # GUKHANMUN: "ko,ko-*"
       DRIVE_DISK: fs
       STORAGE_URL_BASE: http://localhost:3000/assets/

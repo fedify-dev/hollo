@@ -1,29 +1,60 @@
+import { backfill } from "@fedify/backfill";
 import type { Context } from "@fedify/fedify";
-import { Collection, type DocumentLoader, lookupObject } from "@fedify/vocab";
+import {
+  Collection,
+  CollectionPage,
+  type DocumentLoader,
+  Note,
+} from "@fedify/vocab";
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 
-import db from "../db";
+import db, { type DatabaseLike } from "../db";
+import { FEDIFY_ORIGIN } from "../env";
 import {
   posts,
+  listPosts,
+  timelinePosts,
   type RemoteReplyScrapeJob,
   remoteReplyScrapeJobs,
   remoteReplyScrapeOrigins,
 } from "../schema";
 import type { Uuid } from "../uuid";
 import { iterateCollection } from "./collection";
-import { isPost, persistPost } from "./post";
+import { isPost, persistPost, type ASPost } from "./post";
 import {
   enqueueRemoteReplyScrape,
+  isHttpIri,
+  settleContextReplies,
   laterBySeconds,
   REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS,
   REMOTE_REPLIES_SCRAPE_DEPTH,
   REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS,
   REMOTE_REPLIES_SCRAPE_MAX_ITEMS,
+  REMOTE_REPLIES_SCRAPE_MAX_REQUESTS,
 } from "./replies";
+import { canonicalizeContextJob } from "./replies-context";
+import {
+  createScrapeLoader,
+  ScrapeDeferred,
+  ScrapeRequestLimit,
+} from "./replies-loader";
+import {
+  LostScrapeAttempt,
+  lockScrapeAttempt,
+  processingJobAttemptCondition,
+} from "./replies-state";
+import { appendPostToTimelines } from "./timeline";
 
 export const STALE_PROCESSING_TIMEOUT_SECONDS = 15 * 60;
 
-class LostScrapeAttempt extends Error {}
+interface ScrapeProgress {
+  fetchedItems: number;
+  yieldedItems: number;
+  requestCount: number;
+  skippedItems: number;
+  partial: boolean;
+  errorMessage: string | null;
+}
 
 export interface ProcessRemoteReplyScrapeJobsOptions {
   signal?: AbortSignal;
@@ -33,6 +64,7 @@ export interface ProcessRemoteReplyScrapeJobsOptions {
   intervalSeconds?: number;
   maxDepth?: number;
   maxItems?: number;
+  maxRequests?: number;
   maxJobs?: number;
   now?: Date;
   sleep?: (milliseconds: number) => Promise<void>;
@@ -145,102 +177,364 @@ export async function processRemoteReplyScrapeJob(
     }
 
     let fetchedItems = 0;
-    let lastFetchError: unknown;
-    let lastFetchErrorUrl: URL | undefined;
-    const isLastFetchOriginRateLimit = (error: unknown = lastFetchError) =>
-      error === lastFetchError &&
-      isOriginRateLimit(error, lastFetchErrorUrl, job);
-
-    try {
-      const documentLoader =
+    let yieldedItems = 0;
+    let skippedItems = 0;
+    let partial = false;
+    const parents = new Set<Uuid>();
+    const orphanHints = new Map<string, URL>();
+    const verifiedParents = new Map<string, URL | null>();
+    let defaultLoader: Promise<DocumentLoader> | undefined;
+    const loader = createScrapeLoader({
+      getJob: () => job,
+      documentLoader:
         options.documentLoader ??
-        (await getDefaultDocumentLoader(ctx, job.baseUrl));
-      const throttledDocumentLoader = createThrottledDocumentLoader(job, {
-        documentLoader,
-        intervalSeconds:
-          options.intervalSeconds ?? REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS,
-        staleProcessingSeconds:
-          options.staleProcessingSeconds ?? STALE_PROCESSING_TIMEOUT_SECONDS,
-        clock,
-        sleep: options.sleep ?? ((ms) => sleep(ms, options.signal)),
-        checkpoint,
+        ((url, loaderOptions) =>
+          (defaultLoader ??= getDefaultDocumentLoader(ctx, job.baseUrl)).then(
+            (load) => load(url, loaderOptions),
+          )),
+      contextLoader: ctx.contextLoader,
+      maxRequests: options.maxRequests ?? REMOTE_REPLIES_SCRAPE_MAX_REQUESTS,
+      intervalSeconds: Math.max(
+        0,
+        options.intervalSeconds ?? REMOTE_REPLIES_SCRAPE_INTERVAL_SECONDS,
+      ),
+      backoffSeconds: Math.max(
+        0,
+        options.backoffSeconds ?? REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS,
+      ),
+      clock,
+      checkpoint,
+      checkpointIntervalMilliseconds: Math.max(
+        1,
+        Math.min(30_000, (staleSeconds * 1000) / 3),
+      ),
+      sleep: options.sleep ?? ((ms) => sleep(ms, options.signal)),
+      signal: options.signal,
+    });
+    const progress = (): ScrapeProgress => ({
+      fetchedItems,
+      yieldedItems,
+      skippedItems: skippedItems + loader.skippedItems,
+      requestCount: loader.requestCount,
+      partial: partial || loader.partial,
+      errorMessage: loader.errorMessage,
+    });
+    const maxItems = options.maxItems ?? REMOTE_REPLIES_SCRAPE_MAX_ITEMS;
+    const persistOptions = {
+      documentLoader: loader.documentLoader,
+      contextLoader: loader.contextLoader,
+      objectLoader: loader.lookup,
+      enqueueRemoteReplies: false,
+      fetchEmojiReactions: false,
+      skipUpdate: true,
+      ...(job.kind === "context"
+        ? { fetchReplyTarget: false }
+        : { replyTarget: post }),
+    };
+    const authoritativePost = async (object: ASPost) => {
+      const id = object.id;
+      if (
+        id == null ||
+        !isHttpIri(id) ||
+        id.origin === ctx.origin ||
+        id.origin === new URL(job.baseUrl).origin ||
+        id.origin === FEDIFY_ORIGIN?.webOrigin ||
+        id.host === FEDIFY_ORIGIN?.handleHost
+      )
+        return null;
+      const fetched = await loader.lookup(id);
+      loader.check();
+      if (
+        !isPost(fetched) ||
+        fetched.id?.href !== id.href ||
+        fetched.attributionId == null ||
+        fetched.attributionId.origin !== id.origin
+      )
+        return null;
+      verifiedParents.set(id.href, fetched.replyTargetId);
+      return fetched;
+    };
+    const persistItem = async (object: ASPost) => {
+      await checkpoint();
+      loader.check();
+      const saved = await persistPost(db, object, job.baseUrl, {
+        ...persistOptions,
+        persistPrepared: async (write) => {
+          loader.check();
+          return await db.transaction(async (tx) => {
+            await lockScrapeAttempt(tx, job);
+            loader.check();
+            const result = await write(tx);
+            if (result?.replyTargetId != null)
+              await updateScrapedRepliesCount(result.replyTargetId, tx);
+            loader.check();
+            return result;
+          });
+        },
       });
-      const recordingDocumentLoader: DocumentLoader = async (
-        url,
-        loadOptions,
-      ) => {
-        try {
-          return await throttledDocumentLoader(url, loadOptions);
-        } catch (error) {
-          if (error instanceof LostScrapeAttempt) lost = error;
-          if (options.signal?.aborted) interrupted = true;
-          lastFetchError = error;
-          lastFetchErrorUrl = new URL(url);
-          throw error;
+      if (saved?.replyTargetId != null) parents.add(saved.replyTargetId);
+      await checkpoint();
+      return saved;
+    };
+    // Relink only authoritative orphan metadata, after out-of-order parents
+    // have arrived. Existing canonical relationships are never overwritten.
+    const reconcile = async (localOnly = false) => {
+      for (const [childIri, hintedParent] of orphanHints) {
+        if (localOnly) await checkpoint();
+        else loader.check();
+        const parent = await db.query.posts.findFirst({
+          where: { iri: { eq: hintedParent.href } },
+        });
+        if (parent == null) continue;
+        if (localOnly && !verifiedParents.has(childIri)) continue;
+        const parentIri = verifiedParents.has(childIri)
+          ? verifiedParents.get(childIri)
+          : (await authoritativePost(new Note({ id: new URL(childIri) })))
+              ?.replyTargetId;
+        if (parentIri == null || parentIri.href === childIri) continue;
+        await db.transaction(async (tx) => {
+          await lockScrapeAttempt(tx, job);
+          if (localOnly) options.signal?.throwIfAborted();
+          else loader.check();
+          const actualParent = await tx.query.posts.findFirst({
+            where: { iri: { eq: parentIri.href } },
+          });
+          const child = await tx.query.posts.findFirst({
+            where: { iri: { eq: childIri } },
+          });
+          if (
+            actualParent == null ||
+            child == null ||
+            child.replyTargetId != null ||
+            actualParent.id === child.id
+          )
+            return;
+          const ancestry = await tx.execute<{ id: string }>(sql`
+            with recursive ancestors as (
+              select id, reply_target_id from ${posts} where id = ${actualParent.id}
+              union select p.id, p.reply_target_id from ${posts} p join ancestors a on p.id = a.reply_target_id
+            ) select id from ancestors where id = ${child.id}
+          `);
+          if (ancestry.length > 0) return;
+          await tx
+            .update(posts)
+            .set({ replyTargetId: actualParent.id })
+            .where(and(eq(posts.id, child.id), isNull(posts.replyTargetId)));
+          // The child may have entered inboxes as a root before its parent
+          // arrived. Reapply the existing reply policies in the same transaction.
+          const repaired = await tx.query.posts.findFirst({
+            where: { id: { eq: child.id } },
+            with: {
+              mentions: true,
+              sharing: { with: { mentions: true } },
+              replyTarget: true,
+            },
+          });
+          if (repaired != null) {
+            await tx
+              .delete(timelinePosts)
+              .where(eq(timelinePosts.postId, child.id));
+            await tx.delete(listPosts).where(eq(listPosts.postId, child.id));
+            await appendPostToTimelines(tx, repaired);
+          }
+          await updateScrapedRepliesCount(actualParent.id, tx);
+          parents.add(actualParent.id);
+        });
+      }
+    };
+    const pageTargets = new Set<string>();
+    const inspectedCollections = new WeakSet<Collection>();
+    const inspectPageReferences = async (collection: Collection) => {
+      if (inspectedCollections.has(collection)) return;
+      inspectedCollections.add(collection);
+      // Expanded JSON-LD distinguishes embedded pages from URL references
+      // without fetching pages ahead of traversal or logging fake failures.
+      const namespace = "https://www.w3.org/ns/activitystreams#";
+      const inspect = (value: unknown) => {
+        if (Array.isArray(value)) {
+          for (const entry of value) inspect(entry);
+          return;
+        }
+        if (value == null || typeof value !== "object") return;
+        const document = value as Record<string, unknown>;
+        const types = document["@type"];
+        const isPage =
+          Array.isArray(types) &&
+          (types.includes(`${namespace}CollectionPage`) ||
+            types.includes(`${namespace}OrderedCollectionPage`));
+        const references = [
+          document[`${namespace}first`],
+          ...(isPage ? [document[`${namespace}next`]] : []),
+        ];
+        for (const reference of references) {
+          for (const target of Array.isArray(reference) ? reference : []) {
+            if (target == null || typeof target !== "object") continue;
+            const page = target as Record<string, unknown>;
+            if (typeof page["@id"] === "string") pageTargets.add(page["@id"]);
+            const pageTypes = page["@type"];
+            if (!Array.isArray(pageTypes) || pageTypes.length === 0) continue;
+            if (
+              pageTypes.includes(`${namespace}CollectionPage`) ||
+              pageTypes.includes(`${namespace}OrderedCollectionPage`)
+            )
+              inspect(page);
+            else {
+              partial = true;
+              skippedItems++;
+            }
+          }
         }
       };
-      const collection = await lookupObject(new URL(job.repliesIri), {
-        documentLoader: recordingDocumentLoader,
-      });
-
-      if (collection == null && isLastFetchOriginRateLimit()) {
-        throw lastFetchError;
+      inspect(await collection.toJsonLd({ format: "expand" }));
+      loader.check();
+    };
+    const loadBackfillObject = async (iri: URL) => {
+      const object = await loader.lookup(iri);
+      if (pageTargets.has(iri.href) && !(object instanceof CollectionPage)) {
+        partial = true;
+        skippedItems++;
+        return null;
       }
-
-      if (collection == null) {
-        throw new Error(`Replies collection not found: ${job.repliesIri}`);
-      }
-
-      if (!(collection instanceof Collection)) {
-        throw new Error(
-          `Replies collection is not a Collection: ${job.repliesIri}`,
-        );
-      }
-
-      for await (const item of iterateCollection(collection, {
-        documentLoader: recordingDocumentLoader,
-      })) {
-        if (
-          fetchedItems >= (options.maxItems ?? REMOTE_REPLIES_SCRAPE_MAX_ITEMS)
-        ) {
-          break;
+      if (object instanceof Collection) await inspectPageReferences(object);
+      return object;
+    };
+    try {
+      if (
+        maxItems <= 0 ||
+        (options.maxRequests ?? REMOTE_REPLIES_SCRAPE_MAX_REQUESTS) <= 0
+      ) {
+        partial = true;
+      } else {
+        const requested = new URL(job.repliesIri);
+        const collection = await (job.kind === "context"
+          ? loader.loadObject(requested)
+          : loader.lookup(requested));
+        if (!(collection instanceof Collection)) {
+          throw new Error(
+            `${job.kind === "context" ? "Context" : "Replies"} collection not found: ${job.repliesIri}`,
+          );
         }
-        if (!isPost(item)) continue;
-
-        await checkpoint();
-        const reply = await persistPost(db, item, job.baseUrl, {
-          documentLoader: recordingDocumentLoader,
-          enqueueRemoteReplies: false,
-          fetchEmojiReactions: false,
-          replyTarget: post,
-          skipUpdate: true,
-        });
-        await checkpoint();
-        if (reply == null) continue;
-
-        fetchedItems++;
-        const childRepliesIri = item.repliesId;
-        if (
-          childRepliesIri != null &&
-          job.depth + 1 < (options.maxDepth ?? REMOTE_REPLIES_SCRAPE_DEPTH)
-        ) {
-          await enqueueRemoteReplyScrape(db, {
-            baseUrl: job.baseUrl,
-            depth: job.depth + 1,
-            post: reply,
-            repliesIri: childRepliesIri,
-          });
+        if (job.kind === "context") {
+          const finalUrl = await loader.documentUrl(requested);
+          const canonical = collection.id ?? finalUrl;
+          if (!isHttpIri(canonical) || canonical.origin !== finalUrl.origin)
+            throw new Error("Unusable context collection identity");
+          const promoted = await canonicalizeContextJob(
+            job,
+            canonical,
+            finalUrl,
+            clock(),
+          );
+          if (promoted == null) return 0;
+          job = promoted;
+          loader.cacheObject(collection, [requested, finalUrl, canonical]);
+          await inspectPageReferences(collection);
         }
+        const items =
+          job.kind === "context"
+            ? (async function* () {
+                for await (const item of backfill(
+                  { documentLoader: loadBackfillObject },
+                  new Note({
+                    // Include the stored seed in collection-based orphan repair.
+                    contexts: [new URL(job.repliesIri)],
+                  }),
+                  {
+                    strategies: ["context-auto"],
+                    maxItems,
+                    signal: loader.signal,
+                  },
+                ))
+                  yield item.object;
+              })()
+            : iterateCollection(collection, {
+                documentLoader: loader.documentLoader,
+                contextLoader: loader.contextLoader,
+              });
+        for await (const candidate of items) {
+          loader.check();
+          await checkpoint();
+          yieldedItems++;
+          if (!isPost(candidate)) {
+            partial = true;
+            skippedItems++;
+            continue;
+          }
+          let item: ASPost = candidate;
+          if (job.kind === "context") {
+            const existing =
+              item.id == null
+                ? null
+                : await db.query.posts.findFirst({
+                    where: { iri: { eq: item.id.href } },
+                  });
+            if (existing != null) {
+              fetchedItems++;
+              if (existing.replyTargetId == null && item.replyTargetId != null)
+                orphanHints.set(existing.iri, item.replyTargetId);
+              continue;
+            }
+            const trusted = await authoritativePost(item);
+            if (trusted == null) {
+              partial = true;
+              skippedItems++;
+              continue;
+            }
+            item = trusted;
+          }
+          let saved;
+          try {
+            saved = await persistItem(item);
+          } catch (error) {
+            loader.check();
+            if (error instanceof LostScrapeAttempt || job.kind === "replies")
+              throw error;
+            // A malformed item must not prevent later conversation items.
+            partial = true;
+            skippedItems++;
+            continue;
+          }
+          if (saved == null) {
+            partial = true;
+            skippedItems++;
+            continue;
+          }
+          fetchedItems++;
+          if (
+            job.kind === "context" &&
+            saved.replyTargetId == null &&
+            item.replyTargetId != null
+          )
+            orphanHints.set(saved.iri, item.replyTargetId);
+          if (job.kind === "replies") {
+            if (
+              item.repliesId != null &&
+              job.depth + 1 < (options.maxDepth ?? REMOTE_REPLIES_SCRAPE_DEPTH)
+            ) {
+              await enqueueRemoteReplyScrape(db, {
+                baseUrl: job.baseUrl,
+                depth: job.depth + 1,
+                post: saved,
+                repliesIri: item.repliesId,
+              });
+            }
+            if (fetchedItems >= maxItems) {
+              partial = true;
+              break;
+            }
+          }
+        }
+        loader.check();
+        if (job.kind === "context" && yieldedItems >= maxItems) partial = true;
+        await reconcile();
       }
-
       await checkpoint();
-      await updateScrapedRepliesCount(job.postId);
-      await completeJob(job, fetchedItems, clock());
+      await completeJob(job, progress(), clock());
       return fetchedItems;
     } catch (error) {
       if (lost != null || error instanceof LostScrapeAttempt) return 0;
-      if (interrupted || options.signal?.aborted) {
-        await interruptJob(job, clock());
+      if (options.signal?.aborted || interrupted) {
+        await interruptJob(job, clock(), progress());
         return 0;
       }
       try {
@@ -248,160 +542,56 @@ export async function processRemoteReplyScrapeJob(
       } catch (checkpointError) {
         if (lost != null || checkpointError instanceof LostScrapeAttempt)
           return 0;
-        if (interrupted || options.signal?.aborted) {
-          await interruptJob(job, clock());
+        if (options.signal?.aborted || interrupted) {
+          await interruptJob(job, clock(), progress());
           return 0;
         }
-        // A transient heartbeat failure must not discard the scrape error.
-        // Outcome writes below still fence this attempt against replacement.
       }
-      await updateScrapedRepliesCount(job.postId);
-      if (isLastFetchOriginRateLimit(error)) {
-        const failedAt = clock();
+      if (error instanceof ScrapeDeferred && error.host === job.originHost) {
         await backOffJob(
           job,
-          retryAfterSeconds(error, failedAt) ??
-            options.backoffSeconds ??
-            REMOTE_REPLIES_SCRAPE_BACKOFF_SECONDS,
-          error,
-          failedAt,
+          Math.max(0, (+error.retryAt - +clock()) / 1000),
+          error.cause ?? error,
+          clock(),
+          progress(),
         );
         return 0;
+      }
+      if (error instanceof ScrapeRequestLimit) {
+        partial = true;
+        // The loader is deliberately aborted at the cap. Repair only links
+        // from metadata already verified in this attempt, without new I/O.
+        try {
+          await reconcile(true);
+          await checkpoint();
+        } catch (reconcileError) {
+          if (lost != null || reconcileError instanceof LostScrapeAttempt)
+            return 0;
+          if (options.signal?.aborted || interrupted) {
+            await interruptJob(job, clock(), progress());
+            return 0;
+          }
+          throw reconcileError;
+        }
+        await completeJob(job, progress(), clock());
+        return fetchedItems;
       }
       await failJob(
         job,
         error instanceof Error ? error.message : String(error),
         clock(),
+        progress(),
       );
       return 0;
+    } finally {
+      // These counts derive solely from committed rows, so a lost lease must
+      // not strand counts for children this attempt already committed.
+      parents.add(job.postId);
+      for (const parentId of parents) await updateScrapedRepliesCount(parentId);
     }
   } finally {
     clearInterval(timer);
     await refreshing;
-  }
-}
-
-function createThrottledDocumentLoader(
-  job: RemoteReplyScrapeJob,
-  {
-    documentLoader,
-    intervalSeconds,
-    staleProcessingSeconds,
-    clock,
-    sleep,
-    checkpoint,
-  }: {
-    checkpoint: () => Promise<void>;
-    clock: () => Date;
-    documentLoader: DocumentLoader;
-    intervalSeconds: number;
-    sleep: (milliseconds: number) => Promise<void>;
-    staleProcessingSeconds: number;
-  },
-): DocumentLoader {
-  let originRequests = 0;
-
-  return async (url, options) => {
-    const sameOrigin = new URL(url).host === job.originHost;
-    if (sameOrigin && originRequests > 0) {
-      await sleepWithProcessingHeartbeats(job, {
-        clock,
-        seconds: intervalSeconds,
-        sleep,
-        staleProcessingSeconds,
-      });
-    }
-    if (sameOrigin) originRequests++;
-
-    try {
-      await checkpoint();
-      return await documentLoader(url, options);
-    } finally {
-      const requestTime = clock();
-      await db.transaction(async (tx) => {
-        const [updatedJob] = await tx
-          .update(remoteReplyScrapeJobs)
-          .set({ updated: requestTime })
-          .where(processingJobAttemptCondition(job))
-          .returning({ id: remoteReplyScrapeJobs.id });
-        if (updatedJob == null) {
-          await releaseOriginLeaseIfJobDeleted(tx, job, requestTime);
-          return;
-        }
-
-        if (sameOrigin) {
-          await tx
-            .update(remoteReplyScrapeOrigins)
-            .set({
-              lastRequestAt: requestTime,
-              nextRequestAt: laterBySeconds(intervalSeconds, requestTime),
-              processingStartedAt: requestTime,
-              updated: requestTime,
-            })
-            .where(
-              and(
-                eq(remoteReplyScrapeOrigins.originHost, job.originHost),
-                eq(remoteReplyScrapeOrigins.processingJobId, job.id),
-              ),
-            );
-        } else {
-          await tx
-            .update(remoteReplyScrapeOrigins)
-            .set({
-              processingStartedAt: requestTime,
-              updated: requestTime,
-            })
-            .where(
-              and(
-                eq(remoteReplyScrapeOrigins.originHost, job.originHost),
-                eq(remoteReplyScrapeOrigins.processingJobId, job.id),
-              ),
-            );
-        }
-      });
-    }
-  };
-}
-
-function processingJobAttemptCondition(job: RemoteReplyScrapeJob) {
-  return and(
-    eq(remoteReplyScrapeJobs.id, job.id),
-    eq(remoteReplyScrapeJobs.status, "processing"),
-    eq(remoteReplyScrapeJobs.attempts, job.attempts),
-    job.startedAt == null
-      ? isNull(remoteReplyScrapeJobs.startedAt)
-      : eq(remoteReplyScrapeJobs.startedAt, job.startedAt),
-  );
-}
-
-async function sleepWithProcessingHeartbeats(
-  job: RemoteReplyScrapeJob,
-  {
-    clock,
-    seconds,
-    sleep,
-    staleProcessingSeconds,
-  }: {
-    clock: () => Date;
-    seconds: number;
-    sleep: (milliseconds: number) => Promise<void>;
-    staleProcessingSeconds: number;
-  },
-): Promise<void> {
-  let remainingMilliseconds = seconds * 1000;
-  if (remainingMilliseconds <= 0) return;
-
-  const heartbeatMilliseconds =
-    Math.max(1, Math.floor(staleProcessingSeconds / 2)) * 1000;
-
-  while (remainingMilliseconds > 0) {
-    await updateProcessingHeartbeat(job, clock());
-    const sleepMilliseconds = Math.min(
-      remainingMilliseconds,
-      heartbeatMilliseconds,
-    );
-    await sleep(sleepMilliseconds);
-    remainingMilliseconds -= sleepMilliseconds;
   }
 }
 
@@ -443,8 +633,9 @@ async function updateProcessingHeartbeat(
 
 async function updateScrapedRepliesCount(
   postId: RemoteReplyScrapeJob["postId"],
+  database: DatabaseLike = db,
 ) {
-  await db.execute(sql`
+  await database.execute(sql`
     update ${posts}
     set replies_count = (
       select count(*)
@@ -457,7 +648,7 @@ async function updateScrapedRepliesCount(
 
 async function completeJob(
   job: RemoteReplyScrapeJob,
-  fetchedItems: number,
+  progress: ScrapeProgress,
   now: Date,
 ): Promise<void> {
   await db.transaction(async (tx) => {
@@ -466,17 +657,19 @@ async function completeJob(
       .set({
         status: "completed",
         nextDispatchAt: now,
-        fetchedItems,
+        ...progress,
         completedAt: now,
-        errorMessage: null,
         updated: now,
       })
       .where(processingJobAttemptCondition(job))
-      .returning({ id: remoteReplyScrapeJobs.id });
+      .returning();
     if (updatedJob == null) {
       await releaseOriginLeaseIfJobDeleted(tx, job, now);
       return;
     }
+
+    if (updatedJob.kind === "context")
+      await settleContextReplies(tx, updatedJob, now);
 
     await tx
       .update(remoteReplyScrapeOrigins)
@@ -498,23 +691,31 @@ async function failJob(
   job: RemoteReplyScrapeJob,
   message: string,
   now: Date,
+  progress?: ScrapeProgress,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const [updatedJob] = await tx
       .update(remoteReplyScrapeJobs)
       .set({
+        ...progress,
         status: "failed",
         nextDispatchAt: now,
-        errorMessage: message,
+        errorMessage:
+          job.kind === "context" && progress?.errorMessage
+            ? `${message}; ${progress.errorMessage}`
+            : message,
         completedAt: now,
         updated: now,
       })
       .where(processingJobAttemptCondition(job))
-      .returning({ id: remoteReplyScrapeJobs.id });
+      .returning();
     if (updatedJob == null) {
       await releaseOriginLeaseIfJobDeleted(tx, job, now);
       return;
     }
+
+    if (updatedJob.kind === "context")
+      await settleContextReplies(tx, updatedJob, now);
 
     await tx
       .update(remoteReplyScrapeOrigins)
@@ -537,31 +738,41 @@ async function backOffJob(
   seconds: number,
   error: unknown,
   now: Date,
+  progress?: ScrapeProgress,
 ): Promise<void> {
   const nextAttemptAt = laterBySeconds(seconds, now);
   await db.transaction(async (tx) => {
     const [updatedJob] = await tx
       .update(remoteReplyScrapeJobs)
       .set({
+        ...progress,
         status: "pending",
         nextDispatchAt: now,
         nextAttemptAt,
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage:
+          job.kind === "context" && progress?.errorMessage
+            ? progress.errorMessage
+            : error instanceof Error
+              ? error.message
+              : String(error),
         startedAt: null,
         completedAt: null,
         updated: now,
       })
       .where(processingJobAttemptCondition(job))
-      .returning({ id: remoteReplyScrapeJobs.id });
+      .returning();
     if (updatedJob == null) {
       await releaseOriginLeaseIfJobDeleted(tx, job, now);
       return;
     }
 
+    if (updatedJob.kind === "context")
+      await settleContextReplies(tx, updatedJob, now);
+
     await tx
       .update(remoteReplyScrapeOrigins)
       .set({
-        nextRequestAt: nextAttemptAt,
+        nextRequestAt: sql`greatest(${remoteReplyScrapeOrigins.nextRequestAt}, ${nextAttemptAt.toISOString()}::timestamptz)`,
         processingJobId: null,
         processingStartedAt: null,
         updated: sql`greatest(${remoteReplyScrapeOrigins.updated}, ${now.toISOString()}::timestamptz)`,
@@ -615,50 +826,6 @@ async function getDefaultDocumentLoader(
   return await context.getDocumentLoader({ username: owner.handle });
 }
 
-function getErrorStatus(error: unknown): number | null {
-  if (
-    error == null ||
-    typeof error !== "object" ||
-    !("response" in error) ||
-    !(error.response instanceof Response)
-  ) {
-    return null;
-  }
-  return error.response.status;
-}
-
-function isOriginRateLimit(
-  error: unknown,
-  errorUrl: URL | undefined,
-  job: RemoteReplyScrapeJob,
-): boolean {
-  return getErrorStatus(error) === 429 && errorUrl?.host === job.originHost;
-}
-
-function retryAfterSeconds(error: unknown, now = new Date()): number | null {
-  if (
-    error == null ||
-    typeof error !== "object" ||
-    !("response" in error) ||
-    !(error.response instanceof Response)
-  ) {
-    return null;
-  }
-
-  const retryAfter = error.response.headers.get("Retry-After");
-  if (retryAfter == null) return null;
-
-  const trimmedRetryAfter = retryAfter.trim();
-  if (/^-?\d+$/.test(trimmedRetryAfter)) {
-    const seconds = Number.parseInt(trimmedRetryAfter, 10);
-    return seconds >= 0 ? seconds : null;
-  }
-
-  const date = Date.parse(trimmedRetryAfter);
-  if (Number.isNaN(date)) return null;
-  return Math.max(0, Math.ceil((date - now.getTime()) / 1000));
-}
-
 function sleep(milliseconds: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     signal?.throwIfAborted();
@@ -674,11 +841,16 @@ function sleep(milliseconds: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-async function interruptJob(job: RemoteReplyScrapeJob, now: Date) {
+async function interruptJob(
+  job: RemoteReplyScrapeJob,
+  now: Date,
+  progress?: ScrapeProgress,
+) {
   await db.transaction(async (tx) => {
     const [owned] = await tx
       .update(remoteReplyScrapeJobs)
       .set({
+        ...progress,
         status: "pending",
         nextDispatchAt: now,
         startedAt: null,

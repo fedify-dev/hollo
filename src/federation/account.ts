@@ -12,6 +12,7 @@ import {
   isActor,
   Link,
   lookupObject,
+  type Object as APObject,
   PropertyValue,
   Reject,
   Undo,
@@ -91,6 +92,9 @@ export class AccountHandleConflictError extends Error {
 export type PersistAccountOptions = {
   contextLoader?: DocumentLoader;
   documentLoader?: DocumentLoader;
+  /** A bounded, HTTP-only lookup used by historical scraping. */
+  objectLoader?: (iri: URL) => Promise<APObject | null>;
+  accountAncestry?: ReadonlySet<string>;
   skipUpdate?: boolean;
   handleConflictPolicy?: PersistAccountHandleConflictPolicy;
   mediaProxyMode?: MediaProxyMode;
@@ -240,7 +244,6 @@ export async function persistAccount(
   baseUrl: string | URL,
   options: PersistAccountOptions = {},
 ): Promise<(schema.Account & { owner: schema.AccountOwner | null }) | null> {
-  const opts = { ...options, suppressError: true };
   if (
     actor.id == null ||
     actor.inboxId == null ||
@@ -255,6 +258,16 @@ export async function persistAccount(
   });
   if (options.skipUpdate && existingAccount != null) return existingAccount;
   if (existingAccount?.owner != null) return existingAccount;
+  if (options.accountAncestry?.has(actorId.href))
+    return existingAccount ?? null;
+  options = {
+    ...options,
+    accountAncestry: new Set([
+      ...(options.accountAncestry ?? []),
+      actorId.href,
+    ]),
+  };
+  const opts = { ...options, suppressError: true };
   let handle: string;
   try {
     handle = await getActorHandle(actor);
@@ -497,7 +510,10 @@ export async function persistAccountByIri(
     where: { iri: { eq: iri } },
   });
   if (account != null) return account;
-  const actor = await lookupObject(iri, options);
+  const actor =
+    options.objectLoader == null
+      ? await lookupObject(iri, options)
+      : await options.objectLoader(new URL(iri));
   if (!isActor(actor) || actor.id == null) return null;
   return await persistAccount(db, actor, baseUrl, options);
 }

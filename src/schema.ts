@@ -1341,11 +1341,16 @@ export type NewCleanupJobItem = typeof cleanupJobItems.$inferInsert;
 
 export const remoteReplyScrapeJobStatusEnum = pgEnum(
   "remote_reply_scrape_job_status",
-  ["pending", "processing", "completed", "failed"],
+  ["pending", "processing", "completed", "failed", "waiting"],
 );
 
 export type RemoteReplyScrapeJobStatus =
   (typeof remoteReplyScrapeJobStatusEnum.enumValues)[number];
+
+export const remoteReplyScrapeKindEnum = pgEnum("remote_reply_scrape_kind", [
+  "replies",
+  "context",
+]);
 
 export const remoteReplyScrapeJobs = pgTable(
   "remote_reply_scrape_jobs",
@@ -1356,7 +1361,19 @@ export const remoteReplyScrapeJobs = pgTable(
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
     postIri: text("post_iri").notNull(),
-    repliesIri: text("replies_iri").notNull().unique(),
+    // The legacy column also holds the collection target of context jobs.
+    repliesIri: text("replies_iri").notNull(),
+    kind: remoteReplyScrapeKindEnum("kind").notNull().default("replies"),
+    blockedByJobId: uuid("blocked_by_job_id")
+      .$type<Uuid>()
+      .references((): AnyPgColumn => remoteReplyScrapeJobs.id, {
+        onDelete: "set null",
+      }),
+    partial: boolean("partial").notNull().default(false),
+    yieldedItems: integer("yielded_items").notNull().default(0),
+    requestCount: integer("request_count").notNull().default(0),
+    skippedItems: integer("skipped_items").notNull().default(0),
+    hostRequeues: integer("host_requeues").notNull().default(0),
     baseUrl: text("base_url").notNull(),
     originHost: text("origin_host").notNull(),
     depth: integer("depth").notNull().default(0),
@@ -1382,6 +1399,11 @@ export const remoteReplyScrapeJobs = pgTable(
       .default(currentTimestamp),
   },
   (table) => [
+    uniqueIndex("remote_reply_scrape_jobs_kind_collection_unique").on(
+      table.kind,
+      table.repliesIri,
+    ),
+    index().on(table.blockedByJobId),
     index().on(table.postId),
     index("remote_reply_scrape_jobs_dispatch_index")
       .on(table.status, table.nextDispatchAt, table.id)
@@ -1407,6 +1429,18 @@ export const remoteReplyScrapeJobs = pgTable(
 export type RemoteReplyScrapeJob = typeof remoteReplyScrapeJobs.$inferSelect;
 export type NewRemoteReplyScrapeJob = typeof remoteReplyScrapeJobs.$inferInsert;
 
+export const remoteContextScrapeAliases = pgTable(
+  "remote_context_scrape_aliases",
+  {
+    iri: text("iri").primaryKey(),
+    jobId: uuid("job_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => remoteReplyScrapeJobs.id, { onDelete: "cascade" }),
+  },
+  (table) => [index().on(table.jobId)],
+);
+
 export const remoteReplyScrapeOrigins = pgTable(
   "remote_reply_scrape_origins",
   {
@@ -1415,6 +1449,9 @@ export const remoteReplyScrapeOrigins = pgTable(
       .notNull()
       .default(currentTimestamp),
     lastRequestAt: timestamp("last_request_at", { withTimezone: true }),
+    cooldownUntil: timestamp("cooldown_until", { withTimezone: true })
+      .notNull()
+      .default(sql`'epoch'::timestamptz`),
     processingJobId: uuid("processing_job_id").$type<Uuid>(),
     processingStartedAt: timestamp("processing_started_at", {
       withTimezone: true,
