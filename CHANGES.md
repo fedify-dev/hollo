@@ -146,9 +146,9 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
-[FEP-f228]: https://w3id.org/fep/f228
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-c0e0]: https://w3id.org/fep/c0e0
+[FEP-f228]: https://w3id.org/fep/f228
 [Gukhanmun]: https://gukhanmun.org/
 [RFC 6749]: https://datatracker.ietf.org/doc/html/rfc6749#section-3.3
 [GHSA-2g3p-m8c9-hhwh]: https://github.com/MasterKale/SimpleWebAuthn/security/advisories/GHSA-2g3p-m8c9-hhwh
