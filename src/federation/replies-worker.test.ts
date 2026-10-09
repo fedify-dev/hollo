@@ -32,6 +32,7 @@ import {
 import type { Uuid } from "../uuid";
 import { uuidv7 } from "../uuid";
 import { enqueueRemoteReplyScrape } from "./replies";
+import { createScrapeLoader } from "./replies-loader";
 import { registerRemoteReplyScrapes } from "./replies-tasks";
 import {
   claimRemoteReplyScrapeJob as claimById,
@@ -2062,6 +2063,45 @@ describe("FEP-f228 conversation backfill", () => {
     },
   );
 
+  it.each([
+    [30_000, 5],
+    [5_000, 7],
+  ])(
+    "paces requests with a %s ms heartbeat interval across sleeps",
+    async (checkpointIntervalMilliseconds, expectedCheckpoints) => {
+      const seed = await seedContextJob();
+      const job = (await db.query.remoteReplyScrapeJobs.findFirst({
+        where: { id: { eq: seed.jobId } },
+      }))!;
+      let time = +new Date();
+      const checkpoint = vi.fn(async () => undefined);
+      const sleep = vi.fn(async (ms: number) => {
+        time += ms;
+      });
+      const urls = [0, 1, 2, 3].map(
+        (index) => `https://remote.test/paced/${index}`,
+      );
+      const documentLoader = makeLoader(
+        Object.fromEntries(urls.map((url) => [url, collection(url, [])])),
+      );
+      const loader = createScrapeLoader({
+        getJob: () => job,
+        documentLoader,
+        contextLoader: documentLoader,
+        maxRequests: 4,
+        intervalSeconds: 5,
+        backoffSeconds: 0,
+        clock: () => new Date(time),
+        checkpoint,
+        checkpointIntervalMilliseconds,
+        sleep,
+      });
+      for (const url of urls) await loader.documentLoader(url);
+      expect(sleep).toHaveBeenCalledTimes(15);
+      expect(checkpoint).toHaveBeenCalledTimes(expectedCheckpoints);
+      expect(loader.requestCount).toBe(4);
+    },
+  );
   it("skips a foreign host after 429, caches failures, and continues healthy items", async () => {
     const seed = await seedContextJob();
     await gateReplies(seed);

@@ -204,6 +204,10 @@ export async function processRemoteReplyScrapeJob(
       ),
       clock,
       checkpoint,
+      checkpointIntervalMilliseconds: Math.max(
+        1,
+        Math.min(30_000, (staleSeconds * 1000) / 3),
+      ),
       sleep: options.sleep ?? ((ms) => sleep(ms, options.signal)),
       signal: options.signal,
     });

@@ -72,6 +72,7 @@ export function createScrapeLoader({
   backoffSeconds,
   clock,
   checkpoint,
+  checkpointIntervalMilliseconds = 30_000,
   sleep,
   signal: shutdown,
 }: {
@@ -83,6 +84,7 @@ export function createScrapeLoader({
   backoffSeconds: number;
   clock: () => Date;
   checkpoint: () => Promise<void>;
+  checkpointIntervalMilliseconds?: number;
   sleep: (milliseconds: number) => Promise<void>;
   signal?: AbortSignal;
 }) {
@@ -107,14 +109,19 @@ export function createScrapeLoader({
     partial = true;
   };
 
+  let sinceCheckpoint = Infinity;
   async function wait(milliseconds: number) {
     let remaining = milliseconds;
     while (remaining > 0) {
       check();
-      await checkpoint();
+      if (sinceCheckpoint >= checkpointIntervalMilliseconds) {
+        await checkpoint();
+        sinceCheckpoint = 0;
+      }
       const chunk = Math.min(remaining, 1000);
       await sleep(chunk);
       remaining -= chunk;
+      sinceCheckpoint += chunk;
     }
     check();
   }
