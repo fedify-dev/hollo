@@ -47,7 +47,7 @@
     "@gukhanmun/opendict-fst": "^0.2.0",
     "@gukhanmun/stdict-fst": "^0.2.0",
     "@hexagon/base64": "^2.0.4",
-    "@hono/node-server": "^2.1.1",
+    "@hono/node-server": "^2.1.4",
     "@hono/zod-validator": "^0.9.1",
     "@js-temporal/polyfill": "^0.5.0",
     "@logtape/drizzle-orm": "~2.3.10",
