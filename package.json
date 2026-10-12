@@ -70,7 +70,7 @@
     "csv-writer-portable": "^1.7.6",
     "drizzle-kit": "1.0.0-rc.5-5935859",
     "drizzle-orm": "1.0.0-rc.5-169397b",
-    "es-toolkit": "^1.48.1",
+    "es-toolkit": "^1.52.0",
     "file-type": "^22.1.1",
     "flydrive": "^2.1.0",
     "hono": "^4.13.12",
