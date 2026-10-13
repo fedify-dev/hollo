@@ -6,7 +6,7 @@ Version 0.10.0
 
 To be released.
 
- -  Upgraded Fedify to 2.4.2.
+ -  Upgraded Fedify to 2.4.4.
 
  -  Quotes awaiting [FEP-044f] approval now expose `quoteUrl` for compatibility
     with older software when the original public or unlisted post explicitly
@@ -175,6 +175,27 @@ To be released.
 [#661]: https://github.com/fedify-dev/hollo/issues/661
 [#663]: https://github.com/fedify-dev/hollo/pull/663
 [#664]: https://github.com/fedify-dev/hollo/pull/664
+
+
+Version 0.9.23
+--------------
+
+Released on October 14, 2026.
+
+ -  Upgraded Fedify to 2.2.19, which fixes two security vulnerabilities:
+    inboxes accepting signed activities whose IDs had a different origin
+    from their actors, which let any remote actor have forged objects
+    trusted as if they came from another server and suppress the genuine
+    activity with the same ID as a duplicate, and key ownership checks
+    accepting a different actor's document when an actor ID redirected to
+    or served it, which let an attacker whose actor document was reached
+    through a victim's actor ID sign activities that passed authentication
+    as the victim's.  Keys cached under the weaker ownership check are
+    fetched and verified again after upgrading.
+    [[GHSA-4qhx-hhwf-8685], [GHSA-8863-8468-7hq7]]
+
+[GHSA-4qhx-hhwf-8685]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-4qhx-hhwf-8685
+[GHSA-8863-8468-7hq7]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-8863-8468-7hq7
 
 
 Version 0.9.22
@@ -979,6 +1000,24 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.15
+--------------
+
+Released on October 14, 2026.
+
+ -  Upgraded Fedify to 2.1.30, which fixes two security vulnerabilities:
+    inboxes accepting signed activities whose IDs had a different origin
+    from their actors, which let any remote actor have forged objects
+    trusted as if they came from another server and suppress the genuine
+    activity with the same ID as a duplicate, and key ownership checks
+    accepting a different actor's document when an actor ID redirected to
+    or served it, which let an attacker whose actor document was reached
+    through a victim's actor ID sign activities that passed authentication
+    as the victim's.  Keys cached under the weaker ownership check are
+    fetched and verified again after upgrading.
+    [[GHSA-4qhx-hhwf-8685], [GHSA-8863-8468-7hq7]]
 
 
 Version 0.8.14
