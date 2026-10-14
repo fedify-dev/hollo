@@ -1,0 +1,19 @@
+[changelog]
+path = "CHANGES.md"
+title = "Hollo changelog"
+unreleased-heading = "To be released."
+materialize = true
+region-detection = "heading"
+
+[fragments]
+directory = "changes.d"
+next-file = "next"
+
+[links]
+"#" = "https://github.com/fedify-dev/hollo/issues/{n}"
+
+[vcs]
+preset = "git"
+
+[check]
+paths = ["bin/**", "src/**"]

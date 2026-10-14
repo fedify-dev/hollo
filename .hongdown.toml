@@ -6,6 +6,7 @@ exclude = [
   ".agents/skills/**",
   ".claude/skills/**",
   ".github/copilot-instructions.md",
+  "changes.d/**",
   "CLAUDE.md",
   "GEMINI.md",
   "PLAN.md",

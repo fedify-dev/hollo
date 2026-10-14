@@ -363,6 +363,9 @@ importers:
       '@reporters/github':
         specifier: ^2.1.4
         version: 2.1.4
+      '@sacho/sacho':
+        specifier: 0.3.2
+        version: 0.3.2
       '@types/fluent-ffmpeg':
         specifier: ^2.1.28
         version: 2.1.28
@@ -2877,6 +2880,41 @@ packages:
     resolution: {integrity: sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA==}
     cpu: [x64]
     os: [win32]
+
+  '@sacho/sacho-aarch64-apple-darwin@0.3.2':
+    resolution: {integrity: sha512-uMYGjFwggsjDWst8VQ1Z853vmg7/FGMf2uU8gDMhpE5dWc95czOyySKqsWjVks9mA7UtdX/QFx4J6k/I5dBwcw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@sacho/sacho-aarch64-pc-windows-msvc@0.3.2':
+    resolution: {integrity: sha512-5w6cmDVbbYzq91FXFs2TugIwJMQIe1xKgD/PvB7DlkKkVX7ytdJt2koeogYoZ/KRcIac5WRq9iiXY0xVkArcHA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@sacho/sacho-aarch64-unknown-linux-musl@0.3.2':
+    resolution: {integrity: sha512-Lld/9ZjgrAh+A4gSRM8JJgiRO4d4iHaaFLhieBa9vE8Bp1w9zm7APeSfzNiPXVisvouMuPYaiPhiTHezYIicxw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@sacho/sacho-x86_64-apple-darwin@0.3.2':
+    resolution: {integrity: sha512-a+Pq2lO75tF5e0XaEY1/wTbv2n+elY2Z/2o3w3yIH/1ZiCmGOK8LW95+5MJYyvblsuh9oXSbw1HGsTses9N3lw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@sacho/sacho-x86_64-pc-windows-msvc@0.3.2':
+    resolution: {integrity: sha512-keQz7XrZ/3zvuZf9wbI8IltC2fTQpHX+v9QYsUfN0AXLR8mCEv1nyiiyyNURthDKzjDRBErVkmtWp1WFE8qODA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@sacho/sacho-x86_64-unknown-linux-musl@0.3.2':
+    resolution: {integrity: sha512-lOmx6fyVUZkWQptCH4x/oL/Hu45nR5TeUg7ckxxlCD7j2i8LelnbbRo8hbikrtYblaJmJmOgnvWYU11TYoGM1g==}
+    cpu: [x64]
+    os: [linux]
+
+  '@sacho/sacho@0.3.2':
+    resolution: {integrity: sha512-vHra5oIbq+IKK8ZzhqcprwWFnAJPDxkzj3AG/45//dp0sTE1PI0Qf3jYqkwRgC1nSDoG4Po38gj9HGJutIAkgQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   '@sentry/bundler-plugins@11.4.0':
     resolution: {integrity: sha512-THgOMIaA0AMVF4TiCIbugK2jlLYCBIhRF0gclrj7Fte3RMZytkXeH8XeoaR6C6MJTyLCNkEOEccwX9Jj2xOc8g==}
@@ -6656,14 +6694,14 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
   '@aws-crypto/crc32c@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
@@ -6671,7 +6709,7 @@ snapshots:
     dependencies:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/types': 3.713.0
       '@aws-sdk/util-locate-window': 3.965.9
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -6682,7 +6720,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/types': 3.713.0
       '@aws-sdk/util-locate-window': 3.965.9
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
@@ -6691,7 +6729,7 @@ snapshots:
   '@aws-crypto/sha256-js@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/types': 3.713.0
       tslib: 2.8.1
     optional: true
 
@@ -6702,7 +6740,7 @@ snapshots:
 
   '@aws-crypto/util@5.2.0':
     dependencies:
-      '@aws-sdk/types': 3.974.5
+      '@aws-sdk/types': 3.713.0
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
     optional: true
@@ -8869,6 +8907,33 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
+
+  '@sacho/sacho-aarch64-apple-darwin@0.3.2':
+    optional: true
+
+  '@sacho/sacho-aarch64-pc-windows-msvc@0.3.2':
+    optional: true
+
+  '@sacho/sacho-aarch64-unknown-linux-musl@0.3.2':
+    optional: true
+
+  '@sacho/sacho-x86_64-apple-darwin@0.3.2':
+    optional: true
+
+  '@sacho/sacho-x86_64-pc-windows-msvc@0.3.2':
+    optional: true
+
+  '@sacho/sacho-x86_64-unknown-linux-musl@0.3.2':
+    optional: true
+
+  '@sacho/sacho@0.3.2':
+    optionalDependencies:
+      '@sacho/sacho-aarch64-apple-darwin': 0.3.2
+      '@sacho/sacho-aarch64-pc-windows-msvc': 0.3.2
+      '@sacho/sacho-aarch64-unknown-linux-musl': 0.3.2
+      '@sacho/sacho-x86_64-apple-darwin': 0.3.2
+      '@sacho/sacho-x86_64-pc-windows-msvc': 0.3.2
+      '@sacho/sacho-x86_64-unknown-linux-musl': 0.3.2
 
   '@sentry/bundler-plugins@11.4.0(rollup@4.62.2)':
     dependencies:

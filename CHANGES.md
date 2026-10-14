@@ -46,7 +46,7 @@ To be released.
     by both the Mastodon-compatible
     `PATCH /api/v1/accounts/update_credentials` endpoint and the admin
     account creation and editing forms, even though WebP is supported
-    elsewhere in Hollo.  [[#524], [#526] by naskya]
+    elsewhere in Hollo.  [[#524], [#526] by naskya\]
 
  -  Added [FEP-c0e0] `emojiReactions` collections to local ActivityPub
     `Note`, `Question`, and `Article` objects, exposing stored emoji
@@ -144,7 +144,7 @@ To be released.
     bundle to match.  The server release fixes two moderate-severity
     vulnerabilities in attestation certificate revocation handling, and version
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
-    algorithms.  [[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
+    algorithms.  \[[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-c0e0]: https://w3id.org/fep/c0e0

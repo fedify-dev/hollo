@@ -210,8 +210,8 @@ Command names also change over time.  Check the `scripts` field in
 
 The standard verification commands are:
 
- -  `mise run check`: Type checking, linting, source formatting checks, and
-    Hongdown Markdown checks
+ -  `mise run check`: Type checking, linting, source formatting checks,
+    Sacho changelog checks, and Hongdown Markdown checks
  -  `pnpm test`: Test-database migration followed by Vitest
  -  `pnpm test:ci`: Vitest without running migrations; use this only when the
     test database is already prepared
@@ -220,7 +220,8 @@ The standard verification commands are:
 ### Formatting
 
 ~~~~ bash
-# Format code with Oxfmt and Markdown docs with Hongdown
+# Format code with Oxfmt, changelog fragments with Sacho, and Markdown docs
+# with Hongdown
 mise run fmt
 
 # Check source formatting without writing; this does not run Hongdown
@@ -278,6 +279,67 @@ pnpm migrate:test
 > applied.
 
 
+Changelog
+---------
+
+Hollo manages *CHANGES.md* with [Sacho].  Unreleased entries live as
+fragments under *changes.d/*, one Markdown file per user-visible change, and
+Sacho compiles them into the unreleased section of *CHANGES.md*.  Never edit
+that section by hand; edit the fragments instead.  Released sections are
+frozen history.
+
+~~~~ bash
+# Create changes.d/<topic>.md
+sacho add <topic>
+
+# Pin the URLs of issue and pull request references
+sacho resolve-links
+
+# Regenerate the unreleased section of CHANGES.md and format the fragments
+mise run fmt
+
+# Print the unreleased section as it would be compiled
+sacho preview
+~~~~
+
+ -  Name a fragment after the change, not after an issue number.  When a later
+    commit reworks the same change before it is released, edit the existing
+    fragment rather than adding another one.
+ -  Entries are sorted by their text unless a fragment sets `priority` in its
+    frontmatter; lower values come first.  The maintainer curates the order of
+    the current release with negative priorities, so a fragment without one
+    lands after them.  Leave the order to the maintainer unless asked.
+ -  Reference issues and pull requests as `[[#123]]`, then run
+    `sacho resolve-links`.  It follows GitHub's redirects and pins each
+    reference's final URL, so pull requests link to */pull/* rather than
+    */issues/*, in the fragment's frontmatter.  Do not write the pins by hand.
+ -  After creating or editing fragments, run `mise run fmt`.  Sacho refuses to
+    regenerate *CHANGES.md* without a prompt when it differs from the
+    fragments, so the task runs `sacho sync --force` before `sacho fmt`.
+    `sacho add` refuses to run while *CHANGES.md* is out of date for the same
+    reason; run `mise run fmt` first.
+
+[Sacho]: https://sacho.dev/
+
+### Commits
+
+`mise install` installs Sacho's Git hooks.  If it warns that it could not,
+add an empty `# sacho pre-commit begin` and `# sacho pre-commit end` block to
+your existing *.git/hooks/pre-commit* and run `mise install` again.
+
+The hooks reject a commit that changes files under *bin/* or *src/* without
+adding or changing a changelog fragment.  Every such commit must do one of the
+following:
+
+ -  Include the fragment for the user-visible change in the same commit.
+ -  End the commit message with a `Changelog: none` trailer when the change
+    has no user-visible effect, such as a refactoring, a test-only change, or
+    a fix for a bug that has not been released yet.
+
+The check applies to each commit separately, so a fragment added in a later
+commit does not cover an earlier one.
+
+
 Environment variables
 ---------------------
 
@@ -307,8 +369,8 @@ When adding a new environment variable to Hollo, update these locations:
      -  *compose.yaml*: For S3 storage configuration
      -  *compose-fs.yaml*: For filesystem storage configuration
 
-5.  *Changelog*: Document the new variable in *CHANGES.md* under the current
-    version section.
+5.  *Changelog*: Document the new variable in a changelog fragment; see
+    [*Changelog*](#changelog).
 
 
 Important notes

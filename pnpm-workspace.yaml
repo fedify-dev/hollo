@@ -19,6 +19,8 @@ permissions:
     skills: true
   '@logtape/logtape':
     skills: true
+  '@sacho/sacho':
+    skills: true
   drizzle-kit:
     skills: true
 

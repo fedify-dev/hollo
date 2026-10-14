@@ -1,25 +1,34 @@
 [tools]
 "aqua:dahlia/hongdown" = "0.5.3"
+"github:dahlia/sacho" = "0.3.2"
 node = "24"
 pnpm = "12.11.2"
 
 [hooks]
-postinstall = "pnpm install"
+postinstall = """
+pnpm install
+sacho init --no-interactive --install-hook \
+  || echo "warning: failed to install Sacho Git hooks; see AGENTS.md" >&2
+"""
 
 [tasks.fmt]
-depends = ["fmt:pnpm", "fmt:md"]
+depends = ["fmt:pnpm", "fmt:changes", "fmt:md"]
 
 [tasks."fmt:pnpm"]
 run = "pnpm run fmt"
 
+[tasks."fmt:changes"]
+run = "sacho sync --force && sacho fmt"
+
 [tasks."fmt:md"]
+depends = ["fmt:changes"]
 run = "hongdown --write"
 
 [tasks.check]
-depends = ["check:pnpm-version", "check:pnpm", "check:md"]
+depends = ["check:pnpm-version", "check:pnpm", "check:changes", "check:md"]
 
 [tasks."check:ci"]
-depends = ["check:pnpm-version", "check:pnpm:ci", "check:md"]
+depends = ["check:pnpm-version", "check:pnpm:ci", "check:changes", "check:md"]
 
 [tasks."check:pnpm-version"]
 run = """
@@ -36,6 +45,9 @@ run = "pnpm run check"
 
 [tasks."check:pnpm:ci"]
 run = "pnpm run check:ci"
+
+[tasks."check:changes"]
+run = "sacho check"
 
 [tasks."check:md"]
 run = "hongdown --check"
