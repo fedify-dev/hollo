@@ -13,3 +13,15 @@ overrides:
 
 minimumReleaseAgeExclude:
 - '@fedify/*'
+
+permissions:
+  '@fedify/fedify':
+    skills: true
+  '@logtape/logtape':
+    skills: true
+  drizzle-kit:
+    skills: true
+
+skills:
+  dirs:
+  - .agents/skills
