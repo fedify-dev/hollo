@@ -11,12 +11,12 @@ import {
   verifyRequest,
 } from "@fedify/fedify/sig";
 import { CryptographicKey } from "@fedify/vocab";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import type { Server } from "srvx";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createHttpServer } from "./http-server";
+import { serveStatic } from "./serve-static";
 
 const servers: Server[] = [];
 
@@ -373,7 +373,7 @@ describe("HTTP transport", () => {
     try {
       await writeFile(join(dir, "hello.txt"), "hello world");
       const app = new Hono();
-      app.use("/*", serveStatic({ root: dir }));
+      app.use("/*", serveStatic({ root: dir, prefix: "" }));
       const server = await start(app.fetch);
       const get = await send(server, { path: "/hello.txt" });
       expect(get.body).toBe("hello world");

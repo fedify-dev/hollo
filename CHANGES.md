@@ -154,6 +154,10 @@ To be released.
     Responses now avoid creating a web stream for strings and byte buffers
     until one is needed.
 
+    Static files now support conditional requests with `ETag` and
+    `Last-Modified` validators.  Hidden files and symlinks pointing outside the
+    configured storage directory are no longer served.
+
     Proxy mode now uses the first nonempty forwarded host and protocol in a
     comma-separated list, and ignores invalid forwarded hosts in favor of the
     original `Host` header.  Trusted proxies must overwrite client-supplied
