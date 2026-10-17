@@ -13,6 +13,7 @@ overrides:
 
 minimumReleaseAgeExclude:
 - '@fedify/*'
+- srvx@1.0.6
 
 permissions:
   '@fedify/fedify':

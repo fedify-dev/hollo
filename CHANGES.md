@@ -146,6 +146,16 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  \[[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
+ -  Changed the HTTP server to avoid buffering entire uploads and incoming
+    activities before handling them behind a reverse proxy.  Shutdown now waits
+    for active HTTP requests alongside background workers within the existing
+    30-second deadline.
+
+    Proxy mode now uses the first nonempty forwarded host and protocol in a
+    comma-separated list, and ignores invalid forwarded hosts in favor of the
+    original `Host` header.  Trusted proxies must overwrite client-supplied
+    forwarded headers.  [[#672], [#673]]
+
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-c0e0]: https://w3id.org/fep/c0e0
 [FEP-f228]: https://w3id.org/fep/f228
@@ -175,6 +185,8 @@ To be released.
 [#661]: https://github.com/fedify-dev/hollo/issues/661
 [#663]: https://github.com/fedify-dev/hollo/pull/663
 [#664]: https://github.com/fedify-dev/hollo/pull/664
+[#672]: https://github.com/fedify-dev/hollo/issues/672
+[#673]: https://github.com/fedify-dev/hollo/pull/673
 
 
 Version 0.9.24
