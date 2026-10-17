@@ -51,3 +51,16 @@ run = "sacho check"
 
 [tasks."check:md"]
 run = "hongdown --check"
+
+[tasks.bump-version]
+description = "Set the version being prepared in package.json and CHANGES.md"
+usage = 'arg "<version>" help="Version to prepare, such as 1.2.3"'
+run = """
+node -e '
+const fs = require("node:fs");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+pkg.version = process.argv[1];
+fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\\n");
+' "$usage_version"
+sacho next "$usage_version"
+"""
