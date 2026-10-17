@@ -177,6 +177,20 @@ To be released.
 [#664]: https://github.com/fedify-dev/hollo/pull/664
 
 
+Version 0.9.24
+--------------
+
+Released on October 17, 2026.
+
+ -  Fixed a security vulnerability where any authenticated user with the
+    `write:statuses` scope could delete another local account's post or a
+    cached remote post by its UUID and receive the deleted post's contents.
+    Status deletion now requires the post to belong to the account associated
+    with the access token.  [[GHSA-v2qh-w789-xxj6]]
+
+[GHSA-v2qh-w789-xxj6]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-v2qh-w789-xxj6
+
+
 Version 0.9.23
 --------------
 
@@ -1000,6 +1014,18 @@ Released on May 20, 2026.
 [#491]: https://github.com/fedify-dev/hollo/pull/491
 [#492]: https://github.com/fedify-dev/hollo/issues/492
 [#493]: https://github.com/fedify-dev/hollo/pull/493
+
+
+Version 0.8.16
+--------------
+
+Released on October 17, 2026.
+
+ -  Fixed a security vulnerability where any authenticated user with the
+    `write:statuses` scope could delete another local account's post or a
+    cached remote post by its UUID and receive the deleted post's contents.
+    Status deletion now requires the post to belong to the account associated
+    with the access token.  [[GHSA-v2qh-w789-xxj6]]
 
 
 Version 0.8.15

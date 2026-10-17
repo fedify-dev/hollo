@@ -452,7 +452,10 @@ describe("persistAccount remote avatar cache", { concurrent: false }, () => {
         headers: { "Content-Type": "image/webp" },
       }),
     );
-    await waitFor(async () => await disk.exists(`${key}.bin`));
+    await waitFor(
+      async () =>
+        (await disk.exists(`${key}.bin`)) && (await disk.exists(`${key}.json`)),
+    );
     expect(await disk.exists(`${key}.bin`)).toBe(true);
     expect(await disk.exists(`${key}.json`)).toBe(true);
     expect(await disk.getBytes(`${key}.bin`)).toEqual(avatar);

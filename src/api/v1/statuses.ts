@@ -959,12 +959,14 @@ app.delete(
     const id = c.req.param("id");
     if (!isUuid(id)) return c.json({ error: "Record not found" }, 404);
     const post = await db.query.posts.findFirst({
-      where: { id: { eq: id } },
+      where: { id: { eq: id }, accountId: { eq: owner.id } },
       with: getPostRelations(owner.id),
     });
     if (post == null) return c.json({ error: "Record not found" }, 404);
     await db.transaction(async (tx) => {
-      await tx.delete(posts).where(eq(posts.id, id));
+      await tx
+        .delete(posts)
+        .where(and(eq(posts.id, id), eq(posts.accountId, owner.id)));
       if (
         post.quoteTargetId != null &&
         (post.quoteState == null || post.quoteState === "accepted")

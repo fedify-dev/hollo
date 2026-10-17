@@ -1980,6 +1980,122 @@ describe("/api/v1/statuses quotes", { concurrent: false }, () => {
   });
 });
 
+describe("DELETE /api/v1/statuses/:id", { concurrent: false }, () => {
+  let client: Awaited<ReturnType<typeof createOAuthApplication>>;
+  let account: Awaited<ReturnType<typeof createAccount>>;
+  let accessToken: Awaited<ReturnType<typeof getAccessToken>>;
+
+  beforeEach(async () => {
+    await cleanDatabase();
+
+    account = await createAccount({ generateKeyPair: true });
+    client = await createOAuthApplication({ scopes: ["write:statuses"] });
+    accessToken = await getAccessToken(client, account, ["write:statuses"]);
+  });
+
+  it("deletes the authenticated account's own status", async () => {
+    const postId = uuidv7();
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@hollo/${postId}`,
+      type: "Note",
+      accountId: account.id,
+      visibility: "direct",
+      summary: "Content warning",
+      content: "Secret post",
+      contentHtml: "<p>Secret post</p>",
+      published: new Date(),
+    });
+
+    const response = await app.request(`/api/v1/statuses/${postId}`, {
+      method: "DELETE",
+      headers: { authorization: bearerAuthorization(accessToken) },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      id: postId,
+      account: { id: account.id },
+      content: "<p>Secret post</p>",
+      text: "Secret post",
+      spoiler_text: "Content warning",
+    });
+    expect(
+      await db.query.posts.findFirst({ where: { id: { eq: postId } } }),
+    ).toBeUndefined();
+  });
+
+  it("does not delete another local account's status", async () => {
+    const otherAccount = await createAccount({ username: "other" });
+    const postId = uuidv7();
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://hollo.test/@other/${postId}`,
+      type: "Note",
+      accountId: otherAccount.id,
+      visibility: "private",
+      summary: "Private content warning",
+      content: "Private post",
+      contentHtml: "<p>Private post</p>",
+      published: new Date(),
+    });
+
+    const response = await app.request(`/api/v1/statuses/${postId}`, {
+      method: "DELETE",
+      headers: { authorization: bearerAuthorization(accessToken) },
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Record not found" });
+    expect(
+      await db.query.posts.findFirst({ where: { id: { eq: postId } } }),
+    ).toMatchObject({
+      accountId: otherAccount.id,
+      summary: "Private content warning",
+      content: "Private post",
+    });
+  });
+
+  it("does not delete a cached remote status", async () => {
+    const remoteAccountId = uuidv7();
+    await db.insert(instances).values({ host: "remote.test" });
+    await db.insert(accounts).values({
+      id: remoteAccountId,
+      iri: "https://remote.test/users/remote",
+      instanceHost: "remote.test",
+      type: "Person",
+      name: "Remote",
+      handle: "@remote@remote.test",
+      inboxUrl: "https://remote.test/users/remote/inbox",
+    });
+    const postId = uuidv7();
+    await db.insert(posts).values({
+      id: postId,
+      iri: `https://remote.test/users/remote/statuses/${postId}`,
+      type: "Note",
+      accountId: remoteAccountId,
+      visibility: "public",
+      content: "Remote post",
+      contentHtml: "<p>Remote post</p>",
+      published: new Date(),
+    });
+
+    const response = await app.request(`/api/v1/statuses/${postId}`, {
+      method: "DELETE",
+      headers: { authorization: bearerAuthorization(accessToken) },
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Record not found" });
+    expect(
+      await db.query.posts.findFirst({ where: { id: { eq: postId } } }),
+    ).toMatchObject({
+      accountId: remoteAccountId,
+      content: "Remote post",
+    });
+  });
+});
+
 describe("/api/v1/statuses/:id/reblog", { concurrent: false }, () => {
   let client: Awaited<ReturnType<typeof createOAuthApplication>>;
   let account: Awaited<ReturnType<typeof createAccount>>;
