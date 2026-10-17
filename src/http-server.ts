@@ -1,5 +1,25 @@
-import type { Server, ServerRequest } from "srvx";
+import { FastResponse, type Server, type ServerRequest } from "srvx";
 import { serve } from "srvx/node";
+
+/** Install before loading the web application, after configuring Sentry. */
+export function enableFastResponse(): void {
+  globalThis.Response = class Response extends FastResponse {
+    constructor(body?: BodyInit | null, init?: ResponseInit) {
+      // Hono passes a Response as its initializer when merging headers. srvx
+      // 1.0.6 later spreads that initializer, losing inherited status getters.
+      super(
+        body,
+        init instanceof FastResponse
+          ? {
+              status: init.status,
+              statusText: init.statusText,
+              headers: init.headers,
+            }
+          : init,
+      );
+    }
+  };
+}
 
 // Match srvx's authority validation so a rejected forwarded host cannot be
 // restored into the header used by HTTP signature verification.

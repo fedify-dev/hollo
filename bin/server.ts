@@ -47,7 +47,9 @@ const lifecycle = createServerLifecycle([
   async (registerStop) => {
     if (NODE_TYPE === "worker") return;
     // Initialize Sentry before loading the HTTP adapter and application.
-    const { createHttpServer } = await import("../src/http-server");
+    const { createHttpServer, enableFastResponse } =
+      await import("../src/http-server");
+    enableFastResponse();
     const { default: app } = await import("../src/index");
     if (lifecycle.stopping) return;
     const server = createHttpServer(app.fetch.bind(app), {

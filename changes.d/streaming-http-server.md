@@ -8,6 +8,9 @@ links:
     for active HTTP requests alongside background workers within the existing
     30-second deadline.
 
+    Responses now avoid creating a web stream for strings and byte buffers
+    until one is needed.
+
     Proxy mode now uses the first nonempty forwarded host and protocol in a
     comma-separated list, and ignores invalid forwarded hosts in favor of the
     original `Host` header.  Trusted proxies must overwrite client-supplied
