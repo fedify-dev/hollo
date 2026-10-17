@@ -1,9 +1,7 @@
-import { join, relative } from "node:path";
+import { join } from "node:path";
 
 import "./logging";
-
 import { federation } from "@fedify/hono";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { captureException } from "@sentry/core";
 import { type Context, Hono, type Next } from "hono";
 import { cors } from "hono/cors";
@@ -17,6 +15,7 @@ import oauth from "./oauth";
 import oauthMetadataEndpoint from "./oauth/endpoints/metadata";
 import pages from "./pages";
 import proxy from "./proxy";
+import { serveStatic } from "./serve-static";
 import { DRIVE_DISK, FS_STORAGE_PATH } from "./storage-config";
 
 const app = new Hono();
@@ -36,8 +35,8 @@ if (DRIVE_DISK === "fs") {
   app.use(
     "/assets/*",
     serveStatic({
-      root: relative(process.cwd(), FS_STORAGE_PATH!),
-      rewriteRequestPath: (path) => path.substring("/assets".length),
+      root: FS_STORAGE_PATH!,
+      prefix: "/assets",
     }),
   );
 }
@@ -45,8 +44,8 @@ if (DRIVE_DISK === "fs") {
 app.use(
   "/public/*",
   serveStatic({
-    root: relative(process.cwd(), join(import.meta.dirname, "public")),
-    rewriteRequestPath: (path) => path.substring("/public".length),
+    root: join(import.meta.dirname, "public"),
+    prefix: "/public",
   }),
 );
 
