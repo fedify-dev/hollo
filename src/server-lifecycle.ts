@@ -9,9 +9,11 @@ export function createServerLifecycle(starters: Start[]) {
   let shutdown: Promise<void> | undefined;
 
   return {
+    /** Whether shutdown has been requested, including during startup. */
     get stopping() {
       return stopping;
     },
+    /** Run startup phases once in order, skipping remaining phases after `stop()`. */
     start(): Promise<void> {
       return (startup ??= (async () => {
         for (const start of starters) {
@@ -20,6 +22,10 @@ export function createServerLifecycle(starters: Start[]) {
         }
       })());
     },
+    /**
+     * Wait for pending startup, then run every registered cleanup concurrently.
+     * Repeated calls share a promise; cleanup failures reject with `AggregateError`.
+     */
     stop(): Promise<void> {
       stopping = true;
       return (shutdown ??= (async () => {

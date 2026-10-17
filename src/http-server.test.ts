@@ -20,6 +20,7 @@ import { serveStatic } from "./serve-static";
 
 const servers: Server[] = [];
 
+/** Start a tracked server on an ephemeral port for transport tests. */
 async function start(
   handler: (request: Request) => Response | Promise<Response>,
   behindProxy = false,
@@ -35,6 +36,7 @@ async function start(
   return server;
 }
 
+/** Send a raw HTTP request without URL normalization or connection pooling. */
 function send(
   server: Server,
   {

@@ -24,6 +24,7 @@ let server: Server;
 let exactFileReadable: boolean;
 const nativeResponse = globalThis.Response;
 
+/** Preserve the raw URL path for traversal and encoding tests at the server boundary. */
 function send(
   path: string,
   {

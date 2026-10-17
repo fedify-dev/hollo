@@ -114,6 +114,7 @@ const lifecycle = createServerLifecycle([
 
 let exitCode = 0;
 let shutdownPromise: Promise<void> | undefined;
+/** Stop acquired resources once, forcing exit if cleanup exceeds 30 seconds. */
 function shutdown(code = 0): Promise<void> {
   exitCode = Math.max(exitCode, code);
   if (shutdownPromise) return shutdownPromise;
