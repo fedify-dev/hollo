@@ -106,7 +106,7 @@
     "concurrently": "^10.0.5",
     "linkedom": "^0.18.13",
     "oxfmt": "^0.67.0",
-    "oxlint": "^1.81.0",
+    "oxlint": "^1.88.0",
     "timekeeper": "^2.3.1",
     "tsdown": "^0.22.3",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
