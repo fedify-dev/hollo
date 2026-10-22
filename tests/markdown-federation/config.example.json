@@ -1,0 +1,6 @@
+{
+  "hollo": { "url": "https://hollo.example", "token": "REPLACE_ME" },
+  "mastodon": { "url": "https://mastodon.example", "token": "REPLACE_ME" },
+  "misskey": { "url": "https://misskey.example", "token": "REPLACE_ME" },
+  "misskeyNoteUpdates": "ignored"
+}

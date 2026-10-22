@@ -1,0 +1,52 @@
+[
+  {
+    "extension": "footnote",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#update-2026-10-22T19:46:13.122Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "deflist",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-6bd3-7602-becf-25b46c9fca56",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-6bd3-7602-becf-25b46c9fca56#update-2026-10-22T19:46:20.34Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "sub",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-8819-7d54-ac40-e27809a08c20",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-8819-7d54-ac40-e27809a08c20#update-2026-10-22T19:46:28.612Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "sup",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-a893-77d9-a696-b0ee76662ca0",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-a893-77d9-a696-b0ee76662ca0#update-2026-10-22T19:46:35.906Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "mark",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-c4d3-7403-bef1-64816c2397eb",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-c4d3-7403-bef1-64816c2397eb#update-2026-10-22T19:46:43.123Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "ruby",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-e11c-72ff-ab04-151746b24527",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-e11c-72ff-ab04-151746b24527#update-2026-10-22T19:46:50.366Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "ins",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-fd5d-70dd-9e91-9dd734461d37",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16526-fd5d-70dd-9e91-9dd734461d37#update-2026-10-22T19:46:57.593Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "abbr",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16527-1998-71b5-ab67-febe5b52ffbe",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16527-1998-71b5-ab67-febe5b52ffbe#update-2026-10-22T19:47:04.832Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "tasklist",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16527-35d0-7a80-a452-5d4d22278e92",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16527-35d0-7a80-a452-5d4d22278e92#update-2026-10-22T19:47:12.054Z reason=skip: Unknown type: Note"
+  },
+  {
+    "extension": "math",
+    "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16527-5204-7634-ac2e-f402fa22ca10",
+    "inbox": "WARN 1\t[queue inbox]\tinbox activity ignored (maybe): id=https://hollo.127.0.0.1.sslip.io/@sender/01a16527-5204-7634-ac2e-f402fa22ca10#update-2026-10-22T19:47:19.318Z reason=skip: Unknown type: Note"
+  }
+]

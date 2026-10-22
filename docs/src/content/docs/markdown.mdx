@@ -137,3 +137,11 @@ Mastodon can expose math annotations as dollar-delimited TeX text; this is
 not a guarantee of typeset mathematics.  Misskey can concatenate presentation
 text with the TeX annotation.  Display varies between servers and
 clients.  Explain essential formulas in ordinary language too.
+
+Actual server-to-server [acceptance tests] covered Mastodon 4.7.3 and
+Misskey 2026.10.0.  Both stored all ten examples.  Mastodon applied edits;
+Misskey 2026.10.0 ignored Note updates and retained the original content.
+The recorded results include received HTML/MFM and rendering losses.
+Browser, client, and accessibility checks remain pending.
+
+[acceptance tests]: https://github.com/fedify-dev/hollo/blob/main/tests/markdown-federation/README.md
