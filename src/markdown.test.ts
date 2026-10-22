@@ -264,6 +264,30 @@ describe("post Markdown extensions", () => {
     expect($("ruby rp").length).toBe(2);
   });
 
+  it.each([true, false])(
+    "keeps abbreviation labels literal (draft: %s)",
+    async (draft) => {
+      for (const label of ["Wi-Fi", "COVID-19", "C++", "A|B"]) {
+        const { $ } = await render(
+          `${label} ${label}\n\n*[${label}]: Expanded meaning`,
+          ["abbr"],
+          { draft },
+        );
+        expect(
+          $("abbr")
+            .map((_, element) => $(element).text())
+            .get(),
+        ).toEqual([label, label]);
+        expect($("abbr").first().attr("title")).toBe("Expanded meaning");
+        expect(
+          $("body")
+            .text()
+            .match(/Expanded meaning/gu),
+        ).toHaveLength(1);
+      }
+    },
+  );
+
   it("expands the first unlinked abbreviation and preserves Korean word boundaries", async () => {
     const { $ } = await render(
       '[HTML](https://example.org/) <a href="https://example.net/">HTML</a> ' +
