@@ -236,7 +236,9 @@ function replaceAbbreviations(state: StateCore): void {
   if (labels.length === 0) return;
   const boundary = "[\\p{P}\\p{Z}\\s$+<=>^`|~]";
   const regexp = new RegExp(
-    `(^|${boundary})(${labels.map(RegExp.escape).join("|")})(?=$|${boundary})`,
+    `(^|${boundary})(${labels
+      .map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|")})(?=$|${boundary})`,
     "gu",
   );
   const expanded = new Set<string>();
