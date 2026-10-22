@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 
 import "../src/logging";
 import { checkHandleHostConsistency } from "../src/handle-host-check";
+import { getMarkdownExtensions } from "../src/markdown-settings";
 import { configureSentry } from "../src/sentry";
 import { createServerLifecycle } from "../src/server-lifecycle";
 
@@ -38,6 +39,8 @@ if (!["all", "web", "worker"].includes(NODE_TYPE)) {
   );
   process.exit(1);
 }
+
+getMarkdownExtensions();
 
 const lifecycle = createServerLifecycle([
   async () => {

@@ -100,6 +100,15 @@ export default defineConfig({
         button:disabled, [role="button"][aria-disabled="true"] {
           cursor: not-allowed;
         }
+        .prose .footnotes-list { list-style: none; padding-inline-start: 0; }
+        .prose .footnote-item > p:first-of-type { display: inline; }
+        .prose .footnote-number { font-variant-numeric: tabular-nums; }
+        .prose .task-list-item { padding-inline-start: .25em; }
+        .prose math[display="block"] { overflow-x: auto; max-width: 100%; }
+        .prose mark { background: rgb(var(--theme-200)); color: rgb(var(--theme-900)); }
+        @media (prefers-color-scheme: dark) {
+          .prose mark { background: rgb(var(--theme-800)); color: rgb(var(--theme-100)); }
+        }
         ::selection {
           background-color: rgb(var(--theme-200));
           color: rgb(var(--theme-900));

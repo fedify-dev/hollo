@@ -236,6 +236,9 @@ importers:
       '@logtape/sentry':
         specifier: ~2.3.10
         version: 2.3.10(@logtape/logtape@2.3.10)(@sentry/core@11.4.0)
+      '@mdit/plugin-ruby':
+        specifier: ^1.1.3
+        version: 1.1.3(markdown-it@15.0.3)
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -299,12 +302,36 @@ importers:
       iso-639-1:
         specifier: ^3.1.5
         version: 3.1.6
+      katex:
+        specifier: ^0.19.0
+        version: 0.19.0
       markdown-it:
-        specifier: ^15.0.2
-        version: 15.0.2
+        specifier: ^15.0.3
+        version: 15.0.3
+      markdown-it-abbr:
+        specifier: ^2.0.0
+        version: 2.0.0
+      markdown-it-deflist:
+        specifier: ^4.0.0
+        version: 4.0.0
+      markdown-it-footnote:
+        specifier: ^4.0.0
+        version: 4.0.0
+      markdown-it-ins:
+        specifier: ^4.0.0
+        version: 4.0.0
+      markdown-it-mark:
+        specifier: ^4.0.0
+        version: 4.0.0
       markdown-it-replace-link:
         specifier: ^1.2.2
-        version: 1.2.2(@types/markdown-it@14.1.2)(markdown-it@15.0.2)
+        version: 1.2.2(@types/markdown-it@14.1.2)(markdown-it@15.0.3)
+      markdown-it-sub:
+        specifier: ^2.0.0
+        version: 2.0.0
+      markdown-it-sup:
+        specifier: ^2.0.0
+        version: 2.0.0
       mime:
         specifier: ^4.1.0
         version: 4.1.0
@@ -1710,6 +1737,24 @@ packages:
     peerDependencies:
       '@logtape/logtape': ^2.3.10
       '@sentry/core': '>=8.0.0'
+
+  '@mdit/helper@1.1.3':
+    resolution: {integrity: sha512-ZJxIn+WQSHzJqI05hfMNmskhJoxGmixKMIUBMkbnjOL6CiamLDmiEubu6rwgyGVa6W0kE0Q1fmu/mMyNoU4SZw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.3
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
+
+  '@mdit/plugin-ruby@1.1.3':
+    resolution: {integrity: sha512-H6qSP/g4Q276wjMM8ql7XL3qDgOOcRRxFvcwt6biEv2YJJ1GkKxuO39G6RW9v8uiuRihR1Gmssg3NXwX38fZwQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.3
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
 
   '@multiformats/base-x@4.0.1':
     resolution: {integrity: sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==}
@@ -3888,8 +3933,8 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
-  argparse@3.0.2:
-    resolution: {integrity: sha512-mFdDM6WqWKraGLsVb+C9CahPnzTXOefAOLq3jYcca2YZ8bEWpr++Tzj+zSaKW9+X9L5uSxcm1AZ3Y6aZJ09OhQ==}
+  argparse@3.0.3:
+    resolution: {integrity: sha512-Sn98ftV3KfsO8xfLPHG6oT8y+b0yvbrLgZjgPDXsharNY15tTAjqIsIju4S32nl6/iEUNNE4v+yL2Zhm8ooP3w==}
 
   aria-query@5.3.2:
     resolution: {integrity: sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw==}
@@ -4058,6 +4103,10 @@ packages:
   commander@11.1.0:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
     engines: {node: '>=16'}
+
+  commander@15.0.0:
+    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+    engines: {node: '>=22.12.0'}
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
@@ -4926,6 +4975,10 @@ packages:
     resolution: {integrity: sha512-pjMIdkXfC1T2wrX9B9i2uXhGdyCmgec3qgMht+TDj+S0qX3bjWMQUfL7NeqEhuRTi8G5ESzmL9uGlST7nzSEWg==}
     engines: {node: '>=18'}
 
+  katex@0.19.0:
+    resolution: {integrity: sha512-v6Tznz3zJ7u3niRCoDTsumM2+HA2XXcCu+WAacCeHD2z3p9A9Ks987o5FzfTGBN0e8A0vjEgIDvLbICrXpdw/Q==}
+    hasBin: true
+
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
@@ -5072,18 +5125,39 @@ packages:
   magicast@0.5.4:
     resolution: {integrity: sha512-llBEhWm1SacoRwgHUoQJYtwp4PBLF4faQi5TCpIGyGs9n4y5+juI0tDgyKIfpqxckRHaHzouUEph3THklWh03w==}
 
+  markdown-it-abbr@2.0.0:
+    resolution: {integrity: sha512-of7C8pXSjXjDojW4neNP+jD7inUYH/DO0Ca+K/4FUEccg0oHAEX/nfscw0jfz66PJbYWOAT9U8mjO21X5p6aAw==}
+
+  markdown-it-deflist@4.0.0:
+    resolution: {integrity: sha512-06186ZWDwNLg638THD70MxBeFrDMF0+nL7IWU/qwCGHGOcUIm4MTYXbfjpv0ooWnVjkSnAjW8msKaOQmNRfY6Q==}
+
+  markdown-it-footnote@4.0.0:
+    resolution: {integrity: sha512-WYJ7urf+khJYl3DqofQpYfEYkZKbmXmwxQV8c8mO/hGIhgZ1wOe7R4HLFNwqx7TjILbnC98fuyeSsin19JdFcQ==}
+
+  markdown-it-ins@4.0.0:
+    resolution: {integrity: sha512-sWbjK2DprrkINE4oYDhHdCijGT+MIDhEupjSHLXe5UXeVr5qmVxs/nTUVtgi0Oh/qtF+QKV0tNWDhQBEPxiMew==}
+
+  markdown-it-mark@4.0.0:
+    resolution: {integrity: sha512-YLhzaOsU9THO/cal0lUjfMjrqSMPjjyjChYM7oyj4DnyaXEzA8gnW6cVJeyCrCVeyesrY2PlEdUYJSPFYL4Nkg==}
+
   markdown-it-replace-link@1.2.2:
     resolution: {integrity: sha512-JpeY+TMKqttF+tZQDmkFxXs/8PTohFvw4Z76h98O06ZEx66PNd1wMV0Odp094O/mvvf6iOnjdHpTKAfDUwhH1A==}
     peerDependencies:
       '@types/markdown-it': '*'
       markdown-it: '*'
 
+  markdown-it-sub@2.0.0:
+    resolution: {integrity: sha512-iCBKgwCkfQBRg2vApy9vx1C1Tu6D8XYo8NvevI3OlwzBRmiMtsJ2sXupBgEA7PPxiDwNni3qIUkhZ6j5wofDUA==}
+
+  markdown-it-sup@2.0.0:
+    resolution: {integrity: sha512-5VgmdKlkBd8sgXuoDoxMpiU+BiEt3I49GItBzzw7Mxq9CxvnhE/k09HFli09zgfFDRixDQDfDxi0mgBCXtaTvA==}
+
   markdown-it@14.3.0:
     resolution: {integrity: sha512-RCEsPjR+sr0x+AuYp601tKTkgFG4YEPLCzHST3cQ/fhlJkqAkz1L2/Qbp1j9qw5SBwQHFBoW8+hoN5xssOF0Tw==}
     hasBin: true
 
-  markdown-it@15.0.2:
-    resolution: {integrity: sha512-q4IGxMv56jCqT4OCRCADBoDP3LO4MhmTXjFbphHPXs4g3j9Xg5RDnxqN8IF/3vIWEU+VCnUq+7JUg/cfy2E6Qw==}
+  markdown-it@15.0.3:
+    resolution: {integrity: sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ==}
     hasBin: true
 
   matcher@3.0.0:
@@ -8137,6 +8211,16 @@ snapshots:
       '@logtape/logtape': 2.3.10
       '@sentry/core': 11.4.0
 
+  '@mdit/helper@1.1.3(markdown-it@15.0.3)':
+    optionalDependencies:
+      markdown-it: 15.0.3
+
+  '@mdit/plugin-ruby@1.1.3(markdown-it@15.0.3)':
+    dependencies:
+      '@mdit/helper': 1.1.3(markdown-it@15.0.3)
+    optionalDependencies:
+      markdown-it: 15.0.3
+
   '@multiformats/base-x@4.0.1': {}
 
   '@napi-rs/wasm-runtime@1.2.3(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)':
@@ -9016,7 +9100,7 @@ snapshots:
 
   '@shikijs/markdown-it@4.5.0':
     dependencies:
-      markdown-it: 15.0.2
+      markdown-it: 15.0.3
       shiki: 4.5.0
 
   '@shikijs/primitive@4.4.3':
@@ -10106,7 +10190,7 @@ snapshots:
 
   argparse@2.0.1: {}
 
-  argparse@3.0.2: {}
+  argparse@3.0.3: {}
 
   aria-query@5.3.2: {}
 
@@ -10345,6 +10429,8 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   commander@11.1.0: {}
+
+  commander@15.0.0: {}
 
   commander@2.20.3: {}
 
@@ -11117,6 +11203,10 @@ snapshots:
       lru-cache: 6.0.0
       rdf-canonize: 5.0.0
 
+  katex@0.19.0:
+    dependencies:
+      commander: 15.0.0
+
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -11243,13 +11333,27 @@ snapshots:
       '@babel/types': 7.29.8
       source-map-js: 1.2.1
 
-  markdown-it-replace-link@1.2.2(@types/markdown-it@14.1.2)(markdown-it@15.0.2):
+  markdown-it-abbr@2.0.0: {}
+
+  markdown-it-deflist@4.0.0: {}
+
+  markdown-it-footnote@4.0.0: {}
+
+  markdown-it-ins@4.0.0: {}
+
+  markdown-it-mark@4.0.0: {}
+
+  markdown-it-replace-link@1.2.2(@types/markdown-it@14.1.2)(markdown-it@15.0.3):
     dependencies:
       '@types/markdown-it': 14.1.2
-      markdown-it: 15.0.2
+      markdown-it: 15.0.3
     optionalDependencies:
       dom-serializer: 2.0.0
       htmlparser2: 8.0.2
+
+  markdown-it-sub@2.0.0: {}
+
+  markdown-it-sup@2.0.0: {}
 
   markdown-it@14.3.0:
     dependencies:
@@ -11260,9 +11364,9 @@ snapshots:
       punycode.js: 2.3.1
       uc.micro: 2.1.0
 
-  markdown-it@15.0.2:
+  markdown-it@15.0.3:
     dependencies:
-      argparse: 3.0.2
+      argparse: 3.0.3
       entities: 8.1.0
       linkify-it: 6.1.0
       mdurl: 2.1.0

@@ -397,3 +397,15 @@ public login page — prefer the passkey pattern over an inline blob:
     should be hidden behind a button the user has to click).
  -  Wire to the DOM via stable `id`s on the form / button the page
     already renders.  The server-rendered markup is the contract.
+
+
+Markdown extensions
+-------------------
+
+Post bodies use native semantic HTML for optional Markdown extensions.
+Footnotes include visible numbers in their text; suppress duplicate list
+numbering in Hollo.  Retain their generated IDs only in the canonical post
+body, so repeated cards link back to that document without duplicate IDs.
+Task lists use static text markers.  Highlight text uses the account theme
+palette in both color schemes.  Display math may scroll horizontally within
+the post body; no client-side typesetting or KaTeX stylesheet is required.

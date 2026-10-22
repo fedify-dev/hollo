@@ -1,8 +1,11 @@
 import type { Gukhanmun, Preset } from "@gukhanmun/napi";
 
+import { MARKDOWN_PRESERVE_CLASS } from "./markdown-math";
+
 const converterPromises = new Map<Preset, Promise<Gukhanmun>>();
 const htmlOptions = {
   preserveAttributes: [{ name: "translate", value: "no" }],
+  preserveClasses: [MARKDOWN_PRESERVE_CLASS],
 } as const;
 
 function matchesWildcard(value: string, pattern: string): boolean {
