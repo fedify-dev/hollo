@@ -22,7 +22,8 @@ account.  Prepare one account each on Mastodon and Misskey, with federation
 enabled, and run their delivery workers.  Use tokens that can read, post, and
 follow.  All three servers must resolve each other's canonical HTTPS origins
 and trust their certificates.  Use canonical HTTPS port 443, as in the recorded
-run.
+run.  The runner accepts only HTTPS origins and rejects redirects on
+authenticated requests.
 
 Copy *config.example.json* to a private file outside the checkout, replace the
 origins and tokens, and restrict its permissions:

@@ -7,7 +7,9 @@ import { load } from "cheerio";
 import { z } from "zod";
 
 const serverSchema = z.object({
-  url: z.url(),
+  url: z.url().refine((url) => new URL(url).protocol === "https:", {
+    message: "Server URL must use HTTPS",
+  }),
   token: z.string().min(1),
 });
 const configSchema = z.object({
@@ -39,6 +41,7 @@ async function request<T>(
 ): Promise<T> {
   const options: RequestInit = {
     method,
+    redirect: "error",
     headers: {
       authorization: `Bearer ${server.token}`,
       "content-type": "application/json",
