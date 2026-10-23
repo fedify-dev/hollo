@@ -10,6 +10,8 @@ services:
       BEHIND_PROXY: "${BEHIND_PROXY}"
       # REMOTE_REPLIES_SCRAPE_MAX_REQUESTS: "200"
       # GUKHANMUN: "ko,ko-*"
+      # Optional post Markdown extensions; empty disables all:
+      # MARKDOWN_EXTENSIONS: ""  # e.g. "footnote,ruby,math"
       DRIVE_DISK: fs
       STORAGE_URL_BASE: http://localhost:3000/assets/
       FS_STORAGE_PATH: /var/lib/hollo

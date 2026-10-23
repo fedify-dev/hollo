@@ -57,6 +57,82 @@ describe("/api/v1/accounts/verify_credentials", { concurrent: false }, () => {
     accessToken = await getAccessToken(client, account, ["write"]);
   });
 
+  it("preserves opt-in Markdown across API, federation, and canonical HTML", async () => {
+    vi.stubEnv(
+      "MARKDOWN_EXTENSIONS",
+      "footnote,deflist,sub,sup,mark,ruby,ins,abbr,tasklist,math",
+    );
+    const source =
+      "Note[^n] H~2~O x^2^ ==bright== ++added++ {漢字:한자} HTML $x^2$\n\nTerm\n: Meaning\n\n- [x] Done\n\n*[HTML]: Hypertext Markup Language\n\n[^n]: Detail";
+    const headers = {
+      authorization: bearerAuthorization(accessToken),
+      "Content-Type": "application/json",
+    };
+    const createdResponse = await app.request("/api/v1/statuses", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ status: source }),
+    });
+    expect(createdResponse.status).toBe(200);
+    const created = await createdResponse.json();
+    for (const tag of [
+      "<sub>",
+      "<sup>",
+      "<mark>",
+      "<ins>",
+      "<ruby",
+      "<abbr",
+      "<dl>",
+      "<math",
+    ])
+      expect(created.content).toContain(tag);
+    expect(created.content).toContain("[x] Done");
+    expect(created.content).toContain(`id="fn-hollo-${created.id}-1"`);
+    expect(created.content).toContain(
+      `${created.url}#fn-hollo-${created.id}-1`,
+    );
+    expect(created.card).toBeNull();
+    const stored = await db.query.posts.findFirst({
+      where: { id: created.id },
+    });
+    expect(stored?.contentHtml).toContain("<math");
+    const activityResponse = await federation.fetch(
+      new Request(created.uri, {
+        headers: { Accept: "application/activity+json" },
+      }),
+      { contextData: undefined },
+    );
+    expect(activityResponse.status).toBe(200);
+    expect(JSON.stringify(await activityResponse.json())).toContain(
+      `fn-hollo-${created.id}-1`,
+    );
+    const page = await app.request(new URL(created.url).pathname);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain(`id="fn-hollo-${created.id}-1"`);
+    const profile = await app.request(`/@${created.account.username}`);
+    expect(profile.status).toBe(200);
+    expect(await profile.text()).not.toContain(`id="fn-hollo-${created.id}-1"`);
+    vi.stubEnv("MARKDOWN_EXTENSIONS", "");
+    const unchanged = await app.request(`/api/v1/statuses/${created.id}`);
+    expect((await unchanged.json()).content).toBe(created.content);
+    const edited = await app.request(`/api/v1/statuses/${created.id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ status: source }),
+    });
+    expect(edited.status).toBe(200);
+    expect((await edited.json()).content).not.toContain("<math");
+    vi.stubEnv("MARKDOWN_EXTENSIONS", "footnote");
+    const restored = await app.request(`/api/v1/statuses/${created.id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ status: "Updated[^n]\n\n[^n]: Detail" }),
+    });
+    expect((await restored.json()).content).toContain(
+      `${created.url}#fn-hollo-${created.id}-1`,
+    );
+  });
+
   it("schedules a poll only after its creation commits, even if enqueue fails", async () => {
     const { pollNotifications } = await import("../../federation/federation");
     const enqueue = vi

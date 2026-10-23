@@ -434,6 +434,12 @@ export async function persistPost(
       : await extractPreviewLink(
           object.content.toString(),
           previewLinkExclusions,
+          [
+            object.id?.href,
+            object.url instanceof Link
+              ? object.url.href?.href
+              : object.url?.href,
+          ].filter((value): value is string => value != null),
         );
   const previewCard =
     previewLink == null ? null : await fetchPreviewCard(previewLink);

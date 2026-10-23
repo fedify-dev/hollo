@@ -1,0 +1,147 @@
+---
+title: Markdown
+description: Write posts with optional Markdown extensions and understand their limits.
+---
+
+Hollo supports Markdown posts, including tables and `~~strikethrough~~`.
+Your instance operator can enable additional syntax with
+[`MARKDOWN_EXTENSIONS`][configuration].  Extensions apply when creating or
+editing local posts.  Profile biographies and fields keep their existing syntax.
+
+[configuration]: /install/env/#markdown_extensions-
+
+
+Enable extensions
+-----------------
+
+Set the extensions you want in *.env*, then restart Hollo:
+
+~~~~ bash
+MARKDOWN_EXTENSIONS=footnote,ruby,math
+~~~~
+
+The available names are `footnote`, `deflist`, `sub`, `sup`, `mark`, `ruby`,
+`ins`, `abbr`, `tasklist`, and `math`.  An unset or empty value disables them
+all.  Spaces around names and duplicate names are ignored; an unknown name
+prevents startup.
+
+Configuration changes leave stored source and HTML unchanged and send no
+updates.  Explicit edits use the current setting; editing after disabling
+an extension can reveal its original syntax.
+
+
+Syntax
+------
+
+| Extension  | Source                                             | Meaning                        |
+| ---------- | -------------------------------------------------- | ------------------------------ |
+| `footnote` | `Text[^1]` and `[^1]: Note`                        | Numbered footnote              |
+| `deflist`  | A term followed by `: Definition` on the next line | Definition list                |
+| `sub`      | `H~2~O`                                            | Subscript                      |
+| `sup`      | `x^2^`                                             | Superscript                    |
+| `mark`     | `==highlight==`                                    | Highlighted passage            |
+| `ruby`     | `{漢字:한자}`                                      | Ruby reading annotation        |
+| `ins`      | `++inserted++`                                     | Added text                     |
+| `abbr`     | `*[HTML]: Hyper Text Markup Language`              | Abbreviation definition        |
+| `tasklist` | `- [x] Done` and `- [ ] Pending`                   | Static task states             |
+| `math`     | `$x^2$` and `$$x^2$$`                              | Inline and display mathematics |
+
+For example, with the corresponding extensions enabled:
+
+~~~~ markdown
+A statement[^1]. HTML has elements.
+
+[^1]: Supporting detail.
+
+Term
+: Definition
+
+*[HTML]: Hyper Text Markup Language
+
+- [x] Written
+- [ ] Reviewed
+~~~~
+
+Footnotes include visible numbers and absolute links to the original post.
+Definition lists include visible punctuation to separate terms from their
+definitions.  Ruby includes fallback parentheses for readers that remove
+tags; Gukhanmun preserves explicit ruby instead of adding nested readings.
+
+Abbreviations are case-sensitive and use word boundaries.  `HTML5`, `html`,
+and `HTML은` do not match `HTML`.  The first matching use in ordinary text
+includes the visible expansion, such as “HTML (Hyper Text Markup Language)”.
+Link labels, URLs, mentions, hashtags, code, and math are excluded.  Duplicate
+definitions use the first definition; expansions are plain text.
+
+Tasks show static `[x]` or `[ ]` text; `[X]` also means completed.  Follow
+markers with whitespace or a line ending.  Edit the post to change state.
+`- [x]: note` can be a Markdown link definition instead of a task.
+
+
+Escaping and ambiguous text
+---------------------------
+
+Use code spans or a backslash before a delimiter to write literal syntax.
+With `sup` or `sub`, paired carets or tildes in emoticons and ranges can
+become formatting: write `\^_\^` or `1\~2,3\~4` to preserve them.
+Spaces inside subscripts and superscripts must be escaped, as in `x^a\ b^`.
+
+With `footnote`, `^[note]` is an inline footnote; with `sup`, `^[note]^` is
+superscript.  Explain essential exponents in words too, such as “x to the
+power a+b”, since receiving software may flatten them.
+
+
+Mathematics
+-----------
+
+Inline `$...$` cannot cross a line.  No whitespace may follow its opening
+`$` or precede its closing `$`; the closing `$` cannot be followed by a digit.
+Thus `$5` and `$20 and $30` remain ordinary currency text.  Escape a literal
+dollar as `\$`, or use a code span.
+
+Display math starts with `$$` at the beginning of a line, allowing indentation.
+Only whitespace may follow the closing `$$` on its line.  `$$x^2$$` can
+occupy one line; display math in the middle of a sentence is unsupported.
+
+~~~~ markdown
+The inline expression is $x^2$.
+
+$$
+\frac{a}{b}
+$$
+~~~~
+
+Math uses MathML with a TeX annotation, following the approach described in
+[FEP-dc88].  Invalid expressions, unsafe commands, or rendering limits show
+escaped literal source.  Each expression has separate macros with limits on
+expansion and size.
+
+Limits are 8,192 UTF-16 code units per expression, 64 expressions per post,
+256 KiB output per expression, and 1 MiB total math output.  When the post
+exceeds 65,536 UTF-16 code units, only math parsing is disabled: ordinary
+Markdown and mention, hashtag, and link processing continue.  Dollar-delimited
+text then follows ordinary Markdown rules, rather than being protected math.
+
+[FEP-dc88]: https://w3id.org/fep/dc88
+
+
+Reading on other servers
+------------------------
+
+Receiving software can remove subscripts, superscripts, highlights,
+insertion marks, and abbreviation tooltips.  Write important corrections
+and definitions in visible text.  Ruby
+support in Mastodon and Misskey depends on the content and receiving version.
+
+Mastodon can expose math annotations as dollar-delimited TeX text; this is
+not a guarantee of typeset mathematics.  Misskey can concatenate presentation
+text with the TeX annotation.  Display varies between servers and
+clients.  Explain essential formulas in ordinary language too.
+
+Actual server-to-server [acceptance tests] covered Mastodon 4.7.3 and
+Misskey 2026.10.0.  Both stored all ten examples.  Mastodon applied edits;
+Misskey 2026.10.0 ignored Note updates and retained the original content.
+The recorded results include received HTML/MFM and rendering losses.
+Browser, client, and accessibility checks remain pending.
+
+[acceptance tests]: https://github.com/fedify-dev/hollo/blob/main/tests/markdown-federation/README.md

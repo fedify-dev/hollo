@@ -424,7 +424,11 @@ app.post(
     const content =
       data.status == null
         ? null
-        : await formatPostContent(db, data.status, language, fmtOpts);
+        : await formatPostContent(db, data.status, language, {
+            ...fmtOpts,
+            documentId: id,
+            permalink: url.href,
+          });
     const summary =
       data.spoiler_text == null || data.spoiler_text.trim() === ""
         ? null
@@ -675,6 +679,12 @@ app.put(
       return c.json({ error: "invalid_request", zod_error: result.error }, 422);
     }
 
+    const existingPost = await db.query.posts.findFirst({
+      where: { id: { eq: id }, accountId: { eq: owner.id } },
+    });
+    if (existingPost == null) {
+      return c.json({ error: "Record not found" }, 404);
+    }
     const data = result.data;
 
     const fedCtx = federation.createContext(c.req.raw, undefined);
@@ -690,7 +700,11 @@ app.put(
     const content =
       data.status == null
         ? null
-        : await formatPostContent(db, data.status, language, fmtOpts);
+        : await formatPostContent(db, data.status, language, {
+            ...fmtOpts,
+            documentId: id,
+            permalink: existingPost.url ?? existingPost.iri,
+          });
     const summary =
       data.spoiler_text == null || data.spoiler_text.trim() === ""
         ? null
@@ -707,12 +721,6 @@ app.put(
     let previewCard: PreviewCard | null = null;
     if (content?.previewLink != null) {
       previewCard = await fetchPreviewCard(content.previewLink);
-    }
-    const existingPost = await db.query.posts.findFirst({
-      where: { id: { eq: id }, accountId: { eq: owner.id } },
-    });
-    if (existingPost == null) {
-      return c.json({ error: "Record not found" }, 404);
     }
     const mediaIds = data.media_ids;
     const mediaIdSet = mediaIds == null ? null : new Set(mediaIds);

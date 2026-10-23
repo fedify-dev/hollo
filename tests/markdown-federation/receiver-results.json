@@ -1,0 +1,221 @@
+{
+  "testedAt": "2026-10-22T19:46:11.780Z",
+  "servers": {
+    "hollo": "0.10.0",
+    "mastodon": "4.7.3",
+    "misskey": "2026.10.0"
+  },
+  "results": [
+    {
+      "extension": "footnote",
+      "source": "Reference[^n]\n\n[^n]: Footnote detail",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1",
+      "receiverIds": {
+        "mastodon": "117486280513325969",
+        "misskey": "asnimy0dsu05000e"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 footnote Phase1</p><p>Reference<sup class=\"footnote-ref\"><a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" id=\"fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\">[1]</a></sup></p>\n<hr class=\"footnotes-sep\">\n<section class=\"footnotes\">\n<ol class=\"footnotes-list\">\n<li id=\"fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" class=\"footnote-item\"><span class=\"footnote-number\">[1]</span> <p>Footnote detail <a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" class=\"footnote-backref\">↩︎</a></p>\n</li>\n</ol>\n</section>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 footnote Phase1</p><p>Reference<a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" rel=\"nofollow noopener\" target=\"_blank\">[1]</a></p>\n \n \n<ol>\n<li><span class=\"\">[1]</span> <p>Footnote detail <a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" class=\"\" rel=\"nofollow noopener\" target=\"_blank\">↩︎</a></p>\n</li>\n</ol>\n \n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 footnote Phase1\n\nReference[[1]](https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1)\n\n\n\n\n[1] \n\nFootnote detail [↩︎](https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1)"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 footnote Phase2</p><p>Reference<sup class=\"footnote-ref\"><a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" id=\"fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\">[1]</a></sup></p>\n<hr class=\"footnotes-sep\">\n<section class=\"footnotes\">\n<ol class=\"footnotes-list\">\n<li id=\"fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" class=\"footnote-item\"><span class=\"footnote-number\">[1]</span> <p>Footnote detail <a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" class=\"footnote-backref\">↩︎</a></p>\n</li>\n</ol>\n</section>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 footnote Phase2</p><p>Reference<a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" rel=\"nofollow noopener\" target=\"_blank\">[1]</a></p>\n \n \n<ol>\n<li><span class=\"\">[1]</span> <p>Footnote detail <a href=\"https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1\" class=\"\" rel=\"nofollow noopener\" target=\"_blank\">↩︎</a></p>\n</li>\n</ol>\n \n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 footnote Phase1\n\nReference[[1]](https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fn-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1)\n\n\n\n\n[1] \n\nFootnote detail [↩︎](https://hollo.127.0.0.1.sslip.io/@sender/01a16526-4fa7-7957-8e92-4f2aecec10e1#fnref-hollo-01a16526-4fa7-7957-8e92-4f2aecec10e1-1)",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "deflist",
+      "source": "Term\n: Definition",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-6bd3-7602-becf-25b46c9fca56",
+      "receiverIds": {
+        "mastodon": "117486280985691135",
+        "misskey": "asnin3kksu05000f"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 deflist Phase1</p>\n<dl>\n<dt>Term:<br></dt>\n<dd>\n<p>Definition</p>\n</dd>\n</dl>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 deflist Phase1</p>\n \n Term:<br> \n \n<p>Definition</p>\n \n \n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 deflist Phase1\n\n\nTerm:\n\n\n\n\n\nDefinition"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 deflist Phase2</p>\n<dl>\n<dt>Term:<br></dt>\n<dd>\n<p>Definition</p>\n</dd>\n</dl>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 deflist Phase2</p>\n \n Term:<br> \n \n<p>Definition</p>\n \n \n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 deflist Phase1\n\n\nTerm:\n\n\n\n\n\nDefinition",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "sub",
+      "source": "Water H~2~O",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-8819-7d54-ac40-e27809a08c20",
+      "receiverIds": {
+        "mastodon": "117486281576867091",
+        "misskey": "asnin95msu05000g"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sub Phase1</p><p>Water H<sub>2</sub>O</p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sub Phase1</p><p>Water H2O</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sub Phase1\n\nWater H2O"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sub Phase2</p><p>Water H<sub>2</sub>O</p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sub Phase2</p><p>Water H2O</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sub Phase1\n\nWater H2O",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "sup",
+      "source": "Power x^2^",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-a893-77d9-a696-b0ee76662ca0",
+      "receiverIds": {
+        "mastodon": "117486282005617090",
+        "misskey": "asninfkksu05000h"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sup Phase1</p><p>Power x<sup>2</sup></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sup Phase1</p><p>Power x2</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sup Phase1\n\nPower x2"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sup Phase2</p><p>Power x<sup>2</sup></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sup Phase2</p><p>Power x2</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 sup Phase1\n\nPower x2",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "mark",
+      "source": "==Highlight==",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-c4d3-7403-bef1-64816c2397eb",
+      "receiverIds": {
+        "mastodon": "117486282478977410",
+        "misskey": "asninl5gsu05000i"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 mark Phase1</p><p><mark>Highlight</mark></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 mark Phase1</p><p>Highlight</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 mark Phase1\n\nHighlight"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 mark Phase2</p><p><mark>Highlight</mark></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 mark Phase2</p><p>Highlight</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 mark Phase1\n\nHighlight",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "ruby",
+      "source": "{漢字:かんじ}",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-e11c-72ff-ab04-151746b24527",
+      "receiverIds": {
+        "mastodon": "117486282953130478",
+        "misskey": "asninqqnsu05000j"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ruby Phase1</p><p><ruby class=\"hollo-markdown-preserve\">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ruby Phase1</p><p><ruby>漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby></p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ruby Phase1\n\n$[ruby 漢字 かんじ]"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ruby Phase2</p><p><ruby class=\"hollo-markdown-preserve\">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ruby Phase2</p><p><ruby>漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby></p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ruby Phase1\n\n$[ruby 漢字 かんじ]",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "ins",
+      "source": "++Addition++",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16526-fd5d-70dd-9e91-9dd734461d37",
+      "receiverIds": {
+        "mastodon": "117486283426535238",
+        "misskey": "asninwbisu05000k"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ins Phase1</p><p><ins>Addition</ins></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ins Phase1</p><p>Addition</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ins Phase1\n\nAddition"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ins Phase2</p><p><ins>Addition</ins></p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ins Phase2</p><p>Addition</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 ins Phase1\n\nAddition",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "abbr",
+      "source": "HTML\n\n*[HTML]: Hypertext Markup Language",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16527-1998-71b5-ab67-febe5b52ffbe",
+      "receiverIds": {
+        "mastodon": "117486283900522062",
+        "misskey": "asnio1wasu05000l"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 abbr Phase1</p><p><abbr title=\"Hypertext Markup Language\">HTML</abbr> (Hypertext Markup Language)</p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 abbr Phase1</p><p>HTML (Hypertext Markup Language)</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 abbr Phase1\n\nHTML (Hypertext Markup Language)"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 abbr Phase2</p><p><abbr title=\"Hypertext Markup Language\">HTML</abbr> (Hypertext Markup Language)</p>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 abbr Phase2</p><p>HTML (Hypertext Markup Language)</p>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 abbr Phase1\n\nHTML (Hypertext Markup Language)",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "tasklist",
+      "source": "- [x] Done\n- [ ] Pending",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16527-35d0-7a80-a452-5d4d22278e92",
+      "receiverIds": {
+        "mastodon": "117486284375168806",
+        "misskey": "asnio7gxsu05000m"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 tasklist Phase1</p><ul>\n<li class=\"task-list-item\">[x] Done</li>\n<li class=\"task-list-item\">[ ] Pending</li>\n</ul>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 tasklist Phase1</p><ul>\n<li>[x] Done</li>\n<li>[ ] Pending</li>\n</ul>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 tasklist Phase1\n\n[x] Done\n\n[ ] Pending"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 tasklist Phase2</p><ul>\n<li class=\"task-list-item\">[x] Done</li>\n<li class=\"task-list-item\">[ ] Pending</li>\n</ul>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 tasklist Phase2</p><ul>\n<li>[x] Done</li>\n<li>[ ] Pending</li>\n</ul>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 tasklist Phase1\n\n[x] Done\n\n[ ] Pending",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    },
+    {
+      "extension": "math",
+      "source": "Inline $x^2$\n\n$$\nx^2\n$$",
+      "uri": "https://hollo.127.0.0.1.sslip.io/@sender/01a16527-5204-7634-ac2e-f402fa22ca10",
+      "receiverIds": {
+        "mastodon": "117486284848504546",
+        "misskey": "asniod1jsu05000n"
+      },
+      "create": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 math Phase1</p><p>Inline <span class=\"katex\"><math class=\"hollo-math hollo-markdown-preserve\" xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><msup><mi>x</mi><mn>2</mn></msup></mrow><annotation encoding=\"application/x-tex\">x^2</annotation></semantics></math></span></p>\n<span class=\"katex\"><math class=\"hollo-math hollo-markdown-preserve\" xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><msup><mi>x</mi><mn>2</mn></msup></mrow><annotation encoding=\"application/x-tex\">\nx^2\n</annotation></semantics></math></span>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 math Phase1</p><p>Inline <span class=\"\">$x^2$</span></p>\n<span class=\"\">$$\nx^2\n$$</span>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 math Phase1\n\nInline x2x^2\nx2\nx^2"
+      },
+      "update": {
+        "hollo": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 math Phase2</p><p>Inline <span class=\"katex\"><math class=\"hollo-math hollo-markdown-preserve\" xmlns=\"http://www.w3.org/1998/Math/MathML\"><semantics><mrow><msup><mi>x</mi><mn>2</mn></msup></mrow><annotation encoding=\"application/x-tex\">x^2</annotation></semantics></math></span></p>\n<span class=\"katex\"><math class=\"hollo-math hollo-markdown-preserve\" xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><semantics><mrow><msup><mi>x</mi><mn>2</mn></msup></mrow><annotation encoding=\"application/x-tex\">\nx^2\n</annotation></semantics></math></span>\n",
+        "mastodon": "<p>HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 math Phase2</p><p>Inline <span class=\"\">$x^2$</span></p>\n<span class=\"\">$$\nx^2\n$$</span>\n",
+        "misskey": "HolloMarkdown e58646ae-b204-46d7-942e-6632a37486d0 math Phase1\n\nInline x2x^2\nx2\nx^2",
+        "misskeyNoteUpdates": "ignored",
+        "observation": "unchanged after 5 seconds; delivery must be checked in receiver logs"
+      }
+    }
+  ],
+  "cleanupErrors": []
+}

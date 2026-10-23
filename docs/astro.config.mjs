@@ -155,6 +155,16 @@ export default defineConfig({
           },
         },
         {
+          slug: "markdown",
+          label: "Markdown",
+          translations: {
+            ko: "Markdown",
+            ja: "Markdown",
+            "zh-CN": "Markdown",
+            "zh-TW": "Markdown",
+          },
+        },
+        {
           slug: "search",
           label: "Search",
           translations: {

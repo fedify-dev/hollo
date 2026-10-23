@@ -65,7 +65,12 @@ function PostPage({ post, accountOwner, baseUrl }: PostPageProps) {
       themeColor={accountOwner.themeColor}
     >
       <main class="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
-        <PostView post={post} featured={true} baseUrl={baseUrl} />
+        <PostView
+          post={post}
+          featured={true}
+          canonical={true}
+          baseUrl={baseUrl}
+        />
         {post.replies.length > 0 && (
           <section class="mt-8">
             <h2 class="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">

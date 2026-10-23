@@ -14,6 +14,8 @@ overrides:
 minimumReleaseAgeExclude:
 - '@fedify/*'
 - srvx@1.0.6
+- '@mdit/helper@1.1.3'
+- '@mdit/plugin-ruby@1.1.3'
 
 permissions:
   '@fedify/fedify':

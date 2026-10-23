@@ -97,4 +97,19 @@ describe("transformPostHtmlWithGukhanmun", () => {
       transformPostHtmlWithGukhanmun("<p>漢字</p>", "ja"),
     ).resolves.toBe("<p>漢字</p>");
   });
+
+  it("preserves authored ruby, math, and literal math fallbacks", async () => {
+    vi.stubEnv("GUKHANMUN", "ko");
+    const preserved =
+      '<ruby class="hollo-markdown-preserve">漢字<rp>(</rp><rt>かんじ</rt><rp>)</rp></ruby>' +
+      '<math class="hollo-math hollo-markdown-preserve"><semantics><mtext>漢字</mtext><annotation encoding="application/x-tex">\\text{漢字}</annotation></semantics></math>' +
+      '<span class="hollo-math hollo-markdown-preserve">$漢字$</span>' +
+      '<div class="hollo-math hollo-markdown-preserve">$$漢字$$</div>';
+
+    await expect(
+      transformPostHtmlWithGukhanmun(preserved + "<p>漢字</p>", "ko"),
+    ).resolves.toBe(
+      preserved + "<p><ruby>漢字<rp>(</rp><rt>한자</rt><rp>)</rp></ruby></p>",
+    );
+  });
 });

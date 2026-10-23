@@ -1,5 +1,5 @@
 import { renderCustomEmojis } from "../custom-emoji";
-import { stripQuoteInlineFallbacks } from "../html";
+import { stripFootnoteIds, stripQuoteInlineFallbacks } from "../html";
 import { orderMedia } from "../media-order";
 import { proxyUrl } from "../media-proxy";
 import type { PreviewCard } from "../previewcard";
@@ -57,6 +57,7 @@ export interface PostProps {
   readonly pinned?: boolean;
   readonly quoted?: boolean;
   readonly featured?: boolean;
+  readonly canonical?: boolean;
   readonly baseUrl: URL | string;
 }
 
@@ -73,6 +74,7 @@ export function Post({
   pinned,
   quoted,
   featured,
+  canonical,
   baseUrl,
 }: PostProps) {
   if (post.sharing != null)
@@ -161,7 +163,12 @@ export function Post({
       </header>
       <div class="mt-3">
         {post.summary == null || post.summary.trim() === "" ? (
-          <PostContent post={post} featured={featured} baseUrl={baseUrl} />
+          <PostContent
+            post={post}
+            featured={featured}
+            canonical={canonical}
+            baseUrl={baseUrl}
+          />
         ) : (
           <details class="group">
             <summary
@@ -171,7 +178,12 @@ export function Post({
               {post.summary}
             </summary>
             <div class="mt-3">
-              <PostContent post={post} featured={featured} baseUrl={baseUrl} />
+              <PostContent
+                post={post}
+                featured={featured}
+                canonical={canonical}
+                baseUrl={baseUrl}
+              />
             </div>
           </details>
         )}
@@ -342,6 +354,7 @@ interface PostContentProps {
       | null;
   };
   readonly featured?: boolean;
+  readonly canonical?: boolean;
   readonly baseUrl: URL | string;
 }
 
@@ -360,7 +373,7 @@ function getEffectiveQuoteState(
   return state;
 }
 
-function PostContent({ post, featured, baseUrl }: PostContentProps) {
+function PostContent({ post, featured, canonical, baseUrl }: PostContentProps) {
   const quoteState = getEffectiveQuoteState(post);
   const quoteDisplayable =
     quoteState === "accepted" && post.quoteTarget != null;
@@ -368,7 +381,9 @@ function PostContent({ post, featured, baseUrl }: PostContentProps) {
     ? stripQuoteInlineFallbacks(post.contentHtml)
     : post.contentHtml;
   const contentHtml = renderCustomEmojis(
-    displayContentHtml,
+    canonical || displayContentHtml == null
+      ? displayContentHtml
+      : stripFootnoteIds(displayContentHtml),
     post.emojis,
     baseUrl,
   );

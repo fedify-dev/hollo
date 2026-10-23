@@ -14,14 +14,22 @@ async function getCheerio() {
 export async function extractPreviewLink(
   html: string,
   ignoredLinks: Iterable<string> = [],
+  documentUrls: Iterable<string> = [],
 ): Promise<string | null> {
   const cheerio = await getCheerio();
   const $ = cheerio.load(html);
   const ignored = new Set([...ignoredLinks].map(normalizeLink));
+  const documents = new Set([...documentUrls].map(withoutFragment));
   const links = $("a[href]:not([rel=tag]):not(.mention)").toArray().reverse();
   for (const link of links) {
     const href = $(link).attr("href");
-    if (href == null || ignored.has(normalizeLink(href))) continue;
+    if (
+      href == null ||
+      href.startsWith("#") ||
+      ignored.has(normalizeLink(href))
+    )
+      continue;
+    if (href.includes("#") && documents.has(withoutFragment(href))) continue;
     return href;
   }
   return null;
@@ -94,5 +102,23 @@ function decodeHtmlEntities(value: string): string {
           return entity;
       }
     },
+  );
+}
+
+function withoutFragment(value: string): string {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    return url.href;
+  } catch {
+    return value.split("#")[0];
+  }
+}
+
+/** Repeated cards link to the canonical document without duplicating its IDs. */
+export function stripFootnoteIds(html: string): string {
+  return html.replaceAll(
+    /(<(?:a|li)\b[^>]*?)\s+id="(?:fn|fnref)-hollo-[^"<>]+"/giu,
+    "$1",
   );
 }

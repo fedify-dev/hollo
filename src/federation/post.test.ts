@@ -1093,6 +1093,43 @@ describe("persistPost", () => {
     ]);
   });
 
+  it.each(["id", "url", "link"] as const)(
+    "does not fetch footnote navigation as a preview through the object %s",
+    async (kind) => {
+      const author = await seedRemoteAccount("author");
+      const id = new URL(`https://remote.test/@author/posts/footnote-${kind}`);
+      const display = new URL(`https://remote.test/display/footnote-${kind}`);
+      const target = kind === "id" ? id : display;
+      const preview = vi
+        .spyOn(await import("../previewcard"), "fetchPreviewCard")
+        .mockResolvedValue(null);
+      try {
+        const result = await persistPost(
+          db,
+          new Note({
+            id,
+            url:
+              kind === "id"
+                ? null
+                : kind === "url"
+                  ? display
+                  : new Link({ href: display }),
+            attribution: createPerson(author),
+            content: `<p>Text<a href="${target.href}#fn-hollo-post-1">[1]</a></p>`,
+            to: PUBLIC_COLLECTION,
+          }),
+          "https://hollo.test",
+          { account: author },
+        );
+        expect(result).not.toBeNull();
+        expect(result?.previewCard).toBeNull();
+        expect(preview).not.toHaveBeenCalled();
+      } finally {
+        preview.mockRestore();
+      }
+    },
+  );
+
   it("stores the language when content is accompanied by contentMap", async () => {
     expect.assertions(2);
     const author = await seedRemoteAccount("author");

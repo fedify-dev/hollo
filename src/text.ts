@@ -10,7 +10,7 @@ import { type DocumentLoader, isActor, lookupObject } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
 import { inArray } from "drizzle-orm";
 import { escape } from "es-toolkit";
-import MarkdownIt, {
+import {
   type Env as MarkdownItEnv,
   type MarkdownIt as MarkdownItInstance,
 } from "markdown-it";
@@ -21,6 +21,12 @@ import type { DatabaseLike } from "./db";
 import { persistAccount } from "./federation/account";
 import { type ASPost, isPost } from "./federation/post";
 import { transformPostHtmlWithGukhanmun } from "./gukhanmun";
+import {
+  createMarkdownIt as createBaseMarkdownIt,
+  createPostMarkdownIt,
+  type PostMarkdownOptions,
+} from "./markdown";
+import { getMarkdownExtensions } from "./markdown-settings";
 import * as schema from "./schema";
 import type { Uuid } from "./uuid";
 
@@ -86,9 +92,7 @@ async function getShikiPlugin(): Promise<MarkdownItPlugin> {
 }
 
 export function createMarkdownIt(): MarkdownItInstance {
-  const md = new MarkdownIt({ linkify: true, html: ALLOW_HTML });
-  md.linkify.set({ fuzzyLink: true, urlAuth: true });
-  return md;
+  return createBaseMarkdownIt(ALLOW_HTML);
 }
 
 function containsCodeBlock(text: string): boolean {
@@ -104,13 +108,24 @@ export async function formatText(
     url: URL | string;
     contextLoader?: DocumentLoader;
     documentLoader?: DocumentLoader;
+    markdown?: Pick<
+      PostMarkdownOptions,
+      "extensions" | "documentId" | "permalink"
+    >;
   },
 ): Promise<FormatResult> {
   // List all mentions:
-  const draft = createMarkdownIt()
-    .use(mentionPlugin, {})
-    .use(hashtagPlugin, {});
-  const draftEnv: { mentions: string[] } = { mentions: [] };
+  const draft =
+    options.markdown == null
+      ? createMarkdownIt().use(mentionPlugin, {}).use(hashtagPlugin, {})
+      : await createPostMarkdownIt({
+          ...options.markdown,
+          allowHtml: ALLOW_HTML,
+          draft: true,
+        });
+  const draftEnv: { mentions: string[]; visibleText?: string[] } = {
+    mentions: [],
+  };
   draft.render(text, draftEnv);
 
   // Collect already persisted accounts:
@@ -146,7 +161,10 @@ export async function formatText(
 
   // Collect custom emojis:
   const emojis: string[] = [];
-  for (const m of text.matchAll(CUSTOM_EMOJI_REGEXP)) emojis.push(m[1]);
+  for (const m of (draftEnv.visibleText?.join("\n") ?? text).matchAll(
+    CUSTOM_EMOJI_REGEXP,
+  ))
+    emojis.push(m[1]);
   const customEmojis =
     emojis.length > 0
       ? await db.query.customEmojis.findMany({
@@ -155,44 +173,55 @@ export async function formatText(
       : [];
 
   // Render the final HTML:
-  const md = createMarkdownIt()
-    .use(mentionPlugin, {
-      link(handle) {
-        if (handle in handles) return handles[handle].href;
-        return null;
-      },
-      linkAttributes(handle: string) {
-        return {
-          "data-account-id": handles[handle].id,
-          "data-account-handle": handle,
-          translate: "no",
-          class: "h-card u-url mention",
-        };
-      },
-      label(handle: string) {
-        const bareHandle = handle.replaceAll(/(?:^@)|(?:@[^@]+$)/g, "");
-        return `@<span>${escape(bareHandle)}</span>`;
-      },
-    })
-    .use(hashtagPlugin, {
-      link(tag) {
-        return new URL(
-          `/tags/${encodeURIComponent(tag.substring(1))}`,
-          options.url,
-        ).href;
-      },
-      linkAttributes(tag: string) {
-        return {
-          "data-tag": tag.substring(1),
-          class: "mention hashtag",
-          rel: "tag",
-        };
-      },
-      label(tag: string) {
-        return `#<span>${escape(tag.substring(1))}</span>`;
-      },
-    })
-    .use(replaceLinkPlugin, {
+  const mentionOptions: MentionPluginOptions = {
+    link(handle) {
+      if (handle in handles) return handles[handle].href;
+      return null;
+    },
+    linkAttributes(handle: string) {
+      return {
+        "data-account-id": handles[handle].id,
+        "data-account-handle": handle,
+        translate: "no",
+        class: "h-card u-url mention",
+      };
+    },
+    label(handle: string) {
+      const bareHandle = handle.replaceAll(/(?:^@)|(?:@[^@]+$)/g, "");
+      return `@<span>${escape(bareHandle)}</span>`;
+    },
+  };
+  const hashtagOptions: HashtagPluginOptions = {
+    link(tag) {
+      return new URL(
+        `/tags/${encodeURIComponent(tag.substring(1))}`,
+        options.url,
+      ).href;
+    },
+    linkAttributes(tag: string) {
+      return {
+        "data-tag": tag.substring(1),
+        class: "mention hashtag",
+        rel: "tag",
+      };
+    },
+    label(tag: string) {
+      return `#<span>${escape(tag.substring(1))}</span>`;
+    },
+  };
+  const md =
+    options.markdown == null
+      ? createMarkdownIt()
+          .use(mentionPlugin, mentionOptions)
+          .use(hashtagPlugin, hashtagOptions)
+      : await createPostMarkdownIt({
+          ...options.markdown,
+          allowHtml: ALLOW_HTML,
+          mention: mentionOptions,
+          hashtag: hashtagOptions,
+        });
+  if (options.markdown == null)
+    md.use(replaceLinkPlugin, {
       processHTML: false,
       replaceLink(link: string, env: Env) {
         if (link.startsWith("http://") || link.startsWith("https://")) {
@@ -212,7 +241,16 @@ export async function formatText(
     links: [],
   };
   const html = md.render(text, env);
-  logger.debug("Markdown-It environment: {env}", { env });
+  // Parser internals can include the full body and footnote definitions.
+  // Keep diagnostics limited to the metadata logged before extensions.
+  logger.debug("Markdown-It environment: {env}", {
+    env: {
+      mentions: env.mentions,
+      hashtags: env.hashtags,
+      previewLink: env.previewLink,
+      links: env.links,
+    },
+  });
   let quoteTarget: ASPost | null = null;
   for (const link of env.links) {
     const object = await lookupObject(link, options);
@@ -263,11 +301,20 @@ export async function formatPostContent(
   language: string | null | undefined,
   options: {
     url: URL | string;
+    documentId: string;
+    permalink: string;
     contextLoader?: DocumentLoader;
     documentLoader?: DocumentLoader;
   },
 ): Promise<FormatResult> {
-  const result = await formatText(db, text, options);
+  const result = await formatText(db, text, {
+    ...options,
+    markdown: {
+      extensions: getMarkdownExtensions(),
+      documentId: options.documentId,
+      permalink: options.permalink,
+    },
+  });
   result.html = await transformPostHtmlWithGukhanmun(result.html, language);
   return result;
 }
