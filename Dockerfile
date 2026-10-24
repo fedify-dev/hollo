@@ -1,4 +1,4 @@
-FROM docker.io/node:24.22.1-bookworm-slim AS base
+FROM docker.io/node:26.12.1-bookworm-slim AS base
 
 # Block both trust paths for the compromised eMudhra intermediates.
 # Apply the distrust from Debian bug #1151413 even with older CA packages.

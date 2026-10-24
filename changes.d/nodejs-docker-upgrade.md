@@ -1,0 +1,1 @@
+ -  Updated the Docker image to Node.js 26.12.1.

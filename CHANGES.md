@@ -171,6 +171,8 @@ To be released.
     original `Host` header.  Trusted proxies must overwrite client-supplied
     forwarded headers.  [[#672], [#673]]
 
+ -  Updated the Docker image to Node.js 26.12.1.
+
 [GHSA-r48c-xx2h-fv4g]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-r48c-xx2h-fv4g
 [FEP-044f]: https://w3id.org/fep/044f
 [FEP-c0e0]: https://w3id.org/fep/c0e0
