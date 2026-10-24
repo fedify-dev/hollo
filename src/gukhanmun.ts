@@ -58,12 +58,14 @@ export function getGukhanmunPreset(locale: string): Preset {
 
 async function createConverter(preset: Preset): Promise<Gukhanmun> {
   const { load } = await import("@gukhanmun/napi");
+  const { loanwordsFst } = await import("@gukhanmun/loanwords-fst");
+  const loanwords = await loanwordsFst();
   if (preset === "ko-kp") {
     const { opendictNorthKoreanFst } = await import("@gukhanmun/opendict-fst");
     return await load({
       preset,
       rendering: "ruby-on-hanja",
-      dictionaries: [await opendictNorthKoreanFst()],
+      dictionaries: [loanwords, await opendictNorthKoreanFst()],
       html: htmlOptions,
     });
   }
@@ -72,7 +74,7 @@ async function createConverter(preset: Preset): Promise<Gukhanmun> {
   return await load({
     preset,
     rendering: "ruby-on-hanja",
-    dictionaries: [await stdictFst()],
+    dictionaries: [loanwords, await stdictFst()],
     html: htmlOptions,
   });
 }

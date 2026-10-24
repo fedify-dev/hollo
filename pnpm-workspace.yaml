@@ -16,6 +16,16 @@ minimumReleaseAgeExclude:
 - srvx@1.0.6
 - '@mdit/helper@1.1.3'
 - '@mdit/plugin-ruby@1.1.3'
+- '@gukhanmun/loanwords-fst@0.3.0'
+- '@gukhanmun/napi-aarch64-apple-darwin@0.3.0'
+- '@gukhanmun/napi-aarch64-pc-windows-msvc@0.3.0'
+- '@gukhanmun/napi-aarch64-unknown-linux-gnu@0.3.0'
+- '@gukhanmun/napi-x86_64-apple-darwin@0.3.0'
+- '@gukhanmun/napi-x86_64-pc-windows-msvc@0.3.0'
+- '@gukhanmun/napi-x86_64-unknown-linux-gnu@0.3.0'
+- '@gukhanmun/napi@0.3.0'
+- '@gukhanmun/opendict-fst@0.3.0'
+- '@gukhanmun/stdict-fst@0.3.0'
 
 permissions:
   '@fedify/fedify':

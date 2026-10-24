@@ -65,6 +65,19 @@ describe("transformPostHtmlWithGukhanmun", () => {
     );
   });
 
+  it.each(["ko-KR", "ko-KP"])(
+    "prefers loanword spellings over the preset dictionary for %s",
+    async (locale) => {
+      vi.stubEnv("GUKHANMUN", "ko,ko-*");
+
+      await expect(
+        transformPostHtmlWithGukhanmun("<p>香港</p>", locale),
+      ).resolves.toBe(
+        "<p><ruby>香港<rp>(</rp><rt>홍콩</rt><rp>)</rp></ruby></p>",
+      );
+    },
+  );
+
   it.each([
     ["South Korean", "ko-KR", "내일"],
     ["North Korean", "ko-KP", "래일"],

@@ -206,15 +206,18 @@ importers:
       '@fedify/webfinger':
         specifier: ~2.4.5
         version: 2.4.5
+      '@gukhanmun/loanwords-fst':
+        specifier: ^0.3.0
+        version: 0.3.0(@gukhanmun/types@0.2.0)
       '@gukhanmun/napi':
-        specifier: ^0.2.0
-        version: 0.2.0(@gukhanmun/types@0.2.0)
+        specifier: ^0.3.0
+        version: 0.3.0(@gukhanmun/types@0.2.0)
       '@gukhanmun/opendict-fst':
-        specifier: ^0.2.0
-        version: 0.2.0(@gukhanmun/types@0.2.0)
+        specifier: ^0.3.0
+        version: 0.3.0(@gukhanmun/types@0.2.0)
       '@gukhanmun/stdict-fst':
-        specifier: ^0.2.0
-        version: 0.2.0(@gukhanmun/types@0.2.0)
+        specifier: ^0.3.0
+        version: 0.3.0(@gukhanmun/types@0.2.0)
       '@hexagon/base64':
         specifier: ^2.0.4
         version: 2.0.4
@@ -1435,50 +1438,56 @@ packages:
   '@fxts/core@1.26.0':
     resolution: {integrity: sha512-ONaza1CGr8dLKmJ0HQgi0h4XuyDJMr0P70M7o/My/YeeRxuYoSANHjE2nSY7xO4WHgxUD5ojd5dpxlFOzAEJsA==}
 
-  '@gukhanmun/napi-aarch64-apple-darwin@0.2.0':
-    resolution: {integrity: sha512-r/+zv2g7cGEBHILnj3dqRDxkgN3AkQPtWlnWSAw+bTW+s03z+ECVYfXz649fF400ztduUYx/Yt/HWTgP9v4DkQ==}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@gukhanmun/napi-aarch64-pc-windows-msvc@0.2.0':
-    resolution: {integrity: sha512-TEcPQFVTx9belhq1bts69ihYAT2T5ta6sQOQh4oHx5URGuSNq8NO80hxJP76H0dRvCTFv7NYjCamf6rbbo8JKw==}
-    cpu: [arm64]
-    os: [win32]
-
-  '@gukhanmun/napi-aarch64-unknown-linux-gnu@0.2.0':
-    resolution: {integrity: sha512-4/S77iumheG+ykkK/NK5tS64YelSsD9EWHU4bUH8DEF+z6lzKNjCUWQ7vWqetqfLdgmFnkqbnhJK3bMGbKTKnQ==}
-    cpu: [arm64]
-    os: [linux]
-
-  '@gukhanmun/napi-x86_64-apple-darwin@0.2.0':
-    resolution: {integrity: sha512-62aKMMlbB6KW3bc9rsgbEdUNYxEHsX3OLZVVY1kxjcBegl4zBFyhl6bY7H7Gu0wBIB8AKc9RFD7ykeE0t6+c0g==}
-    cpu: [x64]
-    os: [darwin]
-
-  '@gukhanmun/napi-x86_64-pc-windows-msvc@0.2.0':
-    resolution: {integrity: sha512-thTr/+6g17LRt0SxVZqja5Xg2i8H9wk4DYHTV3fyesv4o4IzhvdVo4ExhLk8QFTMj6gg5aBBO0UtSTJS8SIJqw==}
-    cpu: [x64]
-    os: [win32]
-
-  '@gukhanmun/napi-x86_64-unknown-linux-gnu@0.2.0':
-    resolution: {integrity: sha512-03EPGKAbOL8AILNzp0a53HYmgrzV6yEman2gUWHzaHynka0B+K7R0/LCQH4ylQya+ZN5NB5Z3femYvPipzpzDQ==}
-    cpu: [x64]
-    os: [linux]
-
-  '@gukhanmun/napi@0.2.0':
-    resolution: {integrity: sha512-hmfnikFuXYkAZsv9vmF1tcxv0Xjo+ifht/zQWG+SkOi5xoEzQR/KkRqHAQp5ArVBLPvXnhu6j9O9tc81QVbK6A==}
+  '@gukhanmun/loanwords-fst@0.3.0':
+    resolution: {integrity: sha512-ZBGjF8auwZyew7Lp4F/hdkxePl+/sV69LFe4Jl45tSjxdmVEZfjDPt4MiVMlK2fx6txIN0bxLUTTkpNCDoZKOw==}
     engines: {bun: '>=1.0', deno: '>=2.0', node: '>=20'}
     peerDependencies:
       '@gukhanmun/types': '*'
 
-  '@gukhanmun/opendict-fst@0.2.0':
-    resolution: {integrity: sha512-0a0YpGbpBjQXkJee+gNpjEsi6OvnWEwhneLoCPFyL5osMnlWW8CICzVSvbdvTT8Yu0jFFWfdD2aq4WBVJpWXsg==}
+  '@gukhanmun/napi-aarch64-apple-darwin@0.3.0':
+    resolution: {integrity: sha512-U5d0Oqsts1KuOQtwF9LmXvEHMN3bjYuH2AM7EXJeYrOrD3ch/K+h7LnnVf26ntoOeT3z8FqbfwxzTAw6XopxMA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@gukhanmun/napi-aarch64-pc-windows-msvc@0.3.0':
+    resolution: {integrity: sha512-YD7kgvzAZL8T0Gm4P3gxDG+HGrwX9Zz2RxpS0k8Xg4YL1VOPvsQLwoDJxBnbgeR1LNcjMQiXyFgm1mBNy3N73Q==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@gukhanmun/napi-aarch64-unknown-linux-gnu@0.3.0':
+    resolution: {integrity: sha512-FPrsRxxUUAOX69DBm/2Fu7WyteyUHU60tXJ4AkCXCANsU7iMnkqVhHTn1mNQh7yiEnE6B5KOgMPD2WvT1TFCRQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@gukhanmun/napi-x86_64-apple-darwin@0.3.0':
+    resolution: {integrity: sha512-yDUHqbNGJE0+NRxCJryXhJD/GHdUVytwq9tNn0c0hFwuff7GqNT/3hVKZldzcnXZ0urBOrwbtBwO45ZMhGc0SA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@gukhanmun/napi-x86_64-pc-windows-msvc@0.3.0':
+    resolution: {integrity: sha512-nd5xLQxr+dA/VRT+HEdgwREujVtVVFGpC592+c4kl6tvT+yOMf3QRkoBarYT53x0Mjwdk/H32VM/5wYc4ednVA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@gukhanmun/napi-x86_64-unknown-linux-gnu@0.3.0':
+    resolution: {integrity: sha512-bMqP7nWuC0TaJfmMCP3kq+bo9HyJKzo9QOLahY857W8/e48Nnjg0HbkzsZN5QzKsJyU+OZKonrVkJYfEryFM0w==}
+    cpu: [x64]
+    os: [linux]
+
+  '@gukhanmun/napi@0.3.0':
+    resolution: {integrity: sha512-9Wtc+tSNlRr0wNBD/GqA/qwKIwz9zk32uykv6nzeoD+UKa6D3SPwU3CR8YPru1MMgHTvXEwSD8H7b4qnNKVmsw==}
     engines: {bun: '>=1.0', deno: '>=2.0', node: '>=20'}
     peerDependencies:
       '@gukhanmun/types': '*'
 
-  '@gukhanmun/stdict-fst@0.2.0':
-    resolution: {integrity: sha512-z60pINzV+51/0+q/Pn8cCYlVJ/XgHY5TDWYAgsUv8BRDfeowTYiTZ6YLrFcUTao7hrUFtLPy8TBLPqJARwT57A==}
+  '@gukhanmun/opendict-fst@0.3.0':
+    resolution: {integrity: sha512-k9gFwQlXozJQ5dZIMmVwwz3ATwai6ct8Tq2uxVAuuFhtccYbaWFEQMoIWejlbcu8G47Q8OH9/L32lplJ0i8icw==}
+    engines: {bun: '>=1.0', deno: '>=2.0', node: '>=20'}
+    peerDependencies:
+      '@gukhanmun/types': '*'
+
+  '@gukhanmun/stdict-fst@0.3.0':
+    resolution: {integrity: sha512-rZWl2AkN1GzHk/bOQp86/Dp/qkFf52SVUVFBd6YfAPoWep3bLLbGKrPkN14uZRAjugdVsFdCH/VFDLnrR18Vgg==}
     engines: {bun: '>=1.0', deno: '>=2.0', node: '>=20'}
     peerDependencies:
       '@gukhanmun/types': '*'
@@ -7982,40 +7991,44 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@gukhanmun/napi-aarch64-apple-darwin@0.2.0':
+  '@gukhanmun/loanwords-fst@0.3.0(@gukhanmun/types@0.2.0)':
+    dependencies:
+      '@gukhanmun/types': 0.2.0
+
+  '@gukhanmun/napi-aarch64-apple-darwin@0.3.0':
     optional: true
 
-  '@gukhanmun/napi-aarch64-pc-windows-msvc@0.2.0':
+  '@gukhanmun/napi-aarch64-pc-windows-msvc@0.3.0':
     optional: true
 
-  '@gukhanmun/napi-aarch64-unknown-linux-gnu@0.2.0':
+  '@gukhanmun/napi-aarch64-unknown-linux-gnu@0.3.0':
     optional: true
 
-  '@gukhanmun/napi-x86_64-apple-darwin@0.2.0':
+  '@gukhanmun/napi-x86_64-apple-darwin@0.3.0':
     optional: true
 
-  '@gukhanmun/napi-x86_64-pc-windows-msvc@0.2.0':
+  '@gukhanmun/napi-x86_64-pc-windows-msvc@0.3.0':
     optional: true
 
-  '@gukhanmun/napi-x86_64-unknown-linux-gnu@0.2.0':
+  '@gukhanmun/napi-x86_64-unknown-linux-gnu@0.3.0':
     optional: true
 
-  '@gukhanmun/napi@0.2.0(@gukhanmun/types@0.2.0)':
+  '@gukhanmun/napi@0.3.0(@gukhanmun/types@0.2.0)':
     dependencies:
       '@gukhanmun/types': 0.2.0
     optionalDependencies:
-      '@gukhanmun/napi-aarch64-apple-darwin': 0.2.0
-      '@gukhanmun/napi-aarch64-pc-windows-msvc': 0.2.0
-      '@gukhanmun/napi-aarch64-unknown-linux-gnu': 0.2.0
-      '@gukhanmun/napi-x86_64-apple-darwin': 0.2.0
-      '@gukhanmun/napi-x86_64-pc-windows-msvc': 0.2.0
-      '@gukhanmun/napi-x86_64-unknown-linux-gnu': 0.2.0
+      '@gukhanmun/napi-aarch64-apple-darwin': 0.3.0
+      '@gukhanmun/napi-aarch64-pc-windows-msvc': 0.3.0
+      '@gukhanmun/napi-aarch64-unknown-linux-gnu': 0.3.0
+      '@gukhanmun/napi-x86_64-apple-darwin': 0.3.0
+      '@gukhanmun/napi-x86_64-pc-windows-msvc': 0.3.0
+      '@gukhanmun/napi-x86_64-unknown-linux-gnu': 0.3.0
 
-  '@gukhanmun/opendict-fst@0.2.0(@gukhanmun/types@0.2.0)':
+  '@gukhanmun/opendict-fst@0.3.0(@gukhanmun/types@0.2.0)':
     dependencies:
       '@gukhanmun/types': 0.2.0
 
-  '@gukhanmun/stdict-fst@0.2.0(@gukhanmun/types@0.2.0)':
+  '@gukhanmun/stdict-fst@0.3.0(@gukhanmun/types@0.2.0)':
     dependencies:
       '@gukhanmun/types': 0.2.0
 
