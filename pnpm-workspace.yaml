@@ -13,7 +13,7 @@ overrides:
 
 minimumReleaseAgeExclude:
 - '@fedify/*'
-- srvx@1.0.6
+- srvx@1.0.7
 - '@mdit/helper@1.1.3'
 - '@mdit/plugin-ruby@1.1.3'
 - '@gukhanmun/loanwords-fst@0.3.0'
