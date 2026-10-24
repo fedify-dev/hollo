@@ -101,7 +101,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^2.32.4",
+    "@dotenvx/dotenvx": "^2.38.2",
     "@fedify/lint": "~2.4.5",
     "@iconify-json/lucide": "^1.2.147",
     "@reporters/github": "^2.1.4",
