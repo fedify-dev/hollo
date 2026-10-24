@@ -55,13 +55,40 @@ describe("transformPostHtmlWithGukhanmun", () => {
     );
   });
 
-  it("adds North Korean readings to matching HTML", async () => {
+  it("adds North Korean readings with the North Korean dictionary", async () => {
     vi.stubEnv("GUKHANMUN", "ko,ko-*");
+    vi.stubEnv("GUKHANMUN_DICTS", "loanwords,opendict:north-korean,stdict");
 
     await expect(
       transformPostHtmlWithGukhanmun("<p>來日</p>", "ko-KP"),
     ).resolves.toBe(
       "<p><ruby>來日<rp>(</rp><rt>래일</rt><rp>)</rp></ruby></p>",
+    );
+  });
+
+  it("honors dictionary order when the configuration changes", async () => {
+    vi.stubEnv("GUKHANMUN", "ko");
+    for (const [dictionaries, reading] of [
+      ["loanwords,stdict", "홍콩"],
+      ["stdict,loanwords", "샹강"],
+      ["loanwords,stdict", "홍콩"],
+    ]) {
+      vi.stubEnv("GUKHANMUN_DICTS", dictionaries);
+      await expect(
+        transformPostHtmlWithGukhanmun("<p>香港</p>", "ko"),
+      ).resolves.toBe(
+        `<p><ruby>香港<rp>(</rp><rt>${reading}</rt><rp>)</rp></ruby></p>`,
+      );
+    }
+  });
+
+  it("uses the default dictionaries without adding North Korean entries", async () => {
+    vi.stubEnv("GUKHANMUN", "ko-*");
+    vi.stubEnv("GUKHANMUN_DICTS", undefined);
+    await expect(
+      transformPostHtmlWithGukhanmun("<p>來日</p>", "ko-KP"),
+    ).resolves.toBe(
+      "<p><ruby>來日<rp>(</rp><rt>내일</rt><rp>)</rp></ruby></p>",
     );
   });
 
@@ -85,6 +112,12 @@ describe("transformPostHtmlWithGukhanmun", () => {
     "preserves translate=no regions with %s readings",
     async (_name, locale, reading) => {
       vi.stubEnv("GUKHANMUN", "ko,ko-*");
+      vi.stubEnv(
+        "GUKHANMUN_DICTS",
+        locale === "ko-KP"
+          ? "loanwords,opendict:north-korean,stdict"
+          : "loanwords,stdict",
+      );
       const html =
         '<p><a href="https://example.com/@x" translate="no" ' +
         'class="h-card u-url mention">@<span>來日</span></a>와 來日</p>';

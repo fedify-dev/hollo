@@ -14,6 +14,7 @@ services:
       BEHIND_PROXY: "${BEHIND_PROXY}"
       # REMOTE_REPLIES_SCRAPE_MAX_REQUESTS: "200"
       # GUKHANMUN: "ko,ko-*"
+      # GUKHANMUN_DICTS: "loanwords,opendict:general,opendict:dialect,stdict"
       # Optional post Markdown extensions; empty disables all:
       # MARKDOWN_EXTENSIONS: ""  # e.g. "footnote,ruby,math"
       DRIVE_DISK: s3

@@ -2,7 +2,48 @@ import type { Gukhanmun, Preset } from "@gukhanmun/napi";
 
 import { MARKDOWN_PRESERVE_CLASS } from "./markdown-math";
 
-const converterPromises = new Map<Preset, Promise<Gukhanmun>>();
+const converterPromises = new Map<string, Promise<Gukhanmun>>();
+const opendictNames = [
+  "opendict:general",
+  "opendict:north-korean",
+  "opendict:dialect",
+  "opendict:archaic",
+] as const;
+type DictionaryName = "loanwords" | "stdict" | (typeof opendictNames)[number];
+const defaultDictionaries =
+  "loanwords,opendict:general,opendict:dialect,stdict";
+
+function parseDictionaries(configuration: string): DictionaryName[] {
+  return configuration.split(",").flatMap((value): DictionaryName[] => {
+    const name = value.trim();
+    if (name === "") return [];
+    if (name === "opendict") return [...opendictNames];
+    if (name === "loanwords" || name === "stdict") return [name];
+    for (const category of opendictNames) {
+      if (name === category) return [category];
+    }
+    throw new Error(`Unknown dictionary in GUKHANMUN_DICTS: ${name}`);
+  });
+}
+
+async function loadDictionary(name: DictionaryName) {
+  if (name === "loanwords") {
+    const { loanwordsFst } = await import("@gukhanmun/loanwords-fst");
+    return loanwordsFst();
+  }
+  if (name === "stdict") {
+    const { stdictFst } = await import("@gukhanmun/stdict-fst");
+    return stdictFst();
+  }
+  const opendict = await import("@gukhanmun/opendict-fst");
+  const loaders = {
+    "opendict:general": opendict.opendictGeneralFst,
+    "opendict:north-korean": opendict.opendictNorthKoreanFst,
+    "opendict:dialect": opendict.opendictDialectFst,
+    "opendict:archaic": opendict.opendictArchaicFst,
+  };
+  return loaders[name]();
+}
 const htmlOptions = {
   preserveAttributes: [{ name: "translate", value: "no" }],
   preserveClasses: [MARKDOWN_PRESERVE_CLASS],
@@ -56,37 +97,33 @@ export function getGukhanmunPreset(locale: string): Preset {
   }
 }
 
-async function createConverter(preset: Preset): Promise<Gukhanmun> {
+async function createConverter(
+  preset: Preset,
+  dictionaryNames: readonly DictionaryName[],
+): Promise<Gukhanmun> {
   const { load } = await import("@gukhanmun/napi");
-  const { loanwordsFst } = await import("@gukhanmun/loanwords-fst");
-  const loanwords = await loanwordsFst();
-  if (preset === "ko-kp") {
-    const { opendictNorthKoreanFst } = await import("@gukhanmun/opendict-fst");
-    return await load({
-      preset,
-      rendering: "ruby-on-hanja",
-      dictionaries: [loanwords, await opendictNorthKoreanFst()],
-      html: htmlOptions,
-    });
-  }
-
-  const { stdictFst } = await import("@gukhanmun/stdict-fst");
   return await load({
     preset,
     rendering: "ruby-on-hanja",
-    dictionaries: [loanwords, await stdictFst()],
+    dictionaries: await Promise.all(dictionaryNames.map(loadDictionary)),
     html: htmlOptions,
   });
 }
 
-function getConverter(preset: Preset): Promise<Gukhanmun> {
-  let converterPromise = converterPromises.get(preset);
+function getConverter(
+  preset: Preset,
+  dictionaryNames: readonly DictionaryName[],
+): Promise<Gukhanmun> {
+  const key = `${preset}:${dictionaryNames.join(",")}`;
+  let converterPromise = converterPromises.get(key);
   if (converterPromise == null) {
-    converterPromise = createConverter(preset).catch((error: unknown) => {
-      converterPromises.delete(preset);
-      throw error;
-    });
-    converterPromises.set(preset, converterPromise);
+    converterPromise = createConverter(preset, dictionaryNames).catch(
+      (error: unknown) => {
+        converterPromises.delete(key);
+        throw error;
+      },
+    );
+    converterPromises.set(key, converterPromise);
   }
   return converterPromise;
 }
@@ -100,6 +137,13 @@ export async function transformPostHtmlWithGukhanmun(
   if (locale == null || !matchesGukhanmunLocale(locale, configuredLocales))
     return html;
 
-  const converter = await getConverter(getGukhanmunPreset(locale));
+  // oxlint-disable-next-line typescript/dot-notation
+  const dictionaryNames = parseDictionaries(
+    process.env["GUKHANMUN_DICTS"] ?? defaultDictionaries,
+  );
+  const converter = await getConverter(
+    getGukhanmunPreset(locale),
+    dictionaryNames,
+  );
   return converter.convert(html, "html");
 }

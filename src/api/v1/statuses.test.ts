@@ -254,6 +254,7 @@ describe("/api/v1/accounts/verify_credentials", { concurrent: false }, () => {
 
   it("uses North Korean readings for an explicit ko-KP language", async () => {
     vi.stubEnv("GUKHANMUN", "ko,ko-*");
+    vi.stubEnv("GUKHANMUN_DICTS", "loanwords,opendict:north-korean,stdict");
 
     const response = await app.request("/api/v1/statuses", {
       method: "POST",
