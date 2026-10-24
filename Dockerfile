@@ -1,21 +1,35 @@
-FROM docker.io/node:24-bookworm-slim AS toolchain
+FROM docker.io/node:24.22.1-bookworm-slim AS base
 
-ARG MISE_VERSION=2026.8.5
+# Block both trust paths for the compromised eMudhra intermediates.
+# Apply the distrust from Debian bug #1151413 even with older CA packages.
+RUN \
+  apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && sed -i \
+    -e 's|^mozilla/emSign_ECC_Root_CA_-_G3\.crt$|!&|' \
+    -e 's|^mozilla/Comodo_AAA_Services_root\.crt$|!&|' \
+    /etc/ca-certificates.conf \
+  && update-ca-certificates --fresh \
+  && rm -rf /var/lib/apt/lists/*
+
+FROM base AS toolchain
+
+ARG MISE_VERSION=2026.10.18
 ARG TARGETARCH
 
 ENV MISE_INSTALL_PATH=/usr/local/bin/mise \
   MISE_TRUSTED_CONFIG_PATHS=/app
 RUN \
   apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && apt-get install -y --no-install-recommends curl \
   && case "$TARGETARCH" in \
     amd64) \
       mise_arch=x64; \
-      mise_sha256=ee362b6d96c648e27325a8bc7ee866bde4fffc20c88c777c5eb5c3b5c6f3e226 \
+      mise_sha256=e97c38973336aa2ff350fea50f47b412b266fe263b102b7200ff1e9b118c6942 \
       ;; \
     arm64) \
       mise_arch=arm64; \
-      mise_sha256=d2bde76b1f87ab50b6f456e05332bb02de56a6bf3c5d19343cc3661e5d294681 \
+      mise_sha256=3a3c72376687ba21a588d0f5a2c88c76f483fb6cdece7b0fc43d5e3132b08a52 \
       ;; \
     *) echo "Unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
   esac \
@@ -30,7 +44,7 @@ COPY mise.toml /app/
 WORKDIR /app/
 RUN MISE_NO_HOOKS=1 mise install-into pnpm /opt/pnpm
 
-FROM docker.io/node:24-bookworm-slim AS builder
+FROM base AS builder
 
 RUN \
   apt-get update \
@@ -55,7 +69,7 @@ RUN \
   fi \
   && pnpm run build
 
-FROM docker.io/node:24-bookworm-slim
+FROM base
 
 LABEL org.opencontainers.image.title="Hollo"
 LABEL org.opencontainers.image.description="Federated single-user \
