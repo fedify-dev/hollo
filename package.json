@@ -103,7 +103,7 @@
   "devDependencies": {
     "@dotenvx/dotenvx": "^2.32.4",
     "@fedify/lint": "~2.4.5",
-    "@iconify-json/lucide": "^1.2.126",
+    "@iconify-json/lucide": "^1.2.147",
     "@reporters/github": "^2.1.4",
     "@sacho/sacho": "0.3.2",
     "@types/fluent-ffmpeg": "^2.1.28",
