@@ -13,7 +13,7 @@ export default defineConfig({
   clean: true,
   report: false,
   deps: {
-    skipNodeModulesBundle: true,
+    neverBundle: true,
   },
   copy: [
     { from: "src/public/*", to: "dist/src/public", flatten: true },
