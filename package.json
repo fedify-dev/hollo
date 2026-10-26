@@ -85,7 +85,7 @@
     "markdown-it-replace-link": "^1.2.2",
     "markdown-it-sub": "^2.0.0",
     "markdown-it-sup": "^2.0.0",
-    "mime": "^4.1.0",
+    "mime": "^4.1.1",
     "neat-csv": "^7.0.0",
     "open-graph-scraper": "^6.11.0",
     "otpauth": "^9.5.2",
