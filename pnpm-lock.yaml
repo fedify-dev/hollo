@@ -293,6 +293,9 @@ importers:
       es-toolkit:
         specifier: ^1.52.0
         version: 1.52.0
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       file-type:
         specifier: ^22.2.0
         version: 22.2.0(supports-color@10.2.2)

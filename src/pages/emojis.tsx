@@ -5,10 +5,14 @@ import { csrf } from "hono/csrf";
 import mime from "mime";
 
 import { DashboardLayout } from "../components/DashboardLayout";
+import { EMOJI_IMPORT_MAX_ARCHIVE_BYTES } from "../custom-emoji-import-config";
 import db from "../db";
+import federation, { customEmojiImports } from "../federation/federation";
 import { loginRequired } from "../login";
 import { proxyUrl } from "../media-proxy";
-import { customEmojis } from "../schema";
+import { customEmojiImportJobs, customEmojis } from "../schema";
+import { EMOJI_IMPORT_DISK } from "../storage-config";
+import { isUuid, uuidv7 } from "../uuid";
 
 const logger = getLogger(["hollo", "pages", "emojis"]);
 
@@ -43,6 +47,13 @@ emojis.get("/", async (c) => {
           >
             <span class="i-lucide-plus" aria-hidden="true" />
             Add emoji
+          </a>
+          <a
+            href="/emojis/zip"
+            class="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            <span class="i-lucide-upload" aria-hidden="true" />
+            Upload ZIP
           </a>
           <a
             href="/emojis/import"
@@ -271,6 +282,186 @@ emojis.get("/new", async (c) => {
   );
 });
 
+emojis.get("/zip", async (c) => {
+  return c.html(
+    <DashboardLayout title="Hollo: Upload custom emojis" selectedMenu="emojis">
+      <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <a
+            href="/emojis"
+            class="hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Custom emojis
+          </a>
+        </p>
+        <h1 class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Upload Custom Emojis (ZIP)
+        </h1>
+        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          <a
+            href="https://misskey-hub.net/en/docs/for-admin/features/managing-emojis/#packed-emoji-format"
+            target={"_blank"}
+          >
+            {" "}
+            support Misskey's packed emoji format
+          </a>
+        </p>
+      </header>
+      <form
+        method="post"
+        action="/emojis/zip"
+        enctype="multipart/form-data"
+        class="space-y-4 rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        <div>
+          <label
+            htmlFor="emoji-image"
+            class="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+          >
+            Zip
+          </label>
+          <label
+            htmlFor="emoji-image"
+            class="mt-1 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-600 transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-brand-600 dark:hover:bg-brand-950/20"
+          >
+            <span
+              class="i-lucide-file-up text-2xl text-neutral-500 dark:text-neutral-400"
+              aria-hidden="true"
+            />
+            <span class="font-medium text-neutral-800 dark:text-neutral-200">
+              Click to choose a ZIP file
+            </span>
+            <input
+              id="emoji-image"
+              type="file"
+              name="image"
+              required
+              accept=".zip"
+              aria-label="Emoji image Zip"
+              class="sr-only"
+            />
+          </label>
+        </div>
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            class="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 dark:bg-brand-700 dark:hover:bg-brand-800"
+          >
+            Add emoji
+          </button>
+        </div>
+      </form>
+    </DashboardLayout>,
+  );
+});
+
+emojis.get("/imports/:jobId", async (c) => {
+  const jobId = c.req.param("jobId");
+
+  if (jobId == null) {
+    return c.notFound();
+  }
+
+  if (!isUuid(jobId)) {
+    return c.notFound();
+  }
+  const job = await db.query.customEmojiImportJobs.findFirst({
+    where: { id: { eq: jobId } },
+  });
+
+  if (job == null) {
+    return c.notFound();
+  }
+
+  const inProgress = job.status === "pending" || job.status === "processing";
+
+  const statusLabel = {
+    pending: "Waiting",
+    processing: "Importing",
+    completed: "Completed",
+    failed: "Failed",
+  }[job.status];
+
+  return c.html(
+    <DashboardLayout title="Hollo: Custom emoji import" selectedMenu="emojis">
+      <header class="mb-6">
+        <p class="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <a
+            href="/emojis"
+            class="hover:text-neutral-700 dark:hover:text-neutral-300"
+          >
+            Custom emojis
+          </a>
+        </p>
+        <h1 class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+          Custom emoji import
+        </h1>
+      </header>
+
+      <section class="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <dl class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm text-neutral-500 dark:text-neutral-400">
+              Status
+            </dt>
+            <dd class="mt-1 font-semibold text-neutral-900 dark:text-neutral-100">
+              {statusLabel}
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm text-neutral-500 dark:text-neutral-400">
+              Imported
+            </dt>
+            <dd class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+              {job.importedCount}
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm text-neutral-500 dark:text-neutral-400">
+              Skipped
+            </dt>
+            <dd class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+              {job.skippedCount}
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm text-neutral-500 dark:text-neutral-400">
+              Failed
+            </dt>
+            <dd class="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+              {job.failedCount}
+            </dd>
+          </div>
+        </dl>
+
+        {job.error != null && (
+          <p
+            role="alert"
+            class="mt-6 rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+          >
+            {job.error}
+          </p>
+        )}
+
+        {inProgress && (
+          <>
+            <p class="mt-6 text-sm text-neutral-500 dark:text-neutral-400">
+              This page refreshes every 5 seconds while the import is running.
+            </p>
+            <script
+              dangerouslySetInnerHTML={{
+                __html: "setTimeout(() => location.reload(), 5000);",
+              }}
+            />
+          </>
+        )}
+      </section>
+    </DashboardLayout>,
+  );
+});
 emojis.post("/", async (c) => {
   const { drive } = await import("../storage");
   const disk = drive.use();
@@ -563,6 +754,57 @@ emojis.post("/import", async (c) => {
     }
   }
   return c.redirect("/emojis");
+});
+
+emojis.post("/zip", async (c) => {
+  if (EMOJI_IMPORT_DISK == null) {
+    return c.text("ZIP import storage is not configured", 503);
+  }
+  const form = await c.req.formData();
+  const file = form.get("image");
+
+  if (!(file instanceof File)) {
+    return c.text("No ZIP file provided", 400);
+  }
+
+  if (file.size > EMOJI_IMPORT_MAX_ARCHIVE_BYTES) {
+    return c.text("ZIP archive is too large", 413);
+  }
+
+  const archive = new Uint8Array(await file.arrayBuffer());
+  const jobId = uuidv7();
+  const archiveKey = `emoji-imports/${jobId}/archive.zip`;
+
+  const { drive } = await import("../storage");
+  const archiveDisk = drive.use("emojiImports");
+
+  try {
+    await archiveDisk.put(archiveKey, archive, {
+      contentType: "application/zip",
+      contentLength: archive.byteLength,
+      visibility: "private",
+    });
+    try {
+      await db.insert(customEmojiImportJobs).values({
+        id: jobId,
+        archiveKey,
+        status: "pending",
+      });
+    } catch (error) {
+      await archiveDisk.delete(archiveKey);
+      throw error;
+    }
+  } catch (error) {
+    logger.error("Failed to store emoji import archive: {error}", { error });
+    return c.text("Failed to store ZIP archive", 500);
+  }
+
+  await customEmojiImports.enqueue(
+    federation.createContext(c.req.raw, undefined),
+    jobId,
+  );
+
+  return c.redirect(`/emojis/imports/${jobId}`);
 });
 
 export default emojis;
