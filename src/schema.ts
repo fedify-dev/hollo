@@ -958,6 +958,96 @@ export const customEmojis = pgTable("custom_emojis", {
 export type CustomEmoji = typeof customEmojis.$inferSelect;
 export type NewCustomEmoji = typeof customEmojis.$inferInsert;
 
+export const importCustomEmojiStatusEnum = pgEnum(
+  "import_custom_emoji_status_enum",
+  ["pending", "processing", "completed", "failed"],
+);
+
+export type ImportCustomEmojiStatus =
+  (typeof importCustomEmojiStatusEnum.enumValues)[number];
+
+export const customEmojiImportJobs = pgTable(
+  "custom_emoji_import_jobs",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    archiveKey: text("archive_key").notNull(),
+    status: importCustomEmojiStatusEnum("status").notNull().default("pending"),
+    importedCount: integer("imported_count").notNull().default(0),
+    skippedCount: integer("skipped_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    error: text("error"),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    completed: timestamp("completed", { withTimezone: true }),
+    processingStarted: timestamp("processing_started", {
+      withTimezone: true,
+    }),
+    attemptToken: uuid("attempt_token").$type<Uuid>(),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    nextDispatchAt: timestamp("next_dispatch_at", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+  },
+  (table) => [
+    index("custom_emoji_import_jobs_status_lease_expires_at_idx").on(
+      table.status,
+      table.leaseExpiresAt,
+    ),
+    index("custom_emoji_import_jobs_next_dispatch_at_idx")
+      .on(table.nextDispatchAt)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+
+export const customEmojiImportResultEnum = pgEnum(
+  "custom_emoji_import_result_enum",
+  [
+    "imported",
+    "duplicate_existing",
+    "duplicate_in_pack",
+    "not_downloaded",
+    "unsafe_file_path",
+    "image_missing",
+    "invalid_shortcode",
+    "unsupported_image_type",
+    "image_too_large",
+    "invalid_or_corrupt_image",
+    "import_failed",
+  ],
+);
+
+export type CustomEmojiImportResult =
+  (typeof customEmojiImportResultEnum.enumValues)[number];
+
+export const customEmojiImportResults = pgTable(
+  "custom_emoji_import_results",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    jobId: uuid("job_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => customEmojiImportJobs.id, {
+        onDelete: "cascade",
+      }),
+    entryIndex: integer("entry_index").notNull(),
+    originalShortcode: text("original_shortcode").notNull(),
+    normalizedShortcode: text("normalized_shortcode").notNull(),
+    reason: customEmojiImportResultEnum("reason").notNull(),
+    conflictingEntryIndex: integer("conflicting_entry_index"),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+  },
+  (table) => [
+    index("custom_emoji_import_results_job_id_idx").on(table.jobId),
+    uniqueIndex("custom_emoji_import_results_job_id_entry_index_idx").on(
+      table.jobId,
+      table.entryIndex,
+    ),
+  ],
+);
+
 export const reports = pgTable("reports", {
   id: uuid("id").$type<Uuid>().primaryKey(),
   iri: text("iri").notNull().unique(),

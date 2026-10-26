@@ -1,0 +1,2 @@
+ALTER TABLE "custom_emoji_import_jobs" ADD COLUMN "processing_started" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "custom_emoji_import_jobs_status_processing_started_idx" ON "custom_emoji_import_jobs" ("status","processing_started");

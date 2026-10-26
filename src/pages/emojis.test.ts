@@ -42,15 +42,17 @@ describe("emojis", { concurrent: false }, () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("/emojis");
 
-    // Assert we uploaded the file:
-    expect(() => disk.assertExists("emojis/test-emoji.png")).not.toThrowError();
-
     const emoji = await db.query.customEmojis.findFirst();
 
     expect(emoji).toMatchObject({
       category: null,
-      url: "http://hollo.test/assets/emojis/test-emoji.png",
+      url: expect.stringMatching(
+        /^http:\/\/hollo\.test\/assets\/emojis\/[0-9a-f-]+\.png$/,
+      ),
       shortcode: "test-emoji",
     });
+
+    const imageKey = new URL(emoji!.url).pathname.slice("/assets/".length);
+    expect(() => disk.assertExists(imageKey)).not.toThrowError();
   });
 });

@@ -472,7 +472,11 @@ export function registerBackgroundJobs(
       if (signal?.aborted) return;
       // Invoke each workload even at capacity: some callbacks reclaim stale
       // state before checking whether they may enqueue more ready messages.
-      await recoveries[(start + i) % recoveries.length](ctx);
+      try {
+        await recoveries[(start + i) % recoveries.length](ctx);
+      } catch (error) {
+        logger.error("Job recovery callback failed: {error}", { error });
+      }
     }
   }
 

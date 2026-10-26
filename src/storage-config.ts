@@ -1,3 +1,5 @@
+import { isAbsolute, relative, resolve } from "node:path";
+
 import { getLogger } from "@logtape/logtape";
 
 const logger = getLogger(["hollo", "storage"]);
@@ -67,3 +69,49 @@ export const STORAGE_URL_BASE = process.env["STORAGE_URL_BASE"];
 if (!STORAGE_URL_BASE) {
   throw new Error("STORAGE_URL_BASE is required");
 }
+
+export type EmojiImportDisk = "fs" | "s3";
+
+export const S3_EMOJI_IMPORT_BUCKET =
+  process.env["S3_EMOJI_IMPORT_BUCKET"] || undefined;
+export const EMOJI_IMPORT_FS_PATH =
+  process.env["EMOJI_IMPORT_FS_PATH"] || undefined;
+
+if (S3_EMOJI_IMPORT_BUCKET != null && EMOJI_IMPORT_FS_PATH != null) {
+  throw new Error(
+    "Set either S3_EMOJI_IMPORT_BUCKET or EMOJI_IMPORT_FS_PATH, not both.",
+  );
+}
+
+if (
+  S3_EMOJI_IMPORT_BUCKET != null &&
+  S3_EMOJI_IMPORT_BUCKET === process.env["S3_BUCKET"]
+) {
+  throw new Error(
+    "S3_EMOJI_IMPORT_BUCKET must differ from S3_BUCKET to keep emoji import archives private.",
+  );
+}
+
+if (EMOJI_IMPORT_FS_PATH != null && FS_STORAGE_PATH != null) {
+  const publicStoragePath = resolve(FS_STORAGE_PATH);
+  const emojiImportPath = resolve(EMOJI_IMPORT_FS_PATH);
+  const relativePath = relative(publicStoragePath, emojiImportPath);
+
+  if (
+    emojiImportPath === publicStoragePath ||
+    (relativePath !== "" &&
+      !relativePath.startsWith("..") &&
+      !isAbsolute(relativePath))
+  ) {
+    throw new Error(
+      "EMOJI_IMPORT_FS_PATH must be outside FS_STORAGE_PATH to keep emoji import archives private.",
+    );
+  }
+}
+
+export const EMOJI_IMPORT_DISK: EmojiImportDisk | undefined =
+  S3_EMOJI_IMPORT_BUCKET != null
+    ? "s3"
+    : EMOJI_IMPORT_FS_PATH != null
+      ? "fs"
+      : undefined;

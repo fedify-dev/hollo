@@ -19,6 +19,7 @@ import metadata from "../../package.json" with { type: "json" };
 import { registerBackgroundJobs } from "../background/jobs";
 import { PollMessageQueue } from "../background/poll-queue";
 import { TaskMessageQueue } from "../background/queue";
+import { registerCustomEmojiImports } from "../custom-emoji-import-tasks";
 import { postgres } from "../db";
 import { FEDIFY_ORIGIN } from "../env";
 import { registerPollNotifications } from "../poll-notification-tasks";
@@ -76,25 +77,27 @@ let federation: Federation<void> & { sink?: Sink } = createFederation<void>({
   origin: FEDIFY_ORIGIN,
 });
 
-export const backgroundJobs = registerBackgroundJobs(
-  federation,
-  async () =>
-    (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
-);
+export const backgroundJobs = registerBackgroundJobs(federation, queueDepth);
 
-export const replyScrapes = registerRemoteReplyScrapes(
-  federation,
-  async () =>
-    (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
-);
+async function queueDepth() {
+  const depth = await taskQueue.getDepth();
+  return depth.ready ?? depth.queued;
+}
+
+export const replyScrapes = registerRemoteReplyScrapes(federation, queueDepth);
 backgroundJobs.addRecovery(replyScrapes.recover);
 
 export const pollNotifications = registerPollNotifications(
   federation,
-  async () =>
-    (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
+  queueDepth,
 );
 backgroundJobs.addRecovery(pollNotifications.recover);
+
+export const customEmojiImports = registerCustomEmojiImports(
+  federation,
+  queueDepth,
+);
+backgroundJobs.addRecovery(customEmojiImports.recover);
 
 if (fedifyDebug && exporter != null) {
   federation = createFederationDebugger(federation, { exporter, kv });

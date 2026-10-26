@@ -71,7 +71,7 @@ const lifecycle = createServerLifecycle([
     if (NODE_TYPE === "web") return;
     const [
       { federation },
-      { backgroundJobs, replyScrapes, pollNotifications },
+      { backgroundJobs, customEmojiImports, replyScrapes, pollNotifications },
       { itemLeases },
       { WEB_ORIGIN },
     ] = await Promise.all([
@@ -96,6 +96,7 @@ const lifecycle = createServerLifecycle([
       }
     });
     backgroundJobs.setSignal(controller.signal);
+    customEmojiImports.setSignal(controller.signal);
     replyScrapes.setSignal(controller.signal);
     pollNotifications.setSignal(controller.signal);
     queue = federation

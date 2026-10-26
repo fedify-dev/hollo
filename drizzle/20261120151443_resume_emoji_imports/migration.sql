@@ -1,0 +1,1 @@
+ALTER TYPE "custom_emoji_import_result_enum" ADD VALUE 'imported' BEFORE 'duplicate_existing';

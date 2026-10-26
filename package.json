@@ -71,6 +71,7 @@
     "drizzle-kit": "1.0.0-rc.5-5935859",
     "drizzle-orm": "1.0.0-rc.5-169397b",
     "es-toolkit": "^1.52.0",
+    "fflate": "^0.8.3",
     "file-type": "^22.2.0",
     "flydrive": "^2.1.0",
     "hono": "^4.13.13",
