@@ -67,3 +67,23 @@ export const STORAGE_URL_BASE = process.env["STORAGE_URL_BASE"];
 if (!STORAGE_URL_BASE) {
   throw new Error("STORAGE_URL_BASE is required");
 }
+
+export type EmojiImportDisk = "fs" | "s3";
+
+export const S3_EMOJI_IMPORT_BUCKET =
+  process.env["S3_EMOJI_IMPORT_BUCKET"] || undefined;
+export const EMOJI_IMPORT_FS_PATH =
+  process.env["EMOJI_IMPORT_FS_PATH"] || undefined;
+
+if (S3_EMOJI_IMPORT_BUCKET != null && EMOJI_IMPORT_FS_PATH != null) {
+  throw new Error(
+    "Set either S3_EMOJI_IMPORT_BUCKET or EMOJI_IMPORT_FS_PATH, not both.",
+  );
+}
+
+export const EMOJI_IMPORT_DISK: EmojiImportDisk | undefined =
+  S3_EMOJI_IMPORT_BUCKET != null
+    ? "s3"
+    : EMOJI_IMPORT_FS_PATH != null
+      ? "fs"
+      : undefined;

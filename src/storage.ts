@@ -7,7 +7,10 @@ import { FSDriver } from "flydrive/drivers/fs";
 
 import {
   DRIVE_DISK,
+  EMOJI_IMPORT_DISK,
+  EMOJI_IMPORT_FS_PATH,
   FS_STORAGE_PATH,
+  S3_EMOJI_IMPORT_BUCKET,
   STORAGE_URL_BASE,
 } from "./storage-config";
 
@@ -113,6 +116,37 @@ export const drive = new DriveManager({
         visibility: "public",
         cdnUrl: STORAGE_URL_BASE,
       });
+    },
+    emojiImports: () => {
+      if (EMOJI_IMPORT_DISK === "fs") {
+        if (EMOJI_IMPORT_FS_PATH == null) {
+          throw new Error("EMOJI_IMPORT_FS_PATH is required");
+        }
+        return new FSDriver({
+          location: EMOJI_IMPORT_FS_PATH,
+          visibility: "private",
+        });
+      }
+      if (EMOJI_IMPORT_DISK === "s3") {
+        if (S3_EMOJI_IMPORT_BUCKET == null) {
+          throw new Error("S3_EMOJI_IMPORT_BUCKET is required");
+        }
+        const { fromEnv } =
+          require("@aws-sdk/credential-providers") as typeof import("@aws-sdk/credential-providers");
+        const { S3Driver } =
+          require("flydrive/drivers/s3") as typeof import("flydrive/drivers/s3");
+        return new S3Driver({
+          credentials: fromEnv(),
+          region,
+          endpoint: endpointUrl,
+          bucket: S3_EMOJI_IMPORT_BUCKET,
+          forcePathStyle: process.env["S3_FORCE_PATH_STYLE"] === "true",
+          visibility: "private",
+          supportsACL: false,
+        });
+      }
+
+      throw new Error("Emoji ZIP import storage is not configured");
     },
   },
 });

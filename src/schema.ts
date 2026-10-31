@@ -958,6 +958,40 @@ export const customEmojis = pgTable("custom_emojis", {
 export type CustomEmoji = typeof customEmojis.$inferSelect;
 export type NewCustomEmoji = typeof customEmojis.$inferInsert;
 
+export const importCustomEmojiStatusEnum = pgEnum(
+  "import_custom_emoji_status_enum",
+  ["pending", "processing", "completed", "failed"],
+);
+
+export type ImportCustomEmojiStatus =
+  (typeof importCustomEmojiStatusEnum.enumValues)[number];
+
+export const customEmojiImportJobs = pgTable(
+  "custom_emoji_import_jobs",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    archiveKey: text("archive_key").notNull(),
+    status: importCustomEmojiStatusEnum("status").notNull().default("pending"),
+    importedCount: integer("imported_count").notNull().default(0),
+    skippedCount: integer("skipped_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    error: text("error"),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    completed: timestamp("completed", { withTimezone: true }),
+    processingStarted: timestamp("processing_started", {
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    index("custom_emoji_import_jobs_status_processing_started_idx").on(
+      table.status,
+      table.processingStarted,
+    ),
+  ],
+);
+
 export const reports = pgTable("reports", {
   id: uuid("id").$type<Uuid>().primaryKey(),
   iri: text("iri").notNull().unique(),
