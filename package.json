@@ -97,7 +97,7 @@
     "ssrfcheck": "^1.4.0",
     "tsx": "^4.23.15",
     "uuidv7-js": "^1.1.4",
-    "xss": "^1.0.15",
+    "xss": "^1.0.17",
     "zod": "^4.6.5"
   },
   "devDependencies": {
