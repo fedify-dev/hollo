@@ -113,7 +113,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "@unocss/cli": "^66.10.5",
     "@vitest/coverage-v8": "5.0.2",
-    "concurrently": "^10.0.5",
+    "concurrently": "^10.0.6",
     "linkedom": "^0.18.13",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.89.0",
