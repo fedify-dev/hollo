@@ -12,9 +12,15 @@ To be released.
     removing reactions, including federated reactions.  Previously stored
     reaction values remain removable even if they fail the new validation.
     [[#699], [#700]]
+ -  Fixed stored cross-site scripting in web post rendering: remote post
+    bodies and author display names are now sanitized or escaped, including
+    replies, shared posts, and quoted posts already stored in the database.
+    Custom emoji image URLs are also escaped to prevent HTML attribute
+    injection.  [[GHSA-534j-mgxh-5pj3]]
 
 [#699]: https://github.com/fedify-dev/hollo/issues/699
 [#700]: https://github.com/fedify-dev/hollo/pull/700
+[GHSA-534j-mgxh-5pj3]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-534j-mgxh-5pj3
 
 
 Version 0.8.17

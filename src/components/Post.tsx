@@ -1,3 +1,5 @@
+import { escape } from "es-toolkit";
+
 import { renderCustomEmojis } from "../custom-emoji";
 import type {
   Account,
@@ -7,6 +9,7 @@ import type {
   PollOption,
   Reaction,
 } from "../schema";
+import { sanitizeHtml } from "../xss";
 
 export interface PostProps {
   readonly post: DbPost & {
@@ -57,7 +60,10 @@ export function Post({ post, shared, pinned, quoted }: PostProps) {
       />
     );
   const account = post.account;
-  const authorNameHtml = renderCustomEmojis(account.name, account.emojis);
+  const authorNameHtml = renderCustomEmojis(
+    escape(account.name),
+    account.emojis,
+  );
   const authorUrl = account.url ?? account.iri;
   const authorName = (
     <a dangerouslySetInnerHTML={{ __html: authorNameHtml }} href={authorUrl} />
@@ -223,7 +229,10 @@ interface PostContentProps {
 }
 
 function PostContent({ post }: PostContentProps) {
-  const contentHtml = renderCustomEmojis(post.contentHtml, post.emojis);
+  const contentHtml = renderCustomEmojis(
+    sanitizeHtml(post.contentHtml ?? ""),
+    post.emojis,
+  );
   return (
     <>
       {post.contentHtml && (
