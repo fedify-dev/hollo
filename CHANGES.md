@@ -6,6 +6,14 @@ Version 0.8.18
 
 To be released.
 
+ -  Fixed Unicode emoji reactions rejecting valid sequences such as `❤️`
+    and `🏳️‍🌈`, while accepting multiple emoji or digits as one reaction.
+    Bare forms such as `❤` are now normalized to `❤️` when adding and
+    removing reactions, including federated reactions.  [[#699], [#700]]
+
+[#699]: https://github.com/fedify-dev/hollo/issues/699
+[#700]: https://github.com/fedify-dev/hollo/pull/700
+
 
 Version 0.8.17
 --------------
