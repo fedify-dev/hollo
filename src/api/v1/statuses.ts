@@ -1418,8 +1418,14 @@ async function removeEmojiReaction(
       )
       .returning();
   let deleted = await deleteReaction(unicode ?? `:${emoji}:`);
-  // Keep pre-upgrade bare forms removable without migrating existing rows.
-  if (deleted.length < 1 && unicode != null && unicode !== emoji) {
+  // The old validator also accepted digits and runs of emoji.  Keep those
+  // existing raw values removable, without accepting them for new reactions.
+  if (
+    deleted.length < 1 &&
+    customEmoji == null &&
+    unicode !== emoji &&
+    /^[\p{Emoji}]+$/u.test(emoji)
+  ) {
     deleted = await deleteReaction(emoji);
   }
   if (deleted.length < 1) return c.notFound();

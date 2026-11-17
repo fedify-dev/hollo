@@ -225,7 +225,7 @@ describe.each([EmojiReact, Like])(
     );
 
     it.each(["3*14159", "👍🎉", "❤❤❤", "text", ""])(
-      "ignores invalid content %j before actor lookup or forwarding",
+      "rejects invalid additions %j and ignores Undo without a legacy row",
       async (content) => {
         const { target, person, ctx, forwardActivity } = await setup();
         const activity = new Activity({
@@ -235,11 +235,9 @@ describe.each([EmojiReact, Like])(
         });
         const getActor = vi.spyOn(activity, "getActor");
         const undo = new Undo({ actor: person, object: activity });
-        const getUndoActor = vi.spyOn(undo, "getActor");
         await add(ctx, activity);
         await remove(ctx, undo);
         expect(getActor).not.toHaveBeenCalled();
-        expect(getUndoActor).not.toHaveBeenCalled();
         expect(await db.query.reactions.findMany()).toEqual([]);
         expect(await db.query.likes.findMany()).toEqual([]);
         expect(await db.query.notifications.findMany()).toEqual([]);
@@ -296,5 +294,72 @@ describe.each([EmojiReact, Like])(
       await remove(ctx, undo);
       expect(await db.query.reactions.findMany()).toEqual([]);
     });
+
+    it.each(["👍🎉", "3*14159", "text"])(
+      "allows scoped Undo of legacy content %j without accepting new additions",
+      async (content) => {
+        const { target, person, ctx, forwardActivity } = await setup();
+        const account = await db.query.accounts.findFirst({
+          where: eq(accounts.iri, person.id!.href),
+        });
+        const other = await createAccount({ username: "other" });
+        const otherPostId = crypto.randomUUID() as Uuid;
+        await db.insert(posts).values({
+          id: otherPostId,
+          iri: `https://hollo.test/@other/${otherPostId}`,
+          type: "Note",
+          accountId: other.id as Uuid,
+          visibility: "public",
+          tags: {},
+          emojis: {},
+          sensitive: false,
+          updated: new Date(),
+        });
+        const activity = new Activity({
+          actor: person,
+          object: new URL(target.iri),
+          content,
+        });
+        await add(ctx, activity);
+        expect(await db.query.reactions.findMany()).toEqual([]);
+        expect(forwardActivity).not.toHaveBeenCalled();
+        await db.insert(reactions).values([
+          { postId: target.id, accountId: account!.id, emoji: content },
+          { postId: target.id, accountId: other.id as Uuid, emoji: content },
+          { postId: otherPostId, accountId: account!.id, emoji: content },
+        ]);
+        const undo = new Undo({ actor: person, object: activity });
+        await remove(
+          ctx,
+          new Undo({
+            actor: createLocalPerson("https://hollo.test/@other"),
+            object: activity,
+          }),
+        );
+        expect(await db.query.reactions.findMany()).toHaveLength(3);
+        expect(forwardActivity).not.toHaveBeenCalled();
+        await remove(ctx, undo);
+        const remaining = await db.query.reactions.findMany();
+        expect(remaining).toHaveLength(2);
+        expect(remaining).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              postId: target.id,
+              accountId: other.id,
+              emoji: content,
+            }),
+            expect.objectContaining({
+              postId: otherPostId,
+              accountId: account!.id,
+              emoji: content,
+            }),
+          ]),
+        );
+        expect(forwardActivity).toHaveBeenCalledTimes(1);
+        expect(activity.content).toBe(content);
+        await remove(ctx, undo);
+        expect(forwardActivity).toHaveBeenCalledTimes(1);
+      },
+    );
   },
 );

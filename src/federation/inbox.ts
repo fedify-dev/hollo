@@ -1086,7 +1086,7 @@ export async function onEmojiReactionRemoved(
     content.startsWith(":") && content.endsWith(":")
       ? content
       : normalizeUnicodeEmoji(content);
-  if (emoji == null || emoji === "") return;
+  if (content === "") return;
   const actor = await undo.getActor();
   if (actor == null) return;
   const account = await persistAccount(
@@ -1109,7 +1109,9 @@ export async function onEmojiReactionRemoved(
         ),
       )
       .returning({ emoji: reactions.emoji });
-  const deleted = await deleteReaction(emoji);
+  // Undo must also remove raw content accepted before Unicode validation.
+  const deleted = await deleteReaction(emoji ?? content);
+  if (emoji == null && deleted.length < 1) return;
   if (deleted.length < 1 && emoji !== content) {
     await deleteReaction(content);
   }

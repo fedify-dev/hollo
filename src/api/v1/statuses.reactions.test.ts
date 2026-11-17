@@ -185,6 +185,63 @@ describe.each(routes)("emoji reaction API ($addMethod $add)", (route) => {
     expect(await db.query.reactions.findMany()).toEqual([]);
   });
 
+  it.each(["👍🎉", "3*14159", "❤❤❤"])(
+    "removes legacy invalid Unicode %s only for the current owner and post",
+    async (emoji) => {
+      expect((await request(emoji)).status).toBe(404);
+      const other = await createAccount({ username: "other" });
+      const otherPostId = uuidv7();
+      await db.insert(posts).values({
+        id: otherPostId,
+        iri: `https://hollo.test/@hollo/${otherPostId}`,
+        type: "Note",
+        accountId,
+        visibility: "public",
+        tags: {},
+        emojis: {},
+        sensitive: false,
+        updated: new Date(),
+      });
+      await db.insert(reactions).values([
+        { postId, accountId, emoji },
+        { postId, accountId: other.id as Uuid, emoji },
+        { postId: otherPostId, accountId, emoji },
+      ]);
+      expect((await request(emoji, true)).status).toBe(200);
+      const undo = sendActivity.mock.calls[0][2] as Undo;
+      const object = await undo.getObject();
+      expect(object?.content).toBe(emoji);
+      expect(object?.id?.href).toBe(
+        new URL(`/#react/${accountId}/${postId}/${emoji}`, "https://hollo.test")
+          .href,
+      );
+      const remaining = await db.query.reactions.findMany();
+      expect(remaining).toHaveLength(2);
+      expect(remaining).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ postId, accountId: other.id, emoji }),
+          expect.objectContaining({ postId: otherPostId, accountId, emoji }),
+        ]),
+      );
+      expect((await request(emoji, true)).status).toBe(404);
+      expect(sendActivity).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("keeps custom shortcode precedence over legacy raw values", async () => {
+    await db.insert(customEmojis).values({
+      shortcode: "1",
+      url: "https://hollo.test/emoji.png",
+    });
+    expect((await request("1")).status).toBe(200);
+    await db.insert(reactions).values({ postId, accountId, emoji: "1" });
+    expect((await request("1", true)).status).toBe(200);
+    expect((await db.query.reactions.findMany()).map((r) => r.emoji)).toEqual([
+      "1",
+    ]);
+    expect((await request("1", true)).status).toBe(404);
+  });
+
   it("preserves remote custom emoji metadata when copying a reaction", async () => {
     const remote = await createAccount({ username: "remote" });
     // The remote-custom path identifies the source by its handle's domain.
