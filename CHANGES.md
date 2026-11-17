@@ -18,9 +18,15 @@ To be released.
     Custom emoji image URLs are also escaped to prevent HTML attribute
     injection.  [[GHSA-534j-mgxh-5pj3]]
 
+ -  Fixed a security vulnerability where preview-card fetching for remote
+    posts could access private-network addresses, including through redirects.
+    Preview responses are now limited to 1 MiB after decompression.
+    [[GHSA-wh53-vmw6-c48j]]
+
 [#699]: https://github.com/fedify-dev/hollo/issues/699
 [#700]: https://github.com/fedify-dev/hollo/pull/700
 [GHSA-534j-mgxh-5pj3]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-534j-mgxh-5pj3
+[GHSA-wh53-vmw6-c48j]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-wh53-vmw6-c48j
 
 
 Version 0.8.17
