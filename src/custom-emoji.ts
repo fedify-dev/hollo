@@ -1,3 +1,5 @@
+import { escape } from "es-toolkit";
+
 const CUSTOM_EMOJI_REGEXP = /:([a-z0-9_-]+):/gi;
 const HTML_ELEMENT_REGEXP = /<\/?[^>]+>/g;
 
@@ -34,8 +36,8 @@ export function renderCustomEmojis(
   function replaceEmojis(input: string): string {
     return input.replaceAll(CUSTOM_EMOJI_REGEXP, (match) => {
       const emoji = emojis[match] ?? emojis[match.replace(/^:|:$/g, "")];
-      if (emoji == null) return match;
-      return `<img src="${emoji}" alt="${match}" style="height: 1em">`;
+      if (typeof emoji !== "string") return match;
+      return `<img src="${escape(emoji)}" alt="${match}" style="height: 1em">`;
     });
   }
 }
