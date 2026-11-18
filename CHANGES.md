@@ -22,11 +22,28 @@ To be released.
     posts could access private-network addresses, including through redirects.
     Preview responses are now limited to 1 MiB after decompression.
     [[GHSA-wh53-vmw6-c48j]]
+ -  Upgraded Fedify to [2.1.32], which includes four security fixes:
+     -  WebFinger lookups now time out after 10 seconds, and actor handle
+        resolution checks at most 100 candidates within a single 10-second
+        deadline.  [[GHSA-9pmv-w936-hj3f]]
+     -  Outgoing activity delivery attempts now time out after 30 seconds,
+        including redirects and HTTP signature retries.  Timed-out attempts
+        follow the configured retry schedule.  [[GHSA-fq5h-gjhp-g75x]]
+     -  NodeInfo lookups now time out after 10 seconds by default and stop
+        following redirect loops.  On Node.js, at most two system DNS
+        lookups for NodeInfo can run at once.  [[GHSA-64hq-2hgr-q4pm]]
+     -  Origin checks now also apply to embedded JSON-LD objects whose
+        parent has no `id`.  [[GHSA-r388-57j3-5fgp]]
 
 [#699]: https://github.com/fedify-dev/hollo/issues/699
 [#700]: https://github.com/fedify-dev/hollo/pull/700
 [GHSA-534j-mgxh-5pj3]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-534j-mgxh-5pj3
 [GHSA-wh53-vmw6-c48j]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-wh53-vmw6-c48j
+[2.1.32]: https://github.com/fedify-dev/fedify/releases/tag/2.1.32
+[GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
+[GHSA-fq5h-gjhp-g75x]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-fq5h-gjhp-g75x
+[GHSA-64hq-2hgr-q4pm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-64hq-2hgr-q4pm
+[GHSA-r388-57j3-5fgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-r388-57j3-5fgp
 
 
 Version 0.8.17
