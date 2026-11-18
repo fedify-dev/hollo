@@ -1,3 +1,5 @@
+import { escape } from "es-toolkit";
+
 import { proxyUrl } from "./media-proxy";
 
 const CUSTOM_EMOJI_REGEXP = /:([a-z0-9_-]+):/gi;
@@ -40,12 +42,12 @@ export function renderCustomEmojis(
   function replaceEmojis(input: string): string {
     return input.replaceAll(CUSTOM_EMOJI_REGEXP, (match) => {
       const emoji = emojis[match] ?? emojis[match.replace(/^:|:$/g, "")];
-      if (emoji == null) return match;
+      if (typeof emoji !== "string") return match;
       // proxyUrl returns null for non-http(s) schemes; drop the image and
       // keep the literal :shortcode: rather than expose the raw URL.
       const url = proxyUrl(emoji, baseUrl);
       if (url == null) return match;
-      return `<img src="${url}" alt="${match}" class="not-prose" style="display: inline-block; height: 1em; margin: 0; vertical-align: -0.125em">`;
+      return `<img src="${escape(url)}" alt="${match}" class="not-prose" style="display: inline-block; height: 1em; margin: 0; vertical-align: -0.125em">`;
     });
   }
 }

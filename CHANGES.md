@@ -6,6 +6,48 @@ Version 0.9.26
 
 To be released.
 
+ -  Fixed Unicode emoji reactions rejecting valid sequences such as `❤️`
+    and `🏳️‍🌈`, while accepting multiple emoji or digits as one reaction.
+    Bare forms such as `❤` are now normalized to `❤️` when adding and
+    removing reactions, including federated reactions.  Previously stored
+    reaction values remain removable even if they fail the new validation.
+    [[#699], [#700]]
+
+ -  Fixed stored cross-site scripting in web post rendering: remote post
+    bodies and author display names are now sanitized or escaped, including
+    replies, shared posts, and quoted posts already stored in the database.
+    Custom emoji image URLs are also escaped to prevent HTML attribute
+    injection.  [[GHSA-534j-mgxh-5pj3]]
+
+ -  Fixed a security vulnerability where preview-card fetching for remote
+    posts could access private-network addresses, including through redirects.
+    Preview responses are now limited to 1 MiB after decompression.
+    [[GHSA-wh53-vmw6-c48j]]
+
+ -  Upgraded Fedify to [2.2.21], which includes four security fixes:
+
+     -  WebFinger lookups now time out after 10 seconds, and actor handle
+        resolution checks at most 100 candidates within a single 10-second
+        deadline.  [[GHSA-9pmv-w936-hj3f]]
+     -  Outgoing activity delivery attempts now time out after 30 seconds,
+        including redirects and HTTP signature retries.  Timed-out attempts
+        follow the configured retry schedule.  [[GHSA-fq5h-gjhp-g75x]]
+     -  NodeInfo lookups now time out after 10 seconds by default and stop
+        following redirect loops.  On Node.js, at most two system DNS
+        lookups for NodeInfo can run at once.  [[GHSA-64hq-2hgr-q4pm]]
+     -  Origin checks now also apply to embedded JSON-LD objects whose
+        parent has no `id`.  [[GHSA-r388-57j3-5fgp]]
+
+[GHSA-534j-mgxh-5pj3]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-534j-mgxh-5pj3
+[GHSA-wh53-vmw6-c48j]: https://github.com/fedify-dev/hollo/security/advisories/GHSA-wh53-vmw6-c48j
+[2.2.21]: https://github.com/fedify-dev/fedify/releases/tag/2.2.21
+[GHSA-9pmv-w936-hj3f]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-9pmv-w936-hj3f
+[GHSA-fq5h-gjhp-g75x]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-fq5h-gjhp-g75x
+[GHSA-64hq-2hgr-q4pm]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-64hq-2hgr-q4pm
+[GHSA-r388-57j3-5fgp]: https://github.com/fedify-dev/fedify/security/advisories/GHSA-r388-57j3-5fgp
+[#699]: https://github.com/fedify-dev/hollo/issues/699
+[#700]: https://github.com/fedify-dev/hollo/pull/700
+
 
 Version 0.9.25
 --------------

@@ -29,6 +29,7 @@ import { getLogger } from "@logtape/logtape";
 import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "../db";
+import { normalizeUnicodeEmoji } from "../emoji";
 import {
   createEmojiReactionNotification,
   createFavouriteNotification,
@@ -1393,10 +1394,14 @@ export async function onEmojiReactionAdded(
   react: EmojiReact | Like,
 ): Promise<void> {
   if (react.content == null || react.objectId == null) return;
+  const content = react.content.toString().trim();
+  const emoji =
+    content.startsWith(":") && content.endsWith(":")
+      ? content
+      : normalizeUnicodeEmoji(content);
+  if (emoji == null || emoji === "") return;
   const target = await resolveReactionTarget(ctx, react.objectId);
   if (target == null) return;
-  const emoji = react.content.toString().trim();
-  if (emoji === "") return;
   const actor = await react.getActor();
   if (actor == null) return;
   const account = await persistAccount(
@@ -1477,6 +1482,12 @@ export async function onEmojiReactionRemoved(
   ) {
     return;
   }
+  const content = object.content.toString().trim();
+  const emoji =
+    content.startsWith(":") && content.endsWith(":")
+      ? content
+      : normalizeUnicodeEmoji(content);
+  if (content === "") return;
   const actor = await undo.getActor();
   if (actor == null) return;
   const account = await persistAccount(
@@ -1488,15 +1499,23 @@ export async function onEmojiReactionRemoved(
   if (account == null) return;
   const target = await resolveReactionTarget(ctx, object.objectId);
   if (target == null) return;
-  await db
-    .delete(reactions)
-    .where(
-      and(
-        eq(reactions.postId, target.post.id),
-        eq(reactions.accountId, account.id),
-        eq(reactions.emoji, object.content.toString().trim()),
-      ),
-    );
+  const deleteReaction = (emojiCode: string) =>
+    db
+      .delete(reactions)
+      .where(
+        and(
+          eq(reactions.postId, target.post.id),
+          eq(reactions.accountId, account.id),
+          eq(reactions.emoji, emojiCode),
+        ),
+      )
+      .returning({ emoji: reactions.emoji });
+  // Undo must also remove raw content accepted before Unicode validation.
+  const deleted = await deleteReaction(emoji ?? content);
+  if (emoji == null && deleted.length < 1) return;
+  if (deleted.length < 1 && emoji !== content) {
+    await deleteReaction(content);
+  }
   if (target.localRecipientHandle != null) {
     await ctx.forwardActivity(
       { username: target.localRecipientHandle },

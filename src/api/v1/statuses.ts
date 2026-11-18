@@ -16,6 +16,7 @@ import type { TypedResponse } from "hono/types";
 import { z } from "zod";
 
 import { db } from "../../db";
+import { normalizeUnicodeEmoji } from "../../emoji";
 import {
   serializeAccount,
   serializeAccountOwner,
@@ -1632,7 +1633,9 @@ async function addEmojiReaction(
       where: { shortcode: { eq: emoji } },
     });
     if (customEmoji == null) {
-      if (!/^[\p{Emoji}]+$/u.test(emoji)) return c.notFound();
+      const normalized = normalizeUnicodeEmoji(emoji);
+      if (normalized == null) return c.notFound();
+      emoji = normalized;
       // Unicode emoji:
       await db.insert(reactions).values({
         postId,
@@ -1739,19 +1742,38 @@ async function removeEmojiReaction(
   if (emojiAt >= 0 && isLocalHost(emoji.slice(emojiAt + 1), url)) {
     emoji = emoji.slice(0, emojiAt);
   }
-  const unicode = /^[\p{Emoji}]+$/u.test(emoji);
-  const deleted = await db
-    .delete(reactions)
-    .where(
-      and(
-        eq(reactions.postId, postId),
-        eq(reactions.accountId, owner.id),
-        eq(reactions.emoji, unicode ? emoji : `:${emoji}:`),
-      ),
-    )
-    .returning();
+  const customEmoji = emoji.includes("@")
+    ? null
+    : await db.query.customEmojis.findFirst({
+        where: { shortcode: { eq: emoji } },
+      });
+  const unicode =
+    customEmoji == null ? normalizeUnicodeEmoji(emoji) : undefined;
+  const deleteReaction = (emojiCode: string) =>
+    db
+      .delete(reactions)
+      .where(
+        and(
+          eq(reactions.postId, postId),
+          eq(reactions.accountId, owner.id),
+          eq(reactions.emoji, emojiCode),
+        ),
+      )
+      .returning();
+  let deleted = await deleteReaction(unicode ?? `:${emoji}:`);
+  // The old validator also accepted digits and runs of emoji.  Keep those
+  // existing raw values removable, without accepting them for new reactions.
+  if (
+    deleted.length < 1 &&
+    customEmoji == null &&
+    unicode !== emoji &&
+    /^[\p{Emoji}]+$/u.test(emoji)
+  ) {
+    deleted = await deleteReaction(emoji);
+  }
   if (deleted.length < 1) return c.notFound();
   const [reaction] = deleted;
+  if (unicode != null) emoji = reaction.emoji;
   const post = await db.query.posts.findFirst({
     where: { id: { eq: postId } },
     with: getPostRelations(owner.id),
