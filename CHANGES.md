@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.9.26
 --------------
 
-To be released.
+Released on November 18, 2026.
 
  -  Fixed Unicode emoji reactions rejecting valid sequences such as `❤️`
     and `🏳️‍🌈`, while accepting multiple emoji or digits as one reaction.
