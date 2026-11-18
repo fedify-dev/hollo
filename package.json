@@ -114,7 +114,7 @@
     "@unocss/cli": "^66.10.5",
     "@vitest/coverage-v8": "5.0.2",
     "concurrently": "^10.0.5",
-    "linkedom": "^0.18.13",
+    "linkedom": "^0.18.14",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.89.0",
     "timekeeper": "^2.3.1",
