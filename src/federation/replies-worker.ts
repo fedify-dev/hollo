@@ -231,17 +231,15 @@ export async function processRemoteReplyScrapeJob(
         ? { fetchReplyTarget: false }
         : { replyTarget: post }),
     };
+    const isRemoteHttpIri = (iri: URL) =>
+      isHttpIri(iri) &&
+      iri.origin !== ctx.origin &&
+      iri.origin !== new URL(job.baseUrl).origin &&
+      iri.origin !== FEDIFY_ORIGIN?.webOrigin &&
+      iri.host !== FEDIFY_ORIGIN?.handleHost;
     const authoritativePost = async (object: ASPost) => {
       const id = object.id;
-      if (
-        id == null ||
-        !isHttpIri(id) ||
-        id.origin === ctx.origin ||
-        id.origin === new URL(job.baseUrl).origin ||
-        id.origin === FEDIFY_ORIGIN?.webOrigin ||
-        id.host === FEDIFY_ORIGIN?.handleHost
-      )
-        return null;
+      if (id == null || !isRemoteHttpIri(id)) return null;
       const fetched = await loader.lookup(id);
       loader.check();
       if (
@@ -389,7 +387,8 @@ export async function processRemoteReplyScrapeJob(
       loader.check();
     };
     const loadBackfillObject = async (iri: URL) => {
-      const object = await loader.lookup(iri);
+      // Fedify may dereference an item before yielding it to authoritativePost.
+      const object = isRemoteHttpIri(iri) ? await loader.lookup(iri) : null;
       if (pageTargets.has(iri.href) && !(object instanceof CollectionPage)) {
         partial = true;
         skippedItems++;
