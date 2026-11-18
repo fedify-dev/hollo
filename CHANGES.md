@@ -4,7 +4,7 @@ Hollo changelog
 Version 0.8.18
 --------------
 
-To be released.
+Released on November 18, 2026.
 
  -  Fixed Unicode emoji reactions rejecting valid sequences such as `❤️`
     and `🏳️‍🌈`, while accepting multiple emoji or digits as one reaction.
@@ -12,6 +12,7 @@ To be released.
     removing reactions, including federated reactions.  Previously stored
     reaction values remain removable even if they fail the new validation.
     [[#699], [#700]]
+
  -  Fixed stored cross-site scripting in web post rendering: remote post
     bodies and author display names are now sanitized or escaped, including
     replies, shared posts, and quoted posts already stored in the database.
@@ -22,7 +23,9 @@ To be released.
     posts could access private-network addresses, including through redirects.
     Preview responses are now limited to 1 MiB after decompression.
     [[GHSA-wh53-vmw6-c48j]]
+
  -  Upgraded Fedify to [2.1.32], which includes four security fixes:
+
      -  WebFinger lookups now time out after 10 seconds, and actor handle
         resolution checks at most 100 candidates within a single 10-second
         deadline.  [[GHSA-9pmv-w936-hj3f]]
