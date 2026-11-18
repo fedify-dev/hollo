@@ -19,6 +19,7 @@ import metadata from "../../package.json" with { type: "json" };
 import { registerBackgroundJobs } from "../background/jobs";
 import { PollMessageQueue } from "../background/poll-queue";
 import { TaskMessageQueue } from "../background/queue";
+import { registerCustomEmojiImports } from "../custom-emoji-import-tasks";
 import { postgres } from "../db";
 import { FEDIFY_ORIGIN } from "../env";
 import { registerPollNotifications } from "../poll-notification-tasks";
@@ -95,6 +96,9 @@ export const pollNotifications = registerPollNotifications(
     (await taskQueue.getDepth()).ready ?? (await taskQueue.getDepth()).queued,
 );
 backgroundJobs.addRecovery(pollNotifications.recover);
+
+export const customEmojiImports = registerCustomEmojiImports(federation);
+backgroundJobs.addRecovery(customEmojiImports.recover);
 
 if (fedifyDebug && exporter != null) {
   federation = createFederationDebugger(federation, { exporter, kv });

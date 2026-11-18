@@ -958,6 +958,76 @@ export const customEmojis = pgTable("custom_emojis", {
 export type CustomEmoji = typeof customEmojis.$inferSelect;
 export type NewCustomEmoji = typeof customEmojis.$inferInsert;
 
+export const importCustomEmojiStatusEnum = pgEnum(
+  "import_custom_emoji_status_enum",
+  ["pending", "processing", "completed", "failed"],
+);
+
+export type ImportCustomEmojiStatus =
+  (typeof importCustomEmojiStatusEnum.enumValues)[number];
+
+export const customEmojiImportJobs = pgTable(
+  "custom_emoji_import_jobs",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    archiveKey: text("archive_key").notNull(),
+    status: importCustomEmojiStatusEnum("status").notNull().default("pending"),
+    importedCount: integer("imported_count").notNull().default(0),
+    skippedCount: integer("skipped_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    error: text("error"),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+    completed: timestamp("completed", { withTimezone: true }),
+    processingStarted: timestamp("processing_started", {
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    index("custom_emoji_import_jobs_status_processing_started_idx").on(
+      table.status,
+      table.processingStarted,
+    ),
+  ],
+);
+
+export const customEmojiImportResultEnum = pgEnum(
+  "custom_emoji_import_result_enum",
+  ["duplicate_existing", "duplicate_in_pack"],
+);
+
+export type CustomEmojiImportResult =
+  (typeof customEmojiImportResultEnum.enumValues)[number];
+
+export const customEmojiImportResults = pgTable(
+  "custom_emoji_import_results",
+  {
+    id: uuid("id").$type<Uuid>().primaryKey(),
+    jobId: uuid("job_id")
+      .$type<Uuid>()
+      .notNull()
+      .references(() => customEmojiImportJobs.id, {
+        onDelete: "cascade",
+      }),
+    entryIndex: integer("entry_index").notNull(),
+    originalShortcode: text("original_shortcode").notNull(),
+    normalizedShortcode: text("normalized_shortcode").notNull(),
+    reason: customEmojiImportResultEnum("reason").notNull(),
+    conflictingEntryIndex: integer("conflicting_entry_index"),
+    created: timestamp("created", { withTimezone: true })
+      .notNull()
+      .default(currentTimestamp),
+  },
+  (table) => [
+    index("custom_emoji_import_results_job_id_idx").on(table.jobId),
+    uniqueIndex("custom_emoji_import_results_job_id_entry_index_idx").on(
+      table.jobId,
+      table.entryIndex,
+    ),
+  ],
+);
+
 export const reports = pgTable("reports", {
   id: uuid("id").$type<Uuid>().primaryKey(),
   iri: text("iri").notNull().unique(),
