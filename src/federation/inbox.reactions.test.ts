@@ -1,5 +1,5 @@
 import type { InboxContext } from "@fedify/fedify";
-import { EmojiReact, Like, Person } from "@fedify/fedify/vocab";
+import { Emoji, EmojiReact, Image, Like, Person, Undo } from "@fedify/vocab";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +8,12 @@ import { createAccount } from "../../tests/helpers/oauth";
 import db from "../db";
 import { accounts, instances, likes, posts, reactions } from "../schema";
 import type { Uuid } from "../uuid";
-import { onEmojiReactionAdded, onLiked } from "./inbox";
+import {
+  onEmojiReactionAdded,
+  onEmojiReactionRemoved,
+  onLiked,
+  onUnliked,
+} from "./inbox";
 
 async function seedRemoteTargetPost(): Promise<{ id: Uuid; iri: string }> {
   await db
@@ -136,3 +141,225 @@ describe("federation inbox reaction target fallback", () => {
     expect(forwardActivity).not.toHaveBeenCalled();
   });
 });
+
+describe.each([EmojiReact, Like])(
+  "Unicode normalization for inbound %s",
+  (Activity) => {
+    beforeEach(async () => {
+      await cleanDatabase();
+    });
+
+    async function setup() {
+      const owner = await createAccount({ username: "author" });
+      const id = crypto.randomUUID() as Uuid;
+      const iri = `https://hollo.test/@author/${id}`;
+      await db.insert(posts).values({
+        id,
+        iri,
+        type: "Note",
+        accountId: owner.id as Uuid,
+        visibility: "public",
+        tags: {},
+        emojis: {},
+        sensitive: false,
+        updated: new Date(),
+      });
+      const liker = await seedLocalLiker();
+      return {
+        target: { id, iri },
+        person: createLocalPerson(liker.iri),
+        ...createCtx(),
+      };
+    }
+
+    const add = (ctx: InboxContext<void>, activity: EmojiReact | Like) =>
+      activity instanceof Like
+        ? onLiked(ctx, activity)
+        : onEmojiReactionAdded(ctx, activity);
+    const remove = Activity === Like ? onUnliked : onEmojiReactionRemoved;
+
+    it.each([
+      ["❤", "❤️"],
+      ["❤️", "❤"],
+      ["✌", "✌️"],
+      ["🏳️‍🌈", "🏳️‍🌈"],
+    ])(
+      "normalizes and deduplicates %s, then handles Undo with %s",
+      async (content, undoContent) => {
+        const { target, person, ctx, forwardActivity } = await setup();
+        const activity = new Activity({
+          actor: person,
+          object: new URL(target.iri),
+          content: ` ${content} `,
+        });
+        await add(ctx, activity);
+        await add(
+          ctx,
+          new Activity({
+            actor: person,
+            object: new URL(target.iri),
+            content: undoContent,
+          }),
+        );
+        const found = await db.query.reactions.findMany();
+        expect(found.map((r) => r.emoji)).toEqual([
+          content === "❤️" ? content : undoContent,
+        ]);
+        expect(activity.content).toBe(` ${content} `);
+        expect(forwardActivity).toHaveBeenCalledTimes(2);
+        await remove(
+          ctx,
+          new Undo({
+            actor: person,
+            object: new Activity({
+              actor: person,
+              object: new URL(target.iri),
+              content: undoContent,
+            }),
+          }),
+        );
+        expect(await db.query.reactions.findMany()).toEqual([]);
+        expect(await db.query.likes.findMany()).toEqual([]);
+        expect(forwardActivity).toHaveBeenCalledTimes(3);
+      },
+    );
+
+    it.each(["3*14159", "👍🎉", "❤❤❤", "text", ""])(
+      "rejects invalid additions %j and ignores Undo without a legacy row",
+      async (content) => {
+        const { target, person, ctx, forwardActivity } = await setup();
+        const activity = new Activity({
+          actor: person,
+          object: new URL(target.iri),
+          content,
+        });
+        const getActor = vi.spyOn(activity, "getActor");
+        const undo = new Undo({ actor: person, object: activity });
+        await add(ctx, activity);
+        await remove(ctx, undo);
+        expect(getActor).not.toHaveBeenCalled();
+        expect(await db.query.reactions.findMany()).toEqual([]);
+        expect(await db.query.likes.findMany()).toEqual([]);
+        expect(await db.query.notifications.findMany()).toEqual([]);
+        expect(forwardActivity).not.toHaveBeenCalled();
+      },
+    );
+
+    it("preserves custom emoji tags and allows Undo", async () => {
+      const { target, person, ctx } = await setup();
+      const activity = new Activity({
+        actor: person,
+        object: new URL(target.iri),
+        content: ":blobcat:",
+        tags: [
+          new Emoji({
+            id: new URL("https://remote.test/emoji/blobcat"),
+            name: ":blobcat:",
+            icon: new Image({
+              url: new URL("https://remote.test/blobcat.png"),
+            }),
+          }),
+        ],
+      });
+      await add(ctx, activity);
+      const [stored] = await db.query.reactions.findMany();
+      expect(stored.emoji).toBe(":blobcat:");
+      expect(stored.customEmoji).toBe("https://remote.test/blobcat.png");
+      expect(stored.emojiIri).toBe("https://remote.test/emoji/blobcat");
+      await remove(ctx, new Undo({ actor: person, object: activity }));
+      expect(await db.query.reactions.findMany()).toEqual([]);
+    });
+
+    it("removes canonical before legacy bare rows without merging them", async () => {
+      const { target, person, ctx } = await setup();
+      const account = await db.query.accounts.findFirst({
+        where: eq(accounts.iri, person.id!.href),
+      });
+      await db.insert(reactions).values([
+        { postId: target.id, accountId: account!.id, emoji: "❤" },
+        { postId: target.id, accountId: account!.id, emoji: "❤️" },
+      ]);
+      const undo = new Undo({
+        actor: person,
+        object: new Activity({
+          actor: person,
+          object: new URL(target.iri),
+          content: "❤",
+        }),
+      });
+      await remove(ctx, undo);
+      expect((await db.query.reactions.findMany()).map((r) => r.emoji)).toEqual(
+        ["❤"],
+      );
+      await remove(ctx, undo);
+      expect(await db.query.reactions.findMany()).toEqual([]);
+    });
+
+    it.each(["👍🎉", "3*14159", "text"])(
+      "allows scoped Undo of legacy content %j without accepting new additions",
+      async (content) => {
+        const { target, person, ctx, forwardActivity } = await setup();
+        const account = await db.query.accounts.findFirst({
+          where: eq(accounts.iri, person.id!.href),
+        });
+        const other = await createAccount({ username: "other" });
+        const otherPostId = crypto.randomUUID() as Uuid;
+        await db.insert(posts).values({
+          id: otherPostId,
+          iri: `https://hollo.test/@other/${otherPostId}`,
+          type: "Note",
+          accountId: other.id as Uuid,
+          visibility: "public",
+          tags: {},
+          emojis: {},
+          sensitive: false,
+          updated: new Date(),
+        });
+        const activity = new Activity({
+          actor: person,
+          object: new URL(target.iri),
+          content,
+        });
+        await add(ctx, activity);
+        expect(await db.query.reactions.findMany()).toEqual([]);
+        expect(forwardActivity).not.toHaveBeenCalled();
+        await db.insert(reactions).values([
+          { postId: target.id, accountId: account!.id, emoji: content },
+          { postId: target.id, accountId: other.id as Uuid, emoji: content },
+          { postId: otherPostId, accountId: account!.id, emoji: content },
+        ]);
+        const undo = new Undo({ actor: person, object: activity });
+        await remove(
+          ctx,
+          new Undo({
+            actor: createLocalPerson("https://hollo.test/@other"),
+            object: activity,
+          }),
+        );
+        expect(await db.query.reactions.findMany()).toHaveLength(3);
+        expect(forwardActivity).not.toHaveBeenCalled();
+        await remove(ctx, undo);
+        const remaining = await db.query.reactions.findMany();
+        expect(remaining).toHaveLength(2);
+        expect(remaining).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              postId: target.id,
+              accountId: other.id,
+              emoji: content,
+            }),
+            expect.objectContaining({
+              postId: otherPostId,
+              accountId: account!.id,
+              emoji: content,
+            }),
+          ]),
+        );
+        expect(forwardActivity).toHaveBeenCalledTimes(1);
+        expect(activity.content).toBe(content);
+        await remove(ctx, undo);
+        expect(forwardActivity).toHaveBeenCalledTimes(1);
+      },
+    );
+  },
+);
