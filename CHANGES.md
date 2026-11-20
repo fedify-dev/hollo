@@ -155,6 +155,10 @@ To be released.
     14 adds post-quantum ML-DSA passkey support on runtimes that provide the
     algorithms.  \[[GHSA-2g3p-m8c9-hhwh], [GHSA-j3h4-m3m2-7p7j]]
 
+ -  Added `from:me` to search posts from the account you're signed in to.
+    To search for posts by accounts with the username `me`, use `from:@me`.
+    [[#702], [#703]]
+
  -  Added opt-in Markdown extensions for local posts.  Set
     `MARKDOWN_EXTENSIONS` to select footnotes, definition lists, subscripts,
     superscripts, highlights, ruby annotations, insertions, abbreviations,
@@ -221,6 +225,8 @@ To be released.
 [#673]: https://github.com/fedify-dev/hollo/pull/673
 [#679]: https://github.com/fedify-dev/hollo/issues/679
 [#680]: https://github.com/fedify-dev/hollo/pull/680
+[#702]: https://github.com/fedify-dev/hollo/issues/702
+[#703]: https://github.com/fedify-dev/hollo/pull/703
 
 
 Version 0.9.26

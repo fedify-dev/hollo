@@ -77,9 +77,13 @@ from:@alice@example.com
 用户名匹配是精确的，因此`from:alice`只会匹配用户名正好是`alice`的用户，
 而不会匹配`alice123`或`alicewonder`。
 
+使用`from:me`搜索当前登录账号的帖子。例如，`from:me has:media`
+会找出自己附有媒体的帖子。要查找用户名为`me`的账号所发的帖子，
+请使用`from:@me`。
+
 #### `mentions:username`
 
-查找提及特定用户的帖子。支持与`from:`相同的格式。
+使用用户名或带域名的完整账号名称，查找提及特定用户的帖子。
 
 ~~~~
 mentions:bob

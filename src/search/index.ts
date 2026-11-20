@@ -25,6 +25,7 @@
  * - `has:media` / `has:poll` - Filter by attachments
  * - `is:reply` / `is:sensitive` - Filter by post type
  * - `language:xx` - Filter by ISO 639-1 language code
+ * - `from:me` - Filter by the authenticated account
  * - `from:username` - Filter by author (supports `@user`, `user@domain`)
  * - `mentions:username` - Filter by mentioned user
  * - `before:YYYY-MM-DD` / `after:YYYY-MM-DD` - Filter by date range
@@ -41,6 +42,7 @@ export type {
   AfterOperator,
   AndNode,
   BeforeOperator,
+  FromMeOperator,
   FromOperator,
   HasOperator,
   IsOperator,

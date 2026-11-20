@@ -387,6 +387,65 @@ describe("/api/v2/search", { concurrent: false }, () => {
       expect(json.statuses.length).toBeGreaterThanOrEqual(1);
     });
 
+    it("binds from:me to the token's account ID, not a username", async () => {
+      const secondAccount = await createAccount({
+        username: "alice",
+        generateKeyPair: true,
+      });
+      const secondToken = await getAccessToken(client, secondAccount, [
+        "read:search",
+      ]);
+      const ownerPostId = await createTestPost(account.id);
+      const secondPostId = await createTestPost(secondAccount.id);
+      const sameUsernameId = await createOtherAccount("hollo");
+      const sameUsernamePostId = await createTestPost(sameUsernameId);
+      await createTestMedia(ownerPostId);
+      await createTestMedia(sameUsernamePostId);
+
+      for (const [query, token, expected] of [
+        ["from:me", accessToken, ownerPostId],
+        ["from:me", secondToken, secondPostId],
+        ["from:me has:media", accessToken, ownerPostId],
+      ] as const) {
+        const params = new URLSearchParams({ q: query, type: "statuses" });
+        const response = await app.request(`/api/v2/search?${params}`, {
+          headers: { authorization: bearerAuthorization(token) },
+        });
+        expect(response.status).toBe(200);
+        const json = await response.json();
+        expect(json.statuses.map((s: { id: string }) => s.id)).toEqual([
+          expected,
+        ]);
+      }
+    });
+
+    it("keeps literal me searches and combines the self filter normally", async () => {
+      const remoteId = await createOtherAccount("me");
+      const ownerPostId = await createTestPost(account.id);
+      const remotePostId = await createTestPost(remoteId);
+      await createTestMedia(ownerPostId);
+
+      const cases = [
+        { query: "from:me", ids: [ownerPostId] },
+        { query: "from:@me", ids: [remotePostId] },
+        { query: "from:me@other.test", ids: [remotePostId] },
+        { query: "from:@me@other.test", ids: [remotePostId] },
+        { query: "-from:me", ids: [remotePostId] },
+        { query: "(from:@me OR from:me) has:media", ids: [ownerPostId] },
+        { query: "from:me", accountId: remoteId, ids: [] },
+      ];
+      for (const { query, accountId, ids } of cases) {
+        const params = new URLSearchParams({ q: query, type: "statuses" });
+        if (accountId != null) params.set("account_id", accountId);
+        const response = await app.request(`/api/v2/search?${params}`, {
+          headers: { authorization: bearerAuthorization(accessToken) },
+        });
+        expect(response.status).toBe(200);
+        const json = await response.json();
+        expect(json.statuses.map((s: { id: string }) => s.id)).toEqual(ids);
+      }
+    });
+
     it("supports negation with - prefix", async () => {
       expect.assertions(4);
 

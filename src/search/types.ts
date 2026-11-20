@@ -37,12 +37,17 @@ export interface LanguageOperator {
 /**
  * Operator for filtering posts by author.
  * Supports various username formats:
- * - `alice` (local username)
+ * - `alice` (username without a domain)
  * - `alice@example.com` (full handle with domain)
  */
 export interface FromOperator {
   type: "from";
   value: string;
+}
+
+/** Filter posts by the authenticated account (`from:me`). */
+export interface FromMeOperator {
+  type: "fromMe";
 }
 
 /**
@@ -91,6 +96,7 @@ export type Operator =
   | IsOperator
   | LanguageOperator
   | FromOperator
+  | FromMeOperator
   | MentionsOperator
   | BeforeOperator
   | AfterOperator

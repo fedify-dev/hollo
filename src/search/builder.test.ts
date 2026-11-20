@@ -263,6 +263,18 @@ describe("buildSearchFilter", () => {
   });
 
   describe("from: operator", () => {
+    it.each([
+      "from:me",
+      "-from:me",
+      "has:media from:me",
+      "from:alice OR from:me",
+    ])("requires an authenticated account ID for %s", (query) => {
+      const ast = parseSearchQuery(query);
+      expect(() => buildSearchFilter(ast!)).toThrow(
+        "from:me requires an authenticated account ID",
+      );
+    });
+
     it("finds posts from specific user by username", async () => {
       expect.assertions(2);
 
