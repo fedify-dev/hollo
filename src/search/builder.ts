@@ -18,6 +18,7 @@ import {
 } from "drizzle-orm";
 
 import { posts } from "../schema";
+import type { Uuid } from "../uuid";
 import type {
   AfterOperator,
   AndNode,
@@ -34,10 +35,14 @@ import type {
   TextOperator,
 } from "./types";
 
+type PostsTable = typeof posts;
+
 /**
  * Build a SQL filter condition from a search AST node.
  *
  * @param node The search AST node to convert.
+ * @param table The posts table to filter.
+ * @param viewerAccountId The authenticated account ID, required for `from:me`.
  * @returns A Drizzle SQL condition that can be used in a where clause.
  *
  * @example
@@ -51,36 +56,43 @@ import type {
  * });
  * ```
  */
-type PostsTable = typeof posts;
-
 export function buildSearchFilter(
   node: SearchNode,
   table: PostsTable = posts,
+  viewerAccountId?: Uuid,
 ): SQL {
   switch (node.type) {
     case "term":
-      return buildTermFilter(node, table);
+      return buildTermFilter(node, table, viewerAccountId);
     case "and":
-      return buildAndFilter(node, table);
+      return buildAndFilter(node, table, viewerAccountId);
     case "or":
-      return buildOrFilter(node, table);
+      return buildOrFilter(node, table, viewerAccountId);
   }
 }
 
 /**
  * Build filter for a single term node.
  */
-function buildTermFilter(node: TermNode, table: PostsTable): SQL {
-  const condition = buildOperatorFilter(node.operator, table);
+function buildTermFilter(
+  node: TermNode,
+  table: PostsTable,
+  viewerAccountId?: Uuid,
+): SQL {
+  const condition = buildOperatorFilter(node.operator, table, viewerAccountId);
   return node.negated ? not(condition)! : condition;
 }
 
 /**
  * Build filter for an AND node.
  */
-function buildAndFilter(node: AndNode, table: PostsTable): SQL {
+function buildAndFilter(
+  node: AndNode,
+  table: PostsTable,
+  viewerAccountId?: Uuid,
+): SQL {
   const conditions = node.children.map((child) =>
-    buildSearchFilter(child, table),
+    buildSearchFilter(child, table, viewerAccountId),
   );
   return and(...conditions)!;
 }
@@ -88,9 +100,13 @@ function buildAndFilter(node: AndNode, table: PostsTable): SQL {
 /**
  * Build filter for an OR node.
  */
-function buildOrFilter(node: OrNode, table: PostsTable): SQL {
+function buildOrFilter(
+  node: OrNode,
+  table: PostsTable,
+  viewerAccountId?: Uuid,
+): SQL {
   const conditions = node.children.map((child) =>
-    buildSearchFilter(child, table),
+    buildSearchFilter(child, table, viewerAccountId),
   );
   return or(...conditions)!;
 }
@@ -98,7 +114,11 @@ function buildOrFilter(node: OrNode, table: PostsTable): SQL {
 /**
  * Build filter for a specific operator.
  */
-function buildOperatorFilter(operator: Operator, table: PostsTable): SQL {
+function buildOperatorFilter(
+  operator: Operator,
+  table: PostsTable,
+  viewerAccountId?: Uuid,
+): SQL {
   switch (operator.type) {
     case "text":
       return buildTextFilter(operator, table);
@@ -110,6 +130,11 @@ function buildOperatorFilter(operator: Operator, table: PostsTable): SQL {
       return buildLanguageFilter(operator, table);
     case "from":
       return buildFromFilter(operator, table);
+    case "fromMe":
+      if (viewerAccountId == null) {
+        throw new Error("from:me requires an authenticated account ID");
+      }
+      return eq(table.accountId, viewerAccountId);
     case "mentions":
       return buildMentionsFilter(operator, table);
     case "before":

@@ -142,6 +142,42 @@ describe("parseSearchQuery", () => {
   });
 
   describe("from: operator", () => {
+    it.each(["from:me", "FROM:me"])("parses %s as the viewer", (query) => {
+      expect(parseSearchQuery(query)).toEqual({
+        type: "term",
+        operator: { type: "fromMe" },
+        negated: false,
+      });
+    });
+
+    it.each([
+      ["from:@me", "me"],
+      ["from:Me", "Me"],
+      ["from:me@example.com", "me@example.com"],
+      ["from:@me@example.com", "me@example.com"],
+      ['from:"me"', '"me"'],
+    ])("keeps %s literal", (query, value) => {
+      expect(parseSearchQuery(query)).toEqual({
+        type: "term",
+        operator: { type: "from", value },
+        negated: false,
+      });
+    });
+
+    it("negates from:me inside a group", () => {
+      expect(parseSearchQuery("-(from:me OR has:media)")).toEqual({
+        type: "and",
+        children: [
+          { type: "term", operator: { type: "fromMe" }, negated: true },
+          {
+            type: "term",
+            operator: { type: "has", value: "media" },
+            negated: true,
+          },
+        ],
+      });
+    });
+
     it("parses from:username", () => {
       expect.assertions(1);
       const result = parseSearchQuery("from:alice");
@@ -184,6 +220,14 @@ describe("parseSearchQuery", () => {
   });
 
   describe("mentions: operator", () => {
+    it("keeps mentions:me literal", () => {
+      expect(parseSearchQuery("mentions:me")).toEqual({
+        type: "term",
+        operator: { type: "mentions", value: "me" },
+        negated: false,
+      });
+    });
+
     it("parses mentions:username", () => {
       expect.assertions(1);
       const result = parseSearchQuery("mentions:bob");

@@ -355,6 +355,7 @@ class Parser {
       }
 
       case "from": {
+        if (value === "me") return { type: "fromMe" };
         // Strip leading @ if present
         const normalizedValue = value.startsWith("@")
           ? value.substring(1)

@@ -179,7 +179,7 @@ app.get(
           where: {
             RAW: (posts, { and, eq, isNull, sql }) => {
               const searchFilter = searchAst
-                ? buildSearchFilter(searchAst, posts)
+                ? buildSearchFilter(searchAst, posts, owner.id)
                 : sql`TRUE`;
               let filter = and(searchFilter, isNull(posts.sharingId))!;
               if (query.account_id != null) {

@@ -80,10 +80,13 @@ from:@alice@example.com
 The username matching is exact, so `from:alice` will only match users whose
 username is exactly `alice`, not `alice123` or `alicewonder`.
 
+Use `from:me` to search posts from the account you're signed in to. For
+example, `from:me has:media` finds your posts with media attachments. To
+search for posts by accounts with the username `me`, use `from:@me`.
+
 #### `mentions:username`
 
-Finds posts that mention a specific user.  Supports the same formats as
-`from:`.
+Finds posts that mention a specific user by username or full handle.
 
 ~~~~
 mentions:bob

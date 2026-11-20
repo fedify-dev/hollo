@@ -77,9 +77,13 @@ from:@alice@example.com
 用戶名比對是精確的，因此 `from:alice` 只會比對用戶名正好是 `alice` 的用戶，
 而不會比對 `alice123` 或 `alicewonder`。
 
+使用 `from:me` 搜尋目前登入帳號的貼文。例如，`from:me has:media`
+會找出自己附有媒體的貼文。若要找用戶名為 `me` 的帳號所發的貼文，
+請使用 `from:@me`。
+
 #### `mentions:username`
 
-查找提及特定用戶的貼文。支援與 `from:` 相同的格式。
+使用用戶名或含網域的完整帳號名稱，查找提及特定用戶的貼文。
 
 ~~~~
 mentions:bob
